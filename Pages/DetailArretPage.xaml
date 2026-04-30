@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="TourneesMobile.Pages.DetailArretPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Détail arrêt">
+
+    <ScrollView>
+        <Grid Style="{StaticResource PageRoot}" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <VerticalStackLayout Grid.Row="0" Spacing="4">
+                <Label Text="Détail arrêt" Style="{StaticResource PageTitle}" />
+                <Label Text="{Binding Arret.NomAfficheCourt}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}" />
+                <Label Text="{Binding Arret.DescriptionPDL}" Style="{StaticResource MutedText}" />
+            </VerticalStackLayout>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Informations de livraison" Style="{StaticResource SectionTitle}" />
+                    <Label Text="{Binding Arret.NumClient, StringFormat='Client {0}'}" Style="{StaticResource MutedText}" />
+                    <Label Text="{Binding Arret.CodePDL, StringFormat='PDL {0}'}" Style="{StaticResource MutedText}" />
+                    <Label Text="{Binding Arret.AdresseComplete}" Style="{StaticResource MutedText}" />
+                    <Label Text="{Binding Arret.ZoneDechargement, StringFormat='Zone déchargement : {0}'}" Style="{StaticResource MutedText}" />
+                    <Label Text="{Binding Arret.TypeLinge, StringFormat='Type : {0}'}" Style="{StaticResource MutedText}" />
+                    <Label Text="{Binding Arret.Instructions}" TextColor="{StaticResource Accent}" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Quantités" Style="{StaticResource SectionTitle}" />
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,46,64,46" RowSpacing="8" ColumnSpacing="8">
+                        <Label Text="Expés" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbExpes" />
+                        <Label Grid.Column="2" Text="{Binding Arret.NbExpes}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbExpes" />
+
+                        <Label Grid.Row="1" Text="Rolls" VerticalOptions="Center" />
+                        <Button Grid.Row="1" Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbRolls" />
+                        <Label Grid.Row="1" Grid.Column="2" Text="{Binding Arret.NbRolls}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Row="1" Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbRolls" />
+
+                        <Label Grid.Row="2" Text="Vêtements" VerticalOptions="Center" />
+                        <Button Grid.Row="2" Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbVetements" />
+                        <Label Grid.Row="2" Grid.Column="2" Text="{Binding Arret.NbVetements}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Row="2" Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbVetements" />
+
+                        <Label Grid.Row="3" Text="Tapis" VerticalOptions="Center" />
+                        <Button Grid.Row="3" Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbTapis" />
+                        <Label Grid.Row="3" Grid.Column="2" Text="{Binding Arret.NbTapis}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Row="3" Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbTapis" />
+
+                        <Label Grid.Row="4" Text="Sacs" VerticalOptions="Center" />
+                        <Button Grid.Row="4" Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbSacs" />
+                        <Label Grid.Row="4" Grid.Column="2" Text="{Binding Arret.NbSacs}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Row="4" Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbSacs" />
+
+                        <Label Grid.Row="5" Text="Récupérés" VerticalOptions="Center" />
+                        <Button Grid.Row="5" Grid.Column="1" Text="-" Command="{Binding DecrementCommand}" CommandParameter="NbRecuperes" />
+                        <Label Grid.Row="5" Grid.Column="2" Text="{Binding Arret.NbRecuperes}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontSize="20" FontAttributes="Bold" />
+                        <Button Grid.Row="5" Grid.Column="3" Text="+" Command="{Binding IncrementCommand}" CommandParameter="NbRecuperes" />
+                    </Grid>
+                    <Label Text="Les retours sont saisis dans un champ séparé. Aucune quantité négative n'est autorisée." Style="{StaticResource MutedText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Grid.Row="3" Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Statut du passage" Style="{StaticResource SectionTitle}" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Button Text="Fait" Command="{Binding ChoisirStatutCommand}" CommandParameter="FAIT" BackgroundColor="{Binding EstFait, Converter={StaticResource BooleanToStatusColorConverter}}" TextColor="White" />
+                        <Button Grid.Column="1" Text="Non fait" Command="{Binding ChoisirStatutCommand}" CommandParameter="NON_FAIT" BackgroundColor="{Binding EstNonFait, Converter={StaticResource BooleanToStatusColorConverter}}" TextColor="White" />
+                        <Button Grid.Column="2" Text="Anomalie" Command="{Binding ChoisirStatutCommand}" CommandParameter="ANOMALIE" BackgroundColor="{Binding EstAnomalie, Converter={StaticResource BooleanToStatusColorConverter}}" TextColor="White" />
+                    </Grid>
+                    <Label Text="Un commentaire est obligatoire pour Non fait ou Anomalie." Style="{StaticResource MutedText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Grid.Row="4" Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Commentaire livreur" Style="{StaticResource SectionTitle}" />
+                    <Editor Text="{Binding Arret.CommentaireLivreur}" Placeholder="Commentaire en cas particulier..." AutoSize="TextChanges" HeightRequest="90" />
+                    <Label Text="Précision reprise / terrain" Style="{StaticResource SectionTitle}" />
+                    <Editor Text="{Binding Arret.PrecisionLivreur}" Placeholder="Ex : 2 rolls repris au local arrière" AutoSize="TextChanges" HeightRequest="80" />
+                </VerticalStackLayout>
+            </Border>
+
+            <VerticalStackLayout Grid.Row="5" Spacing="10">
+                <Button Text="Valider cet arrêt" Command="{Binding ValiderCommand}" Style="{StaticResource PrimaryButton}" />
+                <Button Text="Enregistrer sans valider" Command="{Binding EnregistrerSansValiderCommand}" Style="{StaticResource SecondaryButton}" />
+                <Button Text="Retour" Command="{Binding RetourCommand}" Style="{StaticResource SecondaryButton}" />
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </VerticalStackLayout>
+        </Grid>
+    </ScrollView>
+</ContentPage>

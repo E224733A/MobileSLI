@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="TourneesMobile.Pages.ListeArretsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Liste des arrêts">
+
+    <Grid Style="{StaticResource PageRoot}" RowDefinitions="Auto,Auto,*,Auto">
+        <VerticalStackLayout Grid.Row="0" Spacing="4">
+            <Label Text="Liste des arrêts" Style="{StaticResource PageTitle}" />
+            <Label Text="{Binding Tournee.LibelleTournee}" Style="{StaticResource MutedText}" />
+        </VerticalStackLayout>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}">
+            <VerticalStackLayout Spacing="10">
+                <Grid ColumnDefinitions="*,*,*">
+                    <VerticalStackLayout HorizontalOptions="Center">
+                        <Label Text="{Binding NombreTotal}" FontSize="22" FontAttributes="Bold" />
+                        <Label Text="total" Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center">
+                        <Label Text="{Binding NombreValides}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource Success}" />
+                        <Label Text="validés" Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center">
+                        <Label Text="{Binding NombreRestants}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource Warning}" />
+                        <Label Text="restants" Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+                </Grid>
+                <ProgressBar Progress="{Binding Progression}" />
+                <SearchBar Text="{Binding Recherche}" Placeholder="Rechercher client, PDL, numéro..." />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Arrets}" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="20" Spacing="8">
+                    <Label Text="Aucun arrêt à afficher." HorizontalTextAlignment="Center" />
+                    <Label Text="Vérifie le chargement ou le filtre de recherche." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding BindingContext.OuvrirArretCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}"
+                                CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12">
+                            <Border BackgroundColor="{StaticResource PrimaryLight}" StrokeThickness="0" HeightRequest="44" WidthRequest="44">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14" />
+                                </Border.StrokeShape>
+                                <Label Text="{Binding OrdreArret}" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="3">
+                                <Label Text="{Binding NomAfficheCourt}" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextMain}" />
+                                <Label Text="{Binding DescriptionPDL}" Style="{StaticResource MutedText}" />
+                                <Label Text="{Binding ZoneDechargement}" Style="{StaticResource MutedText}" />
+                            </VerticalStackLayout>
+
+                            <VerticalStackLayout Grid.Column="2" Spacing="4" HorizontalOptions="End">
+                                <Label Text="{Binding StatutPassage}" Style="{StaticResource Badge}" BackgroundColor="{Binding StatutPassage, Converter={StaticResource StatutToColorConverter}}" />
+                                <Label Text="Validé" IsVisible="{Binding EstValidee}" TextColor="{StaticResource Success}" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Button Text="Retour" Command="{Binding RetourCommand}" Style="{StaticResource SecondaryButton}" />
+            <Button Grid.Column="1" Text="Fin de tournée" Command="{Binding FinTourneeCommand}" Style="{StaticResource PrimaryButton}" />
+        </Grid>
+    </Grid>
+</ContentPage>

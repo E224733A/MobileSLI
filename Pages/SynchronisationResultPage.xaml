@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="TourneesMobile.Pages.SynchronisationResultPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Résultat synchronisation">
+
+    <Grid Style="{StaticResource PageRoot}" RowDefinitions="*,Auto">
+        <Border Grid.Row="0" Style="{StaticResource Card}" VerticalOptions="Center">
+            <VerticalStackLayout Spacing="18" HorizontalOptions="Center" VerticalOptions="Center">
+                <Border BackgroundColor="{Binding Success, Converter={StaticResource BooleanToStatusColorConverter}}" HeightRequest="86" WidthRequest="86" StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="43" />
+                    </Border.StrokeShape>
+                    <Label Text="✓" FontSize="42" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Text="{Binding Titre}" Style="{StaticResource PageTitle}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding SousTitre}" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding Message}" TextColor="{StaticResource TextMain}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="10">
+            <Button Text="Retour accueil" Command="{Binding RetourAccueilCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Retour fin de tournée" Command="{Binding RetourFinTourneeCommand}" Style="{StaticResource SecondaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

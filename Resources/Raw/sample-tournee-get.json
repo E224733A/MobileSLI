@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "dateTournee": "2026-04-28",
+  "jourTournee": 2,
+  "jourLibelle": "Mardi",
+  "codeTournee": "2001",
+  "libelleTournee": "MDR VENDEE",
+  "statutSynchronisation": "NON_ENVOYEE",
+  "livreur": {
+    "codeLivreur": "2",
+    "nomLivreur": "DAVID LEBAS"
+  },
+  "chargement": {
+    "dateGenerationApi": "2026-04-28T07:25:00",
+    "nombrePointsEnvoyes": 2
+  },
+  "lignes": [
+    {
+      "idLigneSource": "2026-04-28|2001|2|1058|1|1",
+      "ordreArret": 1,
+      "client": {
+        "numClient": "1058",
+        "nomClient": "EHPAD L EQUAIZIERE",
+        "nomAffiche": "EHPAD EQUAIZIERE GARNACHE"
+      },
+      "pointLivraison": {
+        "codePDL": "1",
+        "descriptionPDL": "EHPAD EQUAIZIERE GARNACHE",
+        "adresseLigne1": "Adresse démo",
+        "codePostal": "85000",
+        "ville": "Vendée"
+      },
+      "tournee": {
+        "codeTournee": "2001",
+        "libelleTournee": "MDR VENDEE"
+      },
+      "retour": {
+        "codeTourneeRetour": "2001",
+        "libelleTourneeRetour": "Retour MDR VENDEE"
+      },
+      "infosLivreur": {
+        "schemaLivraison": "MDR",
+        "instructions": "Local arrière, sonner avant livraison",
+        "zoneDechargement": "Rez-de-chaussée",
+        "zone": "Vendée",
+        "typeLinge": "MDR"
+      },
+      "saisie": {
+        "nbExpes": 0,
+        "nbRolls": 0,
+        "nbVetements": 0,
+        "nbTapis": 0,
+        "nbSacs": 0,
+        "nbRecuperes": 0,
+        "statutPassage": "A_FAIRE",
+        "estValidee": false
+      }
+    },
+    {
+      "idLigneSource": "2026-04-28|2001|2|1320|1|2",
+      "ordreArret": 2,
+      "client": {
+        "numClient": "1320",
+        "nomClient": "RESIDENCE BEL AIR",
+        "nomAffiche": "RESIDENCE BEL AIR"
+      },
+      "pointLivraison": {
+        "codePDL": "1",
+        "descriptionPDL": "Entrée principale",
+        "adresseLigne1": "Adresse démo",
+        "codePostal": "85000",
+        "ville": "Vendée"
+      },
+      "tournee": {
+        "codeTournee": "2001",
+        "libelleTournee": "MDR VENDEE"
+      },
+      "infosLivreur": {
+        "schemaLivraison": "MDR",
+        "instructions": "Livraison avant 10h30",
+        "zoneDechargement": "Quai 2",
+        "zone": "Vendée",
+        "typeLinge": "MDR"
+      },
+      "saisie": {
+        "nbExpes": 0,
+        "nbRolls": 0,
+        "nbVetements": 0,
+        "nbTapis": 0,
+        "nbSacs": 0,
+        "nbRecuperes": 0,
+        "statutPassage": "A_FAIRE",
+        "estValidee": false
+      }
+    }
+  ]
+}
