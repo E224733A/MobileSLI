@@ -2,6 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace TourneesMobile.Models;
 
+/// <summary>
+/// Contrat JSON exact reçu depuis GET /api/tournees/jour.
+/// Les noms de propriétés correspondent volontairement au contrat API choisi.
+/// </summary>
 public sealed class TourneeMobileDto
 {
     [JsonPropertyName("schemaVersion")]
@@ -47,7 +51,7 @@ public sealed class LivreurDto
 public sealed class ChargementDto
 {
     [JsonPropertyName("dateGenerationApi")]
-    public DateTime? DateGenerationApi { get; set; }
+    public DateTimeOffset? DateGenerationApi { get; set; }
 
     [JsonPropertyName("nombrePointsEnvoyes")]
     public int NombrePointsEnvoyes { get; set; }
@@ -126,12 +130,21 @@ public sealed class TourneeInfoDto
 
     [JsonPropertyName("libelleTournee")]
     public string? LibelleTournee { get; set; }
+
+    [JsonPropertyName("jourTournee")]
+    public int? JourTournee { get; set; }
+
+    [JsonPropertyName("schemaLivraison")]
+    public string? SchemaLivraison { get; set; }
 }
 
 public sealed class RetourInfoDto
 {
     [JsonPropertyName("jourTourneeRetour")]
     public int? JourTourneeRetour { get; set; }
+
+    [JsonPropertyName("jourRetourLibelle")]
+    public string? JourRetourLibelle { get; set; }
 
     [JsonPropertyName("codeTourneeRetour")]
     public string? CodeTourneeRetour { get; set; }
@@ -142,9 +155,6 @@ public sealed class RetourInfoDto
 
 public sealed class InfosLivreurDto
 {
-    [JsonPropertyName("schemaLivraison")]
-    public string? SchemaLivraison { get; set; }
-
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -159,6 +169,22 @@ public sealed class InfosLivreurDto
 
     [JsonPropertyName("precision")]
     public string? Precision { get; set; }
+
+    [JsonPropertyName("cle")]
+    public string? Cle { get; set; }
+
+    [JsonPropertyName("estFerme")]
+    public bool EstFerme { get; set; }
+
+    [JsonPropertyName("dateFermeture")]
+    public string? DateFermeture { get; set; }
+
+    [JsonPropertyName("motifFermeture")]
+    public string? MotifFermeture { get; set; }
+
+    // Tolérance conservée pour les anciennes réponses de test qui plaçaient ces champs ici.
+    [JsonPropertyName("schemaLivraison")]
+    public string? SchemaLivraison { get; set; }
 
     [JsonPropertyName("typeLinge")]
     public string? TypeLinge { get; set; }

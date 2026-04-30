@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
@@ -41,6 +42,7 @@ public sealed class DatabaseService
 
         return arrets
             .OrderBy(a => a.OrdreArret ?? int.MaxValue)
+            .ThenBy(a => a.Horaire ?? int.MaxValue)
             .ThenBy(a => a.NomClient)
             .ToList();
     }
@@ -68,6 +70,8 @@ public sealed class DatabaseService
             SchemaVersion = string.IsNullOrWhiteSpace(dto.SchemaVersion) ? "1.0" : dto.SchemaVersion,
             IdSynchronisation = Guid.NewGuid().ToString(),
             DateTournee = dto.DateTournee,
+            JourTournee = dto.JourTournee,
+            JourLibelle = dto.JourLibelle,
             CodeTournee = dto.CodeTournee,
             LibelleTournee = dto.LibelleTournee,
             CodeLivreur = dto.Livreur.CodeLivreur,
@@ -187,10 +191,10 @@ public sealed class DatabaseService
             {
                 NomAppareil = DeviceInfo.Current.Name,
                 VersionApplication = AppInfo.Current.VersionString,
-                DateChargementMobile = tournee.DateChargementMobile,
-                DateEnvoiMobile = now
+                DateChargementMobile = ToIsoLocalOffset(tournee.DateChargementMobile),
+                DateEnvoiMobile = ToIsoLocalOffset(now)
             },
-            CommentaireGlobal = tournee.CommentaireGlobal,
+            CommentaireGlobal = string.IsNullOrWhiteSpace(tournee.CommentaireGlobal) ? null : tournee.CommentaireGlobal.Trim(),
             Lignes = arrets.Select(MapSynchronisationLigne).ToList()
         };
     }
@@ -210,11 +214,12 @@ public sealed class DatabaseService
     private static ArretEntity MapArret(string idTourneeLocale, TourneeLigneMobileDto ligne)
     {
         var saisie = ligne.Saisie ?? new SaisieDto();
+        var infos = ligne.InfosLivreur;
 
         return new ArretEntity
         {
             IdLigneSource = string.IsNullOrWhiteSpace(ligne.IdLigneSource)
-                ? $"{idTourneeLocale}|{ligne.Client.NumClient}|{ligne.PointLivraison.CodePDL}"
+                ? BuildFallbackIdLigneSource(idTourneeLocale, ligne)
                 : ligne.IdLigneSource,
             IdTourneeLocale = idTourneeLocale,
             OrdreArret = ligne.OrdreArret,
@@ -229,13 +234,19 @@ public sealed class DatabaseService
             AdresseLigne3 = ligne.PointLivraison.AdresseLigne3,
             Ville = ligne.PointLivraison.Ville,
             CodePostal = ligne.PointLivraison.CodePostal,
-            SchemaLivraison = ligne.InfosLivreur?.SchemaLivraison,
-            Instructions = ligne.InfosLivreur?.Instructions,
-            CommentaireFiche = ligne.InfosLivreur?.CommentaireFiche,
-            ZoneDechargement = ligne.InfosLivreur?.ZoneDechargement,
-            Zone = ligne.InfosLivreur?.Zone,
-            Precision = ligne.InfosLivreur?.Precision,
-            TypeLinge = ligne.InfosLivreur?.TypeLinge,
+            SchemaLivraison = ligne.Tournee?.SchemaLivraison ?? infos?.SchemaLivraison,
+            Instructions = infos?.Instructions,
+            CommentaireFiche = infos?.CommentaireFiche,
+            ZoneDechargement = infos?.ZoneDechargement,
+            Zone = infos?.Zone,
+            Precision = infos?.Precision,
+            Cle = infos?.Cle,
+            EstFerme = infos?.EstFerme ?? false,
+            DateFermeture = infos?.DateFermeture,
+            MotifFermeture = infos?.MotifFermeture,
+            TypeLinge = infos?.TypeLinge,
+            JourTourneeRetour = ligne.Retour?.JourTourneeRetour,
+            JourRetourLibelle = ligne.Retour?.JourRetourLibelle,
             CodeTourneeRetour = ligne.Retour?.CodeTourneeRetour,
             LibelleTourneeRetour = ligne.Retour?.LibelleTourneeRetour,
             NbExpes = saisie.NbExpes,
@@ -262,12 +273,12 @@ public sealed class DatabaseService
             NomClient = arret.NomClient,
             NomAffiche = arret.NomAffiche
         },
-        PointLivraison = new PointLivraisonDto
+        PointLivraison = new PointLivraisonSynchronisationDto
         {
             CodePDL = arret.CodePDL,
             DescriptionPDL = arret.DescriptionPDL
         },
-        Saisie = new SaisieDto
+        Saisie = new SynchronisationSaisieDto
         {
             NbExpes = arret.NbExpes,
             NbRolls = arret.NbRolls,
@@ -278,8 +289,23 @@ public sealed class DatabaseService
             PrecisionLivreur = string.IsNullOrWhiteSpace(arret.PrecisionLivreur) ? null : arret.PrecisionLivreur.Trim(),
             StatutPassage = arret.StatutPassage,
             CommentaireLivreur = string.IsNullOrWhiteSpace(arret.CommentaireLivreur) ? null : arret.CommentaireLivreur.Trim(),
-            HeureValidation = arret.HeureValidation,
+            HeureValidation = arret.HeureValidation is null ? null : ToIsoLocalOffset(arret.HeureValidation.Value),
             EstValidee = arret.EstValidee
         }
     };
+
+    private static string BuildFallbackIdLigneSource(string idTourneeLocale, TourneeLigneMobileDto ligne)
+    {
+        var pdl = string.IsNullOrWhiteSpace(ligne.PointLivraison.CodePDL) ? "0" : ligne.PointLivraison.CodePDL;
+        var ordre = ligne.OrdreArret?.ToString(CultureInfo.InvariantCulture) ?? "0";
+        return $"{idTourneeLocale}|{ligne.Client.NumClient}|{pdl}|{ordre}";
+    }
+
+    private static string ToIsoLocalOffset(DateTime value)
+    {
+        var local = value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
+        var offset = TimeZoneInfo.Local.GetUtcOffset(local);
+        var dateTimeWithoutKind = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        return new DateTimeOffset(dateTimeWithoutKind, offset).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture);
+    }
 }

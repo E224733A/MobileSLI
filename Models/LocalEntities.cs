@@ -11,6 +11,8 @@ public sealed class TourneeEntity
     public string SchemaVersion { get; set; } = "1.0";
     public string IdSynchronisation { get; set; } = Guid.NewGuid().ToString();
     public string DateTournee { get; set; } = string.Empty;
+    public int? JourTournee { get; set; }
+    public string? JourLibelle { get; set; }
     public string CodeTournee { get; set; } = string.Empty;
     public string? LibelleTournee { get; set; }
     public string CodeLivreur { get; set; } = string.Empty;
@@ -52,8 +54,14 @@ public sealed class ArretEntity
     public string? ZoneDechargement { get; set; }
     public string? Zone { get; set; }
     public string? Precision { get; set; }
+    public string? Cle { get; set; }
+    public bool EstFerme { get; set; }
+    public string? DateFermeture { get; set; }
+    public string? MotifFermeture { get; set; }
     public string? TypeLinge { get; set; }
 
+    public int? JourTourneeRetour { get; set; }
+    public string? JourRetourLibelle { get; set; }
     public string? CodeTourneeRetour { get; set; }
     public string? LibelleTourneeRetour { get; set; }
 
@@ -79,4 +87,13 @@ public sealed class ArretEntity
 
     [Ignore]
     public bool DemandeCommentaire => StatutPassage.DemandeCommentaire(StatutPassage);
+
+    [Ignore]
+    public bool AUneCle => !string.IsNullOrWhiteSpace(Cle);
+
+    [Ignore]
+    public bool AUnCommentaireFiche => !string.IsNullOrWhiteSpace(CommentaireFiche) || !string.IsNullOrWhiteSpace(Instructions);
+
+    [Ignore]
+    public bool AUnePrecision => !string.IsNullOrWhiteSpace(Precision);
 }

@@ -11,13 +11,14 @@
     "nomLivreur": "DAVID LEBAS"
   },
   "chargement": {
-    "dateGenerationApi": "2026-04-28T07:25:00",
-    "nombrePointsEnvoyes": 2
+    "dateGenerationApi": "2026-04-28T07:30:00+02:00",
+    "nombrePointsEnvoyes": 8
   },
   "lignes": [
     {
       "idLigneSource": "2026-04-28|2001|2|1058|1|1",
       "ordreArret": 1,
+      "horaire": 1,
       "client": {
         "numClient": "1058",
         "nomClient": "EHPAD L EQUAIZIERE",
@@ -26,24 +27,34 @@
       "pointLivraison": {
         "codePDL": "1",
         "descriptionPDL": "EHPAD EQUAIZIERE GARNACHE",
-        "adresseLigne1": "Adresse démo",
-        "codePostal": "85000",
-        "ville": "Vendée"
+        "adresseLigne1": "7 RUE JAN ET JOEL MARTEL",
+        "adresseLigne2": null,
+        "adresseLigne3": "-",
+        "ville": "LA GARNACHE",
+        "codePostal": "85710"
       },
       "tournee": {
         "codeTournee": "2001",
-        "libelleTournee": "MDR VENDEE"
+        "libelleTournee": "MDR VENDEE",
+        "jourTournee": 2,
+        "schemaLivraison": "1W1"
       },
       "retour": {
+        "jourTourneeRetour": 2,
+        "jourRetourLibelle": "Mardi",
         "codeTourneeRetour": "2001",
-        "libelleTourneeRetour": "Retour MDR VENDEE"
+        "libelleTourneeRetour": "MDR VENDEE"
       },
       "infosLivreur": {
-        "schemaLivraison": "MDR",
-        "instructions": "Local arrière, sonner avant livraison",
-        "zoneDechargement": "Rez-de-chaussée",
-        "zone": "Vendée",
-        "typeLinge": "MDR"
+        "instructions": null,
+        "commentaireFiche": null,
+        "zoneDechargement": "EHPAD",
+        "zone": "EHPAD",
+        "precision": null,
+        "cle": null,
+        "estFerme": false,
+        "dateFermeture": null,
+        "motifFermeture": null
       },
       "saisie": {
         "nbExpes": 0,
@@ -52,44 +63,10 @@
         "nbTapis": 0,
         "nbSacs": 0,
         "nbRecuperes": 0,
+        "precisionLivreur": null,
         "statutPassage": "A_FAIRE",
-        "estValidee": false
-      }
-    },
-    {
-      "idLigneSource": "2026-04-28|2001|2|1320|1|2",
-      "ordreArret": 2,
-      "client": {
-        "numClient": "1320",
-        "nomClient": "RESIDENCE BEL AIR",
-        "nomAffiche": "RESIDENCE BEL AIR"
-      },
-      "pointLivraison": {
-        "codePDL": "1",
-        "descriptionPDL": "Entrée principale",
-        "adresseLigne1": "Adresse démo",
-        "codePostal": "85000",
-        "ville": "Vendée"
-      },
-      "tournee": {
-        "codeTournee": "2001",
-        "libelleTournee": "MDR VENDEE"
-      },
-      "infosLivreur": {
-        "schemaLivraison": "MDR",
-        "instructions": "Livraison avant 10h30",
-        "zoneDechargement": "Quai 2",
-        "zone": "Vendée",
-        "typeLinge": "MDR"
-      },
-      "saisie": {
-        "nbExpes": 0,
-        "nbRolls": 0,
-        "nbVetements": 0,
-        "nbTapis": 0,
-        "nbSacs": 0,
-        "nbRecuperes": 0,
-        "statutPassage": "A_FAIRE",
+        "commentaireLivreur": null,
+        "heureValidation": null,
         "estValidee": false
       }
     }

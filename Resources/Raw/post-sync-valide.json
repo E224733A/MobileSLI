@@ -1,4 +1,4 @@
-﻿{
+{
   "schemaVersion": "1.0",
   "idSynchronisation": "4e17a871-5fc5-4f49-8d01-4d791a6d9941",
   "dateTournee": "2026-04-28",
@@ -11,8 +11,8 @@
   "mobile": {
     "nomAppareil": "Samsung A15",
     "versionApplication": "1.0.0",
-    "dateChargementMobile": "2026-04-28T07:30:00",
-    "dateEnvoiMobile": "2026-04-28T16:45:00"
+    "dateChargementMobile": "2026-04-28T07:30:00+02:00",
+    "dateEnvoiMobile": "2026-04-28T16:45:00+02:00"
   },
   "commentaireGlobal": null,
   "lignes": [
@@ -38,7 +38,7 @@
         "precisionLivreur": "2 rolls repris au local arrière",
         "statutPassage": "FAIT",
         "commentaireLivreur": null,
-        "heureValidation": "2026-04-28T09:12:00",
+        "heureValidation": "2026-04-28T09:12:00+02:00",
         "estValidee": true
       }
     }

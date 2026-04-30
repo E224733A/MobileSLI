@@ -7,20 +7,23 @@ Application mobile **.NET MAUI Android** pour la dématérialisation d'une fiche
 Cette version fournit un socle fonctionnel pour le dépôt `E224733A/MobileSLI` :
 
 - chargement d'une tournée via `GET /api/tournees/jour` ;
+- respect du contrat JSON choisi pour le chargement de tournée ;
 - stockage local SQLite pour utilisation hors connexion pendant la tournée ;
 - consultation des arrêts dans l'ordre réel `ordreArret` / `ARRET` ;
 - saisie rapide des quantités avec boutons `+` / `-` ;
 - validation d'un arrêt avec statut `FAIT`, `NON_FAIT` ou `ANOMALIE` ;
 - commentaire obligatoire pour `NON_FAIT` et `ANOMALIE` ;
 - génération du JSON compatible avec `POST /api/synchronisations` ;
+- dates d'envoi au format local avec offset, par exemple `2026-04-28T16:45:00+02:00` ;
 - verrouillage local après synchronisation réussie.
 
 ## Prérequis
 
-- Visual Studio 2022 avec workload **.NET MAUI**
-- Android SDK
-- .NET 9 SDK
-- Téléphone ou émulateur Android
+- Visual Studio 2022 ou Visual Studio 2026 avec workload **.NET MAUI**
+- .NET 8 SDK
+- Android SDK Platform 31 pour Android 12
+- Android SDK Platform 34 conseillé pour compiler confortablement
+- Android Emulator ou téléphone Android physique
 
 ## Configuration API
 
@@ -53,7 +56,28 @@ Ou ouvrir `TourneesMobile.sln` dans Visual Studio puis lancer sur Android.
 L'écran de démarrage contient un bouton **Charger une tournée démo**.  
 Il injecte une tournée locale cohérente avec le cahier des charges pour tester les écrans sans backend.
 
-## Format POST
+## Contrats JSON
 
-Le fichier `Resources/Raw/post-sync-valide.json` reprend le JSON validé côté API.  
-La génération réelle est faite dans `Services/DatabaseService.cs` via `BuildSynchronisationRequestAsync`.
+Les contrats sont documentés dans :
+
+```text
+docs/CONTRATS_JSON.md
+docs/sample-tournee-get.json
+docs/post-sync-valide.json
+Resources/Raw/sample-tournee-get.json
+Resources/Raw/post-sync-valide.json
+```
+
+Les DTO importants sont :
+
+```text
+Models/ApiDtos.cs
+Models/SynchronisationDtos.cs
+```
+
+La génération du JSON d'envoi est faite dans :
+
+```text
+Services/DatabaseService.cs
+BuildSynchronisationRequestAsync()
+```
