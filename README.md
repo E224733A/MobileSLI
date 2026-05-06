@@ -1,83 +1,127 @@
-# SLI Tournées Mobile
+# MobileSLI
 
-Application mobile **.NET MAUI Android** pour la dématérialisation d'une fiche de tournée livreur.
+Application mobile .NET MAUI Android pour la dématérialisation des fiches de tournée.
 
 ## Objectif
 
-Cette version fournit un socle fonctionnel pour le dépôt `E224733A/MobileSLI` :
+Cette application reprend le fonctionnement prévu dans le cahier des charges :
 
-- chargement d'une tournée via `GET /api/tournees/jour` ;
-- respect du contrat JSON choisi pour le chargement de tournée ;
-- stockage local SQLite pour utilisation hors connexion pendant la tournée ;
-- consultation des arrêts dans l'ordre réel `ordreArret` / `ARRET` ;
-- saisie rapide des quantités avec boutons `+` / `-` ;
-- validation d'un arrêt avec statut `FAIT`, `NON_FAIT` ou `ANOMALIE` ;
-- commentaire obligatoire pour `NON_FAIT` et `ANOMALIE` ;
-- génération du JSON compatible avec `POST /api/synchronisations` ;
-- dates d'envoi au format local avec offset, par exemple `2026-04-28T16:45:00+02:00` ;
-- verrouillage local après synchronisation réussie.
+1. test de connexion API ;
+2. identification du livreur ;
+3. choix de la tournée ;
+4. chargement de la tournée depuis l'API ;
+5. sauvegarde locale SQLite ;
+6. consultation et saisie hors connexion ;
+7. aide au déchargement par client ;
+8. récapitulatif ;
+9. synchronisation vers l'API ;
+10. verrouillage local après succès.
 
-## Prérequis
+## Configuration Android
 
-- Visual Studio 2022 ou Visual Studio 2026 avec workload **.NET MAUI**
-- .NET 8 SDK
-- Android SDK Platform 31 pour Android 12
-- Android SDK Platform 34 conseillé pour compiler confortablement
-- Android Emulator ou téléphone Android physique
+Le projet cible Android avec .NET MAUI.
 
-## Configuration API
+- Version minimale configurée pour les tests physiques : Android 11 / API 30.
+- Cible recommandée pour les téléphones livreurs : Android 12 / API 31 minimum.
+- SDK de compilation conseillé : Android API 34.
 
-Par défaut, l'application pointe vers :
+Le fichier `MobileSLI.csproj` contient :
 
-```text
-http://10.0.2.2:5000
+```xml
+<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">30.0</SupportedOSPlatformVersion>
+<AndroidTargetSdkVersion>34</AndroidTargetSdkVersion>
+<AndroidCompileSdkVersion>34</AndroidCompileSdkVersion>
 ```
 
-Cette adresse fonctionne surtout depuis l'émulateur Android vers l'API lancée en local.  
-Sur téléphone physique, remplacer par l'adresse IP de la VM ou du poste qui héberge l'API sur le Wi-Fi de l'entreprise, par exemple :
+## URL de l'API
+
+L'adresse API par défaut est définie dans `Services/SettingsService.cs` :
+
+```csharp
+http://192.168.1.50:5000
+```
+
+Pour un téléphone physique, remplacer cette adresse par l'adresse IP du PC ou de la VM qui héberge l'API.
+
+Exemple :
 
 ```text
 http://192.168.1.50:5000
 ```
 
-Dans l'application : écran **Tournée du jour** > champ **Adresse API**.
-
-## Démarrage rapide
-
-```bash
-dotnet restore
-dotnet build -f net8.0-android
-```
-
-Ou ouvrir `TourneesMobile.sln` dans Visual Studio puis lancer sur Android.
-
-## Test sans API
-
-L'écran de démarrage contient un bouton **Charger une tournée démo**.  
-Il injecte une tournée locale cohérente avec le cahier des charges pour tester les écrans sans backend.
-
-## Contrats JSON
-
-Les contrats sont documentés dans :
+Pour un émulateur Android :
 
 ```text
-docs/CONTRATS_JSON.md
-docs/sample-tournee-get.json
-docs/post-sync-valide.json
-Resources/Raw/sample-tournee-get.json
-Resources/Raw/post-sync-valide.json
+http://10.0.2.2:5000
 ```
 
-Les DTO importants sont :
+Le manifeste Android autorise le trafic HTTP clair en développement avec `android:usesCleartextTraffic="true"`.
+
+## Routes API utilisées
+
+```http
+GET /api/health
+GET /api/tournees/jour?dateTournee=YYYY-MM-DD&codeTournee=2001&codeLivreur=2
+POST /api/synchronisations
+```
+
+## Mode démonstration
+
+La liste des tournées disponibles est alimentée par `DemoDataService` pour la première version, car le cahier des charges ne définit pas encore une route de listing des tournées.
+
+Le chargement réel est tenté via l'API. Si l'API ne répond pas, l'application utilise une tournée de démonstration pour permettre de tester l'interface, la navigation et SQLite.
+
+La synchronisation de fin de tournée, elle, tente réellement d'envoyer le JSON à l'API. En cas d'échec réseau, l'application affiche l'écran d'erreur et conserve les données localement.
+
+## Tester sur téléphone physique
+
+1. Brancher le téléphone Android en USB.
+2. Activer les options développeur.
+3. Activer le débogage USB.
+4. Connecter le téléphone au même Wi-Fi que le PC ou la VM de l'API.
+5. Vérifier que l'API écoute sur une adresse réseau accessible, pas uniquement sur `localhost`.
+6. Autoriser le port API dans le pare-feu Windows.
+7. Modifier l'URL dans `Services/SettingsService.cs` si nécessaire.
+8. Ouvrir `MobileSLI.sln` dans Visual Studio.
+9. Sélectionner le téléphone dans la liste des appareils Android.
+10. Lancer en Debug.
+
+## Tester l'API depuis le téléphone
+
+Depuis le navigateur du téléphone, tester :
 
 ```text
-Models/ApiDtos.cs
-Models/SynchronisationDtos.cs
+http://ADRESSE_IP_DU_PC:5000/api/health
 ```
 
-La génération du JSON d'envoi est faite dans :
+Si le téléphone ne peut pas ouvrir cette adresse, l'application ne pourra pas non plus joindre l'API.
 
-```text
-Services/DatabaseService.cs
-BuildSynchronisationRequestAsync()
-```
+## Workflow de test rapide dans l'application
+
+1. Écran Accueil : appuyer sur `Tester la connexion`.
+2. Continuer vers l'identification.
+3. Saisir le code livreur `2`.
+4. Valider le code.
+5. Sélectionner `2001 - MDR VENDEE`.
+6. Charger la tournée.
+7. Ouvrir un point de livraison.
+8. Saisir les quantités livrées/récupérées.
+9. Choisir le statut `FAIT`.
+10. Valider le passage.
+11. Retourner à la liste.
+12. Consulter le déchargement.
+13. Aller au récapitulatif.
+14. Envoyer la tournée.
+
+## Règles métier implémentées
+
+- Code livreur obligatoire.
+- Tournée obligatoire.
+- Saisie locale SQLite.
+- Quantités livrées et récupérées séparées.
+- Quantités négatives interdites.
+- Commentaire obligatoire pour `NON_FAIT` et `ANOMALIE`.
+- Heure de validation générée automatiquement.
+- Statut `A_FAIRE` interdit dans le JSON final.
+- Verrouillage local après synchronisation réussie.
+- Gestion spécifique d'une tournée déjà synchronisée.

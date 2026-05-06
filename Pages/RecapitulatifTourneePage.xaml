@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.RecapitulatifTourneePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Récapitulatif" Style="{StaticResource PageTitle}" />
+                <Label Text="Dernier contrôle avant synchronisation." Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}">
+                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Résumé" Style="{StaticResource MutedText}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding ResumeText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                        <Label Grid.Row="2" Grid.Column="0" Text="{Binding LivreurText}" Style="{StaticResource MutedText}" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                    </Grid>
+                </Frame>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                    <Frame Style="{StaticResource Card}" Padding="10" Margin="0">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding TotalClients}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource TextMain}" HorizontalTextAlignment="Center" />
+                            <Label Text="clients" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Column="1" Style="{StaticResource Card}" Padding="10" Margin="0">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Valides}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource SuccessText}" HorizontalTextAlignment="Center" />
+                            <Label Text="validés" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Column="2" Style="{StaticResource Card}" Padding="10" Margin="0">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding NonFaits}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource WarningText}" HorizontalTextAlignment="Center" />
+                            <Label Text="non fait" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Column="3" Style="{StaticResource Card}" Padding="10" Margin="0">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Anomalies}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource DangerText}" HorizontalTextAlignment="Center" />
+                            <Label Text="anomalies" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </Grid>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,90,90">
+                            <Label Text="Article" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="1" Text="Livré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
+                        </Grid>
+                        <CollectionView ItemsSource="{Binding Articles}" SelectionMode="None">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,90,90" Padding="0,6">
+                                        <Label Text="{Binding Libelle}" TextColor="{StaticResource TextMain}" />
+                                        <Label Grid.Column="1" Text="{Binding TotalLivre}" HorizontalTextAlignment="Center" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                                        <Label Grid.Column="2" Text="{Binding TotalRecupere}" HorizontalTextAlignment="Center" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Commentaire global" Style="{StaticResource MutedText}" />
+                        <Editor Text="{Binding CommentaireGlobal}" Placeholder="Optionnel" HeightRequest="74" BackgroundColor="White" TextColor="{StaticResource TextMain}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource WarningBackground}" BorderColor="{StaticResource WarningBorder}">
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Avertissement" TextColor="{StaticResource WarningText}" FontAttributes="Bold" />
+                        <Label Text="Après synchronisation, la tournée sera verrouillée et non modifiable." TextColor="{StaticResource WarningText}" FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button Text="Valider la tournée" Command="{Binding SendCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

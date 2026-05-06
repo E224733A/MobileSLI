@@ -1,40 +1,37 @@
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
-namespace TourneesMobile.Services;
+namespace MobileSLI.Services;
 
 public sealed class SettingsService
 {
     private const string ApiBaseUrlKey = "api_base_url";
-    private const string LastCodeLivreurKey = "last_code_livreur";
-    private const string LastNomLivreurKey = "last_nom_livreur";
-    private const string LastCodeTourneeKey = "last_code_tournee";
+    private const string LastLivreurCodeKey = "last_livreur_code";
+
+    public string DefaultApiBaseUrl => "http://192.168.1.50:5000";
 
     public string ApiBaseUrl
     {
-        get => Preferences.Get(ApiBaseUrlKey, "http://10.0.2.2:5000");
-        set => Preferences.Set(ApiBaseUrlKey, NormaliserBaseUrl(value));
+        get => Preferences.Default.Get(ApiBaseUrlKey, DefaultApiBaseUrl);
+        set => Preferences.Default.Set(ApiBaseUrlKey, NormalizeBaseUrl(value));
     }
 
-    public string LastCodeLivreur
+    public string LastLivreurCode
     {
-        get => Preferences.Get(LastCodeLivreurKey, "2");
-        set => Preferences.Set(LastCodeLivreurKey, value.Trim());
+        get => Preferences.Default.Get(LastLivreurCodeKey, string.Empty);
+        set => Preferences.Default.Set(LastLivreurCodeKey, value ?? string.Empty);
     }
 
-    public string LastNomLivreur
-    {
-        get => Preferences.Get(LastNomLivreurKey, "DAVID LEBAS");
-        set => Preferences.Set(LastNomLivreurKey, value.Trim());
-    }
+    public string ApplicationVersion => AppInfo.Current.VersionString;
+    public string DeviceName => DeviceInfo.Current.Name;
 
-    public string LastCodeTournee
+    private static string NormalizeBaseUrl(string value)
     {
-        get => Preferences.Get(LastCodeTourneeKey, "2001");
-        set => Preferences.Set(LastCodeTourneeKey, value.Trim());
-    }
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "http://192.168.1.50:5000";
+        }
 
-    private static string NormaliserBaseUrl(string value)
-    {
-        var url = string.IsNullOrWhiteSpace(value) ? "http://10.0.2.2:5000" : value.Trim();
-        return url.TrimEnd('/');
+        return value.Trim().TrimEnd('/');
     }
 }

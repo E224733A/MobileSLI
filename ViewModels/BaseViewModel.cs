@@ -1,38 +1,26 @@
-using Microsoft.Maui.Controls;
-using CommunityToolkit.Mvvm.ComponentModel;
+namespace MobileSLI.ViewModels;
 
-namespace TourneesMobile.ViewModels;
-
-public abstract partial class BaseViewModel : ObservableObject
+public abstract class BaseViewModel : ObservableObject
 {
-    [ObservableProperty]
-    private bool isBusy;
+    private bool _isBusy;
+    private string _title = string.Empty;
+    private string _errorMessage = string.Empty;
 
-    [ObservableProperty]
-    private string? errorMessage;
-
-    [ObservableProperty]
-    private string? statusMessage;
-
-    public async Task RunSafeAsync(Func<Task> action)
+    public bool IsBusy
     {
-        if (IsBusy)
-            return;
+        get => _isBusy;
+        set => SetProperty(ref _isBusy, value);
+    }
 
-        try
-        {
-            ErrorMessage = null;
-            IsBusy = true;
-            await action();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-            await Shell.Current.DisplayAlert("Erreur", ex.Message, "OK");
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+    public string Title
+    {
+        get => _title;
+        set => SetProperty(ref _title, value);
+    }
+
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
     }
 }

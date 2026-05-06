@@ -1,83 +1,116 @@
-using TourneesMobile.Models;
+using MobileSLI.Models;
 
-namespace TourneesMobile.Services;
+namespace MobileSLI.Services;
 
 public sealed class DemoDataService
 {
-    public TourneeMobileDto CreateTourneeDemo()
+    public LivreurDto? FindLivreurByCode(string codeLivreur)
     {
-        return new TourneeMobileDto
+        var normalized = (codeLivreur ?? string.Empty).Trim();
+
+        return normalized switch
         {
-            SchemaVersion = "1.0",
-            DateTournee = "2026-04-28",
-            JourTournee = 2,
-            JourLibelle = "Mardi",
-            CodeTournee = "2001",
-            LibelleTournee = "MDR VENDEE",
-            StatutSynchronisation = StatutSynchronisation.NonEnvoyee,
-            Livreur = new LivreurDto
-            {
-                CodeLivreur = "2",
-                NomLivreur = "DAVID LEBAS"
-            },
-            Chargement = new ChargementDto
-            {
-                DateGenerationApi = DateTime.Now,
-                NombrePointsEnvoyes = 4
-            },
-            Lignes =
-            [
-                CreateLigne("2026-04-28|2001|2|1058|1|1", 1, "1058", "EHPAD L EQUAIZIERE", "EHPAD EQUAIZIERE GARNACHE", "1", "EHPAD EQUAIZIERE GARNACHE", "Local arrière, sonner avant livraison", "MDR", "Rez-de-chaussée"),
-                CreateLigne("2026-04-28|2001|2|1320|1|2", 2, "1320", "RESIDENCE BEL AIR", "RESIDENCE BEL AIR", "1", "Entrée principale", "Livraison avant 10h30", "MDR", "Quai 2"),
-                CreateLigne("2026-04-28|2001|2|2042|2|3", 3, "2042", "CLINIQUE DU PARC", "CLINIQUE DU PARC - SERVICE A", "2", "Service A", "Accès par portail livraison", "VETEMENTS", "Sous-sol"),
-                CreateLigne("2026-04-28|2001|2|3100|1|4", 4, "3100", "MAISON RETRAITE OCEANE", "MR OCEANE", "1", "Bâtiment B", "Prévenir accueil si chariots pleins", "MDR", "Hall")
-            ]
+            "2" => new LivreurDto { CodeLivreur = "2", NomLivreur = "DAVID LEBAS" },
+            "1" => new LivreurDto { CodeLivreur = "1", NomLivreur = "LIVREUR TEST" },
+            _ => null
         };
     }
 
-    private static TourneeLigneMobileDto CreateLigne(
-        string id,
-        int ordre,
-        string numClient,
-        string nomClient,
-        string nomAffiche,
-        string codePdl,
-        string descriptionPdl,
-        string instructions,
-        string typeLinge,
-        string zoneDechargement)
+    public List<TourneeResumeDto> GetTourneesDisponibles()
     {
-        return new TourneeLigneMobileDto
+        return new List<TourneeResumeDto>
         {
-            IdLigneSource = id,
-            OrdreArret = ordre,
-            Client = new ClientDto
+            new() { CodeTournee = "2001", LibelleTournee = "MDR VENDEE", NombrePoints = 24 },
+            new() { CodeTournee = "2011", LibelleTournee = "CLINIQUE LITTORAL", NombrePoints = 12 },
+            new() { CodeTournee = "2022", LibelleTournee = "RESIDENCE BEL AIR", NombrePoints = 8 }
+        };
+    }
+
+    public TourneeJourDto BuildTourneeJour(TourneeResumeDto tournee, LivreurDto livreur)
+    {
+        var date = DateTime.Today;
+
+        return new TourneeJourDto
+        {
+            SchemaVersion = "1.1",
+            DateTournee = date,
+            DateModifiable = false,
+            CodeTournee = tournee.CodeTournee,
+            LibelleTournee = tournee.LibelleTournee,
+            Livreur = livreur,
+            ArticlesSaisissables = new List<ArticleSaisissableDto>
             {
-                NumClient = numClient,
-                NomClient = nomClient,
-                NomAffiche = nomAffiche
+                new() { CodeArticle = "ROLLS", Libelle = "Rolls" },
+                new() { CodeArticle = "TAPIS", Libelle = "Tapis" },
+                new() { CodeArticle = "SACS", Libelle = "Sacs" }
             },
-            PointLivraison = new PointLivraisonDto
+            Lignes = new List<TourneeLigneDto>
             {
-                CodePDL = codePdl,
-                DescriptionPDL = descriptionPdl,
-                AdresseLigne1 = "Adresse démo",
-                CodePostal = "85000",
-                Ville = "Vendée"
-            },
-            InfosLivreur = new InfosLivreurDto
-            {
-                Instructions = instructions,
-                TypeLinge = typeLinge,
-                ZoneDechargement = zoneDechargement,
-                Zone = "Zone Vendée"
-            },
-            Retour = new RetourInfoDto
-            {
-                CodeTourneeRetour = "2001",
-                LibelleTourneeRetour = "Retour MDR VENDEE"
-            },
-            Saisie = new SaisieDto()
+                new()
+                {
+                    IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|1058|PDL01|1",
+                    OrdreArret = 1,
+                    NumClient = "1058",
+                    NomClient = "HOTEL EXEMPLE",
+                    CodePDL = "PDL01",
+                    DescriptionPDL = "Entrée principale",
+                    AdresseLigne1 = "7 rue Jean et Marie La Gamarche",
+                    Ville = "Nantes",
+                    CodePostal = "44000",
+                    Zone = "Centre",
+                    ZoneDechargement = "Zone 1",
+                    Instructions = "Livraison par l'arrière",
+                    CommentaireFiche = null
+                },
+                new()
+                {
+                    IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|2044|PDL02|2",
+                    OrdreArret = 2,
+                    NumClient = "2044",
+                    NomClient = "MAISON OCEANE",
+                    CodePDL = "PDL02",
+                    DescriptionPDL = "Lingerie",
+                    AdresseLigne1 = "4 rue de la Gare",
+                    Ville = "Machecoul",
+                    CodePostal = "44270",
+                    Zone = "Sud",
+                    ZoneDechargement = "Zone 3",
+                    Instructions = "Commentaire/instruction disponible",
+                    CommentaireFiche = "Accès par la porte de service"
+                },
+                new()
+                {
+                    IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|3071|PDL03|3",
+                    OrdreArret = 3,
+                    NumClient = "3071",
+                    NomClient = "CLINIQUE LITTORAL",
+                    CodePDL = "PDL03",
+                    DescriptionPDL = "Quartier visiteurs",
+                    AdresseLigne1 = "12 avenue des Pins",
+                    Ville = "Challans",
+                    CodePostal = "85300",
+                    Zone = "Retour",
+                    ZoneDechargement = "Zone RST",
+                    Instructions = "Ne pas bloquer l'entrée principale",
+                    CommentaireFiche = "Instruction arrière"
+                },
+                new()
+                {
+                    IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|4182|PDL04|4",
+                    OrdreArret = 4,
+                    NumClient = "4182",
+                    NomClient = "RESIDENCE BEL AIR",
+                    CodePDL = "PDL04",
+                    DescriptionPDL = "Lingerie",
+                    AdresseLigne1 = "12 impasse des Lilas",
+                    Ville = "Aizenay",
+                    CodePostal = "85190",
+                    Zone = "VTS",
+                    ZoneDechargement = "Zone VTS",
+                    Instructions = null,
+                    CommentaireFiche = null
+                }
+            }
         };
     }
 }

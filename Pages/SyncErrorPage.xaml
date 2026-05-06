@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.SyncErrorPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Erreur envoi" Style="{StaticResource PageTitle}" />
+                <Label Text="Contrôle doublon ou erreur de connexion." Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <Label Text="!" TextColor="{StaticResource DangerText}" FontSize="34" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding Message}" TextColor="{StaticResource TextMain}" FontSize="18" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Action recommandée" Style="{StaticResource SectionTitle}" />
+                        <Label Text="{Binding ActionText}" TextColor="{StaticResource TextMuted}" FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource WarningBackground}" BorderColor="{StaticResource WarningBorder}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Détail technique" TextColor="{StaticResource WarningText}" FontAttributes="Bold" />
+                        <Label Text="{Binding TechnicalDetail}" TextColor="{StaticResource WarningText}" FontSize="12" />
+                    </VerticalStackLayout>
+                </Frame>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button Text="Retour à l'accueil" Command="{Binding BackHomeCommand}" Style="{StaticResource PrimaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

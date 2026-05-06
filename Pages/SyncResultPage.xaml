@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.SyncResultPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Synchronisation" Style="{StaticResource PageTitle}" />
+                <Label Text="Résultat clair après l'envoi à l'API." Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource SuccessBackground}" BorderColor="{StaticResource SuccessBorder}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Succès" TextColor="{StaticResource SuccessText}" FontSize="13" />
+                        <Label Text="Tournée envoyée avec succès" TextColor="{StaticResource SuccessText}" FontSize="22" FontAttributes="Bold" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="5">
+                            <Label Text="Date et heure" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="1" Text="{Binding DateText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                            <Label Grid.Row="1" Text="Lignes" Style="{StaticResource MutedText}" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding LignesText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <Label Text="La tournée est maintenant verrouillée localement. Les corrections éventuelles doivent passer par un responsable habilité." TextColor="{StaticResource TextMuted}" FontSize="13" />
+                </Frame>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button Grid.Row="1" Text="Retour à l'accueil" Command="{Binding BackHomeCommand}" Style="{StaticResource PrimaryButton}" Margin="0,14,0,0" />
+    </Grid>
+</ContentPage>

@@ -1,183 +1,191 @@
-using System.Globalization;
-using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
+using MobileSLI.Models;
 using SQLite;
-using TourneesMobile.Models;
 
-namespace TourneesMobile.Services;
+namespace MobileSLI.Services;
 
 public sealed class DatabaseService
 {
     private SQLiteAsyncConnection? _database;
+    private readonly SettingsService _settings;
+
+    public DatabaseService(SettingsService settings)
+    {
+        _settings = settings;
+    }
 
     private async Task<SQLiteAsyncConnection> GetDatabaseAsync()
     {
         if (_database is not null)
+        {
             return _database;
+        }
 
-        var path = Path.Combine(FileSystem.AppDataDirectory, "tournees_mobile.db3");
-        _database = new SQLiteAsyncConnection(path, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache);
-        await _database.CreateTableAsync<TourneeEntity>();
-        await _database.CreateTableAsync<ArretEntity>();
+        SQLitePCL.Batteries_V2.Init();
+
+        var databasePath = Path.Combine(FileSystem.AppDataDirectory, "mobile_sli.db3");
+        _database = new SQLiteAsyncConnection(databasePath);
+
+        await _database.CreateTableAsync<LocalTournee>();
+        await _database.CreateTableAsync<LocalTourneeLigne>();
+        await _database.CreateTableAsync<LocalTourneeLigneQuantite>();
+
         return _database;
     }
 
-    public async Task<TourneeEntity?> GetTourneeActiveAsync()
+    public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
     {
         var db = await GetDatabaseAsync();
 
-        return await db.Table<TourneeEntity>()
-            .OrderByDescending(t => t.DateChargementMobile)
+        var existing = await db.Table<LocalTournee>()
+            .Where(t => t.DateTournee == dto.DateTournee.Date
+                        && t.CodeTournee == dto.CodeTournee
+                        && t.CodeLivreur == dto.Livreur.CodeLivreur)
             .FirstOrDefaultAsync();
-    }
 
-    public async Task<List<ArretEntity>> GetArretsAsync(string idTourneeLocale)
-    {
-        var db = await GetDatabaseAsync();
-
-        var arrets = await db.Table<ArretEntity>()
-            .Where(a => a.IdTourneeLocale == idTourneeLocale)
-            .ToListAsync();
-
-        return arrets
-            .OrderBy(a => a.OrdreArret ?? int.MaxValue)
-            .ThenBy(a => a.Horaire ?? int.MaxValue)
-            .ThenBy(a => a.NomClient)
-            .ToList();
-    }
-
-    public async Task<ArretEntity?> GetArretAsync(string idLigneSource)
-    {
-        var db = await GetDatabaseAsync();
-        return await db.FindAsync<ArretEntity>(idLigneSource);
-    }
-
-    public async Task SaveTourneeFromApiAsync(TourneeMobileDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.DateTournee))
-            throw new InvalidOperationException("La date de tournée est absente.");
-        if (string.IsNullOrWhiteSpace(dto.CodeTournee))
-            throw new InvalidOperationException("Le code tournée est absent.");
-        if (string.IsNullOrWhiteSpace(dto.Livreur.CodeLivreur))
-            throw new InvalidOperationException("Le code livreur est absent.");
-
-        var idTourneeLocale = BuildTourneeId(dto.DateTournee, dto.CodeTournee, dto.Livreur.CodeLivreur);
-
-        var tournee = new TourneeEntity
+        if (existing is not null && existing.EstVerrouillee)
         {
-            IdTourneeLocale = idTourneeLocale,
-            SchemaVersion = string.IsNullOrWhiteSpace(dto.SchemaVersion) ? "1.0" : dto.SchemaVersion,
-            IdSynchronisation = Guid.NewGuid().ToString(),
-            DateTournee = dto.DateTournee,
-            JourTournee = dto.JourTournee,
-            JourLibelle = dto.JourLibelle,
+            return existing.Id;
+        }
+
+        if (existing is not null)
+        {
+            await DeleteTourneeDataAsync(existing.Id);
+        }
+
+        var tournee = new LocalTournee
+        {
+            DateTournee = dto.DateTournee.Date,
             CodeTournee = dto.CodeTournee,
             LibelleTournee = dto.LibelleTournee,
             CodeLivreur = dto.Livreur.CodeLivreur,
             NomLivreur = dto.Livreur.NomLivreur,
-            DateChargementMobile = DateTime.Now,
-            StatutSynchronisation = StatutSynchronisation.NonEnvoyee,
+            StatutLocal = TourneeLocalStatus.Chargee,
+            DateChargement = DateTime.Now,
+            IdSynchronisation = Guid.NewGuid().ToString(),
             EstVerrouillee = false
         };
 
-        var arrets = dto.Lignes.Select(l => MapArret(idTourneeLocale, l)).ToList();
-
-        var db = await GetDatabaseAsync();
-
-        await db.ExecuteAsync("DELETE FROM arrets WHERE IdTourneeLocale = ?", idTourneeLocale);
-        await db.ExecuteAsync("DELETE FROM tournees WHERE IdTourneeLocale = ?", idTourneeLocale);
         await db.InsertAsync(tournee);
 
-        if (arrets.Count > 0)
-            await db.InsertAllAsync(arrets);
-    }
-
-    public async Task SaveTourneeDemoAsync(TourneeMobileDto dto)
-    {
-        await SaveTourneeFromApiAsync(dto);
-    }
-
-    public async Task UpdateArretAsync(ArretEntity arret)
-    {
-        if (arret.NbExpes < 0 || arret.NbRolls < 0 || arret.NbVetements < 0 || arret.NbTapis < 0 || arret.NbSacs < 0 || arret.NbRecuperes < 0)
-            throw new InvalidOperationException("Les quantités négatives sont interdites.");
-
-        if (StatutPassage.DemandeCommentaire(arret.StatutPassage) && string.IsNullOrWhiteSpace(arret.CommentaireLivreur))
-            throw new InvalidOperationException("Un commentaire est obligatoire pour un statut NON_FAIT ou ANOMALIE.");
-
-        var db = await GetDatabaseAsync();
-        await db.UpdateAsync(arret);
-    }
-
-    public async Task SetCommentaireGlobalAsync(string idTourneeLocale, string? commentaireGlobal)
-    {
-        var db = await GetDatabaseAsync();
-        var tournee = await db.FindAsync<TourneeEntity>(idTourneeLocale);
-        if (tournee is null)
-            return;
-
-        tournee.CommentaireGlobal = string.IsNullOrWhiteSpace(commentaireGlobal) ? null : commentaireGlobal.Trim();
-        await db.UpdateAsync(tournee);
-    }
-
-    public async Task MarkSynchroniseeAsync(string idTourneeLocale, string? idSynchronisation = null)
-    {
-        var db = await GetDatabaseAsync();
-        var tournee = await db.FindAsync<TourneeEntity>(idTourneeLocale);
-        if (tournee is null)
-            return;
-
-        tournee.StatutSynchronisation = StatutSynchronisation.Envoyee;
-        tournee.EstVerrouillee = true;
-        tournee.DateEnvoiMobile = DateTime.Now;
-        if (!string.IsNullOrWhiteSpace(idSynchronisation))
-            tournee.IdSynchronisation = idSynchronisation;
-
-        await db.UpdateAsync(tournee);
-    }
-
-    public async Task MarkErreurAsync(string idTourneeLocale)
-    {
-        var db = await GetDatabaseAsync();
-        var tournee = await db.FindAsync<TourneeEntity>(idTourneeLocale);
-        if (tournee is null)
-            return;
-
-        tournee.StatutSynchronisation = StatutSynchronisation.Erreur;
-        await db.UpdateAsync(tournee);
-    }
-
-    public async Task<SynchronisationTourneeRequest> BuildSynchronisationRequestAsync(string idTourneeLocale, bool marquerDateEnvoi = true)
-    {
-        var db = await GetDatabaseAsync();
-        var tournee = await db.FindAsync<TourneeEntity>(idTourneeLocale)
-            ?? throw new InvalidOperationException("Aucune tournée locale trouvée.");
-
-        var arrets = await GetArretsAsync(idTourneeLocale);
-
-        if (arrets.Count == 0)
-            throw new InvalidOperationException("La tournée ne contient aucun arrêt.");
-
-        foreach (var arret in arrets)
+        foreach (var ligneDto in dto.Lignes.OrderBy(l => l.OrdreArret))
         {
-            if (!arret.EstValidee || arret.HeureValidation is null)
-                throw new InvalidOperationException($"L'arrêt {arret.OrdreArret} - {arret.NomAfficheCourt} n'est pas validé.");
+            var ligne = new LocalTourneeLigne
+            {
+                TourneeId = tournee.Id,
+                IdLigneSource = ligneDto.IdLigneSource,
+                OrdreArret = ligneDto.OrdreArret,
+                NumClient = ligneDto.NumClient,
+                NomClient = ligneDto.NomClient,
+                CodePDL = ligneDto.CodePDL,
+                DescriptionPDL = ligneDto.DescriptionPDL,
+                AdresseLigne1 = ligneDto.AdresseLigne1,
+                Ville = ligneDto.Ville,
+                CodePostal = ligneDto.CodePostal,
+                Zone = ligneDto.Zone,
+                ZoneDechargement = ligneDto.ZoneDechargement,
+                Instructions = ligneDto.Instructions,
+                CommentaireFiche = ligneDto.CommentaireFiche,
+                StatutPassage = StatutPassageConstants.AFaire,
+                EstValidee = false,
+                HeureValidation = null,
+                CommentaireLivreur = null
+            };
 
-            if (StatutPassage.DemandeCommentaire(arret.StatutPassage) && string.IsNullOrWhiteSpace(arret.CommentaireLivreur))
-                throw new InvalidOperationException($"Un commentaire est obligatoire pour l'arrêt {arret.OrdreArret}.");
+            await db.InsertAsync(ligne);
+
+            foreach (var article in dto.ArticlesSaisissables)
+            {
+                await db.InsertAsync(new LocalTourneeLigneQuantite
+                {
+                    LigneId = ligne.Id,
+                    CodeArticle = article.CodeArticle,
+                    Libelle = article.Libelle,
+                    QuantiteLivree = 0,
+                    QuantiteRecuperee = 0
+                });
+            }
         }
 
-        var now = DateTime.Now;
-        if (marquerDateEnvoi)
+        return tournee.Id;
+    }
+
+    public async Task<LocalTournee?> GetTourneeAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        return await db.Table<LocalTournee>().Where(t => t.Id == tourneeId).FirstOrDefaultAsync();
+    }
+
+    public async Task<LocalTournee?> GetLatestTourneeAsync()
+    {
+        var db = await GetDatabaseAsync();
+        return await db.Table<LocalTournee>()
+            .OrderByDescending(t => t.DateChargement)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        return await db.Table<LocalTourneeLigne>()
+            .Where(l => l.TourneeId == tourneeId)
+            .OrderBy(l => l.OrdreArret)
+            .ToListAsync();
+    }
+
+    public async Task<LocalTourneeLigne?> GetLigneAsync(int ligneId)
+    {
+        var db = await GetDatabaseAsync();
+        return await db.Table<LocalTourneeLigne>().Where(l => l.Id == ligneId).FirstOrDefaultAsync();
+    }
+
+    public async Task<List<LocalTourneeLigneQuantite>> GetQuantitesAsync(int ligneId)
+    {
+        var db = await GetDatabaseAsync();
+        return await db.Table<LocalTourneeLigneQuantite>()
+            .Where(q => q.LigneId == ligneId)
+            .OrderBy(q => q.CodeArticle)
+            .ToListAsync();
+    }
+
+    public async Task SaveLigneAsync(LocalTourneeLigne ligne, IEnumerable<LocalTourneeLigneQuantite> quantites)
+    {
+        var db = await GetDatabaseAsync();
+
+        var tournee = await GetTourneeAsync(ligne.TourneeId);
+        if (tournee?.EstVerrouillee == true)
         {
-            tournee.DateEnvoiMobile = now;
+            throw new InvalidOperationException("La tournée est verrouillée après synchronisation.");
+        }
+
+        await db.UpdateAsync(ligne);
+
+        foreach (var quantite in quantites)
+        {
+            if (quantite.QuantiteLivree < 0 || quantite.QuantiteRecuperee < 0)
+            {
+                throw new InvalidOperationException("Les quantités négatives sont interdites.");
+            }
+
+            await db.UpdateAsync(quantite);
+        }
+
+        if (tournee is not null && tournee.StatutLocal == TourneeLocalStatus.Chargee)
+        {
+            tournee.StatutLocal = TourneeLocalStatus.EnCours;
             await db.UpdateAsync(tournee);
         }
+    }
 
-        return new SynchronisationTourneeRequest
+    public async Task<SynchronisationTourneeRequest> BuildSynchronisationRequestAsync(int tourneeId)
+    {
+        var tournee = await GetTourneeAsync(tourneeId)
+            ?? throw new InvalidOperationException("Aucune tournée locale trouvée.");
+
+        var lignes = await GetLignesAsync(tourneeId);
+        var request = new SynchronisationTourneeRequest
         {
-            SchemaVersion = "1.0",
+            SchemaVersion = "1.1",
             IdSynchronisation = tournee.IdSynchronisation,
             DateTournee = tournee.DateTournee,
             CodeTournee = tournee.CodeTournee,
@@ -187,125 +195,122 @@ public sealed class DatabaseService
                 CodeLivreur = tournee.CodeLivreur,
                 NomLivreur = tournee.NomLivreur
             },
-            Mobile = new MobileDto
+            Mobile = new MobileInfoDto
             {
-                NomAppareil = DeviceInfo.Current.Name,
-                VersionApplication = AppInfo.Current.VersionString,
-                DateChargementMobile = ToIsoLocalOffset(tournee.DateChargementMobile),
-                DateEnvoiMobile = ToIsoLocalOffset(now)
+                NomAppareil = _settings.DeviceName,
+                VersionApplication = _settings.ApplicationVersion,
+                DateChargement = tournee.DateChargement,
+                DateEnvoi = DateTime.Now
             },
-            CommentaireGlobal = string.IsNullOrWhiteSpace(tournee.CommentaireGlobal) ? null : tournee.CommentaireGlobal.Trim(),
-            Lignes = arrets.Select(MapSynchronisationLigne).ToList()
+            CommentaireGlobal = tournee.CommentaireGlobal,
+            Lignes = new List<SynchronisationLigneRequest>()
         };
-    }
 
-    public async Task<string> BuildSynchronisationJsonPreviewAsync(string idTourneeLocale)
-    {
-        var request = await BuildSynchronisationRequestAsync(idTourneeLocale, marquerDateEnvoi: false);
-        return System.Text.Json.JsonSerializer.Serialize(request, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        foreach (var ligne in lignes)
         {
-            WriteIndented = true
-        });
-    }
-
-    public static string BuildTourneeId(string dateTournee, string codeTournee, string codeLivreur) =>
-        $"{dateTournee}|{codeTournee}|{codeLivreur}";
-
-    private static ArretEntity MapArret(string idTourneeLocale, TourneeLigneMobileDto ligne)
-    {
-        var saisie = ligne.Saisie ?? new SaisieDto();
-        var infos = ligne.InfosLivreur;
-
-        return new ArretEntity
-        {
-            IdLigneSource = string.IsNullOrWhiteSpace(ligne.IdLigneSource)
-                ? BuildFallbackIdLigneSource(idTourneeLocale, ligne)
-                : ligne.IdLigneSource,
-            IdTourneeLocale = idTourneeLocale,
-            OrdreArret = ligne.OrdreArret,
-            Horaire = ligne.Horaire,
-            NumClient = ligne.Client.NumClient,
-            NomClient = ligne.Client.NomClient,
-            NomAffiche = ligne.Client.NomAffiche,
-            CodePDL = ligne.PointLivraison.CodePDL,
-            DescriptionPDL = ligne.PointLivraison.DescriptionPDL,
-            AdresseLigne1 = ligne.PointLivraison.AdresseLigne1,
-            AdresseLigne2 = ligne.PointLivraison.AdresseLigne2,
-            AdresseLigne3 = ligne.PointLivraison.AdresseLigne3,
-            Ville = ligne.PointLivraison.Ville,
-            CodePostal = ligne.PointLivraison.CodePostal,
-            SchemaLivraison = ligne.Tournee?.SchemaLivraison ?? infos?.SchemaLivraison,
-            Instructions = infos?.Instructions,
-            CommentaireFiche = infos?.CommentaireFiche,
-            ZoneDechargement = infos?.ZoneDechargement,
-            Zone = infos?.Zone,
-            Precision = infos?.Precision,
-            Cle = infos?.Cle,
-            EstFerme = infos?.EstFerme ?? false,
-            DateFermeture = infos?.DateFermeture,
-            MotifFermeture = infos?.MotifFermeture,
-            TypeLinge = infos?.TypeLinge,
-            JourTourneeRetour = ligne.Retour?.JourTourneeRetour,
-            JourRetourLibelle = ligne.Retour?.JourRetourLibelle,
-            CodeTourneeRetour = ligne.Retour?.CodeTourneeRetour,
-            LibelleTourneeRetour = ligne.Retour?.LibelleTourneeRetour,
-            NbExpes = saisie.NbExpes,
-            NbRolls = saisie.NbRolls,
-            NbVetements = saisie.NbVetements,
-            NbTapis = saisie.NbTapis,
-            NbSacs = saisie.NbSacs,
-            NbRecuperes = saisie.NbRecuperes,
-            PrecisionLivreur = saisie.PrecisionLivreur,
-            StatutPassage = string.IsNullOrWhiteSpace(saisie.StatutPassage) ? StatutPassage.AFaire : saisie.StatutPassage,
-            CommentaireLivreur = saisie.CommentaireLivreur,
-            HeureValidation = saisie.HeureValidation,
-            EstValidee = saisie.EstValidee
-        };
-    }
-
-    private static SynchronisationLigneDto MapSynchronisationLigne(ArretEntity arret) => new()
-    {
-        IdLigneSource = arret.IdLigneSource,
-        OrdreArret = arret.OrdreArret,
-        Client = new ClientDto
-        {
-            NumClient = arret.NumClient,
-            NomClient = arret.NomClient,
-            NomAffiche = arret.NomAffiche
-        },
-        PointLivraison = new PointLivraisonSynchronisationDto
-        {
-            CodePDL = arret.CodePDL,
-            DescriptionPDL = arret.DescriptionPDL
-        },
-        Saisie = new SynchronisationSaisieDto
-        {
-            NbExpes = arret.NbExpes,
-            NbRolls = arret.NbRolls,
-            NbVetements = arret.NbVetements,
-            NbTapis = arret.NbTapis,
-            NbSacs = arret.NbSacs,
-            NbRecuperes = arret.NbRecuperes,
-            PrecisionLivreur = string.IsNullOrWhiteSpace(arret.PrecisionLivreur) ? null : arret.PrecisionLivreur.Trim(),
-            StatutPassage = arret.StatutPassage,
-            CommentaireLivreur = string.IsNullOrWhiteSpace(arret.CommentaireLivreur) ? null : arret.CommentaireLivreur.Trim(),
-            HeureValidation = arret.HeureValidation is null ? null : ToIsoLocalOffset(arret.HeureValidation.Value),
-            EstValidee = arret.EstValidee
+            var quantites = await GetQuantitesAsync(ligne.Id);
+            request.Lignes.Add(new SynchronisationLigneRequest
+            {
+                IdLigneSource = ligne.IdLigneSource,
+                OrdreArret = ligne.OrdreArret,
+                NumClient = ligne.NumClient,
+                NomClient = ligne.NomClient,
+                CodePDL = ligne.CodePDL,
+                DescriptionPDL = ligne.DescriptionPDL,
+                StatutPassage = ligne.StatutPassage,
+                EstValidee = ligne.EstValidee,
+                HeureValidation = ligne.HeureValidation,
+                CommentaireLivreur = string.IsNullOrWhiteSpace(ligne.CommentaireLivreur) ? null : ligne.CommentaireLivreur,
+                Quantites = quantites.Select(q => new QuantiteArticleRequest
+                {
+                    CodeArticle = q.CodeArticle,
+                    Libelle = q.Libelle,
+                    QuantiteLivree = q.QuantiteLivree,
+                    QuantiteRecuperee = q.QuantiteRecuperee
+                }).ToList()
+            });
         }
-    };
 
-    private static string BuildFallbackIdLigneSource(string idTourneeLocale, TourneeLigneMobileDto ligne)
-    {
-        var pdl = string.IsNullOrWhiteSpace(ligne.PointLivraison.CodePDL) ? "0" : ligne.PointLivraison.CodePDL;
-        var ordre = ligne.OrdreArret?.ToString(CultureInfo.InvariantCulture) ?? "0";
-        return $"{idTourneeLocale}|{ligne.Client.NumClient}|{pdl}|{ordre}";
+        return request;
     }
 
-    private static string ToIsoLocalOffset(DateTime value)
+
+    public async Task UpdateCommentaireGlobalAsync(int tourneeId, string? commentaireGlobal)
     {
-        var local = value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
-        var offset = TimeZoneInfo.Local.GetUtcOffset(local);
-        var dateTimeWithoutKind = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
-        return new DateTimeOffset(dateTimeWithoutKind, offset).ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture);
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null || tournee.EstVerrouillee)
+        {
+            return;
+        }
+
+        tournee.CommentaireGlobal = string.IsNullOrWhiteSpace(commentaireGlobal) ? null : commentaireGlobal.Trim();
+        await db.UpdateAsync(tournee);
+    }
+
+    public async Task MarkSynchroniseeAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null)
+        {
+            return;
+        }
+
+        tournee.StatutLocal = TourneeLocalStatus.Synchronisee;
+        tournee.DateEnvoi = DateTime.Now;
+        tournee.EstVerrouillee = true;
+        await db.UpdateAsync(tournee);
+    }
+
+    public async Task MarkErreurSynchronisationAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null || tournee.EstVerrouillee)
+        {
+            return;
+        }
+
+        tournee.StatutLocal = TourneeLocalStatus.ErreurSynchronisation;
+        await db.UpdateAsync(tournee);
+    }
+
+    public async Task MarkDejaSynchroniseeAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null)
+        {
+            return;
+        }
+
+        tournee.StatutLocal = TourneeLocalStatus.DejaSynchronisee;
+        tournee.DateEnvoi = DateTime.Now;
+        tournee.EstVerrouillee = true;
+        await db.UpdateAsync(tournee);
+    }
+
+    private async Task DeleteTourneeDataAsync(int tourneeId)
+    {
+        var db = await GetDatabaseAsync();
+        var lignes = await db.Table<LocalTourneeLigne>().Where(l => l.TourneeId == tourneeId).ToListAsync();
+
+        foreach (var ligne in lignes)
+        {
+            var quantites = await db.Table<LocalTourneeLigneQuantite>().Where(q => q.LigneId == ligne.Id).ToListAsync();
+            foreach (var quantite in quantites)
+            {
+                await db.DeleteAsync(quantite);
+            }
+
+            await db.DeleteAsync(ligne);
+        }
+
+        var tournee = await db.Table<LocalTournee>().Where(t => t.Id == tourneeId).FirstOrDefaultAsync();
+        if (tournee is not null)
+        {
+            await db.DeleteAsync(tournee);
+        }
     }
 }

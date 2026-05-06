@@ -1,4 +1,4 @@
-namespace TourneesMobile;
+namespace MobileSLI;
 
 public partial class App : Application
 {

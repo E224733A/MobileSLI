@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ResourceDictionary
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
-
-    <Color x:Key="Primary">#0F766E</Color>
-    <Color x:Key="PrimaryDark">#115E59</Color>
-    <Color x:Key="PrimaryLight">#CCFBF1</Color>
-    <Color x:Key="Accent">#F97316</Color>
-    <Color x:Key="Background">#F8FAFC</Color>
-    <Color x:Key="Surface">#FFFFFF</Color>
-    <Color x:Key="TextMain">#0F172A</Color>
-    <Color x:Key="TextMuted">#64748B</Color>
-    <Color x:Key="Border">#E2E8F0</Color>
-    <Color x:Key="Success">#16A34A</Color>
-    <Color x:Key="Warning">#F59E0B</Color>
-    <Color x:Key="Danger">#DC2626</Color>
-    <Color x:Key="Info">#2563EB</Color>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <Color x:Key="Primary">#3157F6</Color>
+    <Color x:Key="PrimaryDark">#2447D8</Color>
+    <Color x:Key="PageBackground">#EEF1F6</Color>
+    <Color x:Key="CardBackground">#FFFFFF</Color>
+    <Color x:Key="BorderColor">#DDE3EE</Color>
+    <Color x:Key="TextMain">#162033</Color>
+    <Color x:Key="TextMuted">#6B7280</Color>
+    <Color x:Key="SuccessBackground">#EAFBF0</Color>
+    <Color x:Key="SuccessBorder">#B7E8C8</Color>
+    <Color x:Key="SuccessText">#0F7A3A</Color>
+    <Color x:Key="WarningBackground">#FFF4E8</Color>
+    <Color x:Key="WarningBorder">#FFD7A8</Color>
+    <Color x:Key="WarningText">#B45309</Color>
+    <Color x:Key="DangerBackground">#FFF1F1</Color>
+    <Color x:Key="DangerBorder">#FFC6C6</Color>
+    <Color x:Key="DangerText">#C62828</Color>
+    <Color x:Key="InfoBackground">#EEF6FF</Color>
+    <Color x:Key="InfoBorder">#BBD7FF</Color>
+    <Color x:Key="InfoText">#2256A3</Color>
 </ResourceDictionary>

@@ -1,99 +1,68 @@
 using SQLite;
 
-namespace TourneesMobile.Models;
+namespace MobileSLI.Models;
 
-[Table("tournees")]
-public sealed class TourneeEntity
+public sealed class LocalTournee
 {
-    [PrimaryKey]
-    public string IdTourneeLocale { get; set; } = string.Empty;
-
-    public string SchemaVersion { get; set; } = "1.0";
-    public string IdSynchronisation { get; set; } = Guid.NewGuid().ToString();
-    public string DateTournee { get; set; } = string.Empty;
-    public int? JourTournee { get; set; }
-    public string? JourLibelle { get; set; }
-    public string CodeTournee { get; set; } = string.Empty;
-    public string? LibelleTournee { get; set; }
-    public string CodeLivreur { get; set; } = string.Empty;
-    public string NomLivreur { get; set; } = string.Empty;
-    public DateTime DateChargementMobile { get; set; } = DateTime.Now;
-    public DateTime? DateEnvoiMobile { get; set; }
-    public string StatutSynchronisation { get; set; } = StatutSynchronisation.NonEnvoyee;
-    public string? CommentaireGlobal { get; set; }
-    public bool EstVerrouillee { get; set; }
-}
-
-[Table("arrets")]
-public sealed class ArretEntity
-{
-    [PrimaryKey]
-    public string IdLigneSource { get; set; } = string.Empty;
+    [PrimaryKey, AutoIncrement]
+    public int Id { get; set; }
 
     [Indexed]
-    public string IdTourneeLocale { get; set; } = string.Empty;
+    public DateTime DateTournee { get; set; }
 
-    public int? OrdreArret { get; set; }
-    public int? Horaire { get; set; }
+    [Indexed]
+    public string CodeTournee { get; set; } = string.Empty;
 
+    public string LibelleTournee { get; set; } = string.Empty;
+    public string CodeLivreur { get; set; } = string.Empty;
+    public string NomLivreur { get; set; } = string.Empty;
+    public string StatutLocal { get; set; } = TourneeLocalStatus.Chargee;
+    public DateTime DateChargement { get; set; }
+    public DateTime? DateEnvoi { get; set; }
+    public string IdSynchronisation { get; set; } = Guid.NewGuid().ToString();
+    public bool EstVerrouillee { get; set; }
+    public string? CommentaireGlobal { get; set; }
+}
+
+public sealed class LocalTourneeLigne
+{
+    [PrimaryKey, AutoIncrement]
+    public int Id { get; set; }
+
+    [Indexed]
+    public int TourneeId { get; set; }
+
+    [Indexed]
+    public string IdLigneSource { get; set; } = string.Empty;
+
+    public int OrdreArret { get; set; }
     public string NumClient { get; set; } = string.Empty;
     public string NomClient { get; set; } = string.Empty;
-    public string? NomAffiche { get; set; }
-
     public string? CodePDL { get; set; }
     public string? DescriptionPDL { get; set; }
     public string? AdresseLigne1 { get; set; }
-    public string? AdresseLigne2 { get; set; }
-    public string? AdresseLigne3 { get; set; }
     public string? Ville { get; set; }
     public string? CodePostal { get; set; }
-
-    public string? SchemaLivraison { get; set; }
+    public string? Zone { get; set; }
+    public string? ZoneDechargement { get; set; }
     public string? Instructions { get; set; }
     public string? CommentaireFiche { get; set; }
-    public string? ZoneDechargement { get; set; }
-    public string? Zone { get; set; }
-    public string? Precision { get; set; }
-    public string? Cle { get; set; }
-    public bool EstFerme { get; set; }
-    public string? DateFermeture { get; set; }
-    public string? MotifFermeture { get; set; }
-    public string? TypeLinge { get; set; }
-
-    public int? JourTourneeRetour { get; set; }
-    public string? JourRetourLibelle { get; set; }
-    public string? CodeTourneeRetour { get; set; }
-    public string? LibelleTourneeRetour { get; set; }
-
-    public int NbExpes { get; set; }
-    public int NbRolls { get; set; }
-    public int NbVetements { get; set; }
-    public int NbTapis { get; set; }
-    public int NbSacs { get; set; }
-    public int NbRecuperes { get; set; }
-
-    public string? PrecisionLivreur { get; set; }
-    public string StatutPassage { get; set; } = StatutPassage.AFaire;
-    public string? CommentaireLivreur { get; set; }
-    public DateTime? HeureValidation { get; set; }
+    public string StatutPassage { get; set; } = StatutPassageConstants.AFaire;
     public bool EstValidee { get; set; }
+    public DateTime? HeureValidation { get; set; }
+    public string? CommentaireLivreur { get; set; }
+}
 
-    [Ignore]
-    public string NomAfficheCourt => string.IsNullOrWhiteSpace(NomAffiche) ? NomClient : NomAffiche!;
+public sealed class LocalTourneeLigneQuantite
+{
+    [PrimaryKey, AutoIncrement]
+    public int Id { get; set; }
 
-    [Ignore]
-    public string AdresseComplete => string.Join(" ", new[] { AdresseLigne1, AdresseLigne2, AdresseLigne3, CodePostal, Ville }
-        .Where(v => !string.IsNullOrWhiteSpace(v)));
+    [Indexed]
+    public int LigneId { get; set; }
 
-    [Ignore]
-    public bool DemandeCommentaire => StatutPassage.DemandeCommentaire(StatutPassage);
-
-    [Ignore]
-    public bool AUneCle => !string.IsNullOrWhiteSpace(Cle);
-
-    [Ignore]
-    public bool AUnCommentaireFiche => !string.IsNullOrWhiteSpace(CommentaireFiche) || !string.IsNullOrWhiteSpace(Instructions);
-
-    [Ignore]
-    public bool AUnePrecision => !string.IsNullOrWhiteSpace(Precision);
+    public string CodeArticle { get; set; } = string.Empty;
+    public string Libelle { get; set; } = string.Empty;
+    public int QuantiteLivree { get; set; }
+    public int QuantiteRecuperee { get; set; }
 }

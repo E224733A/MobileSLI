@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.AccueilPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Accueil" Style="{StaticResource PageTitle}" />
+                <Label Text="Connexion au Wi-Fi du dépôt" Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Adresse de l'API" Style="{StaticResource SectionTitle}" />
+                        <Entry Text="{Binding ApiBaseUrl}" Style="{StaticResource Input}" Keyboard="Url" />
+                        <Button Text="Enregistrer l'adresse" Command="{Binding SaveApiUrlCommand}" Style="{StaticResource SecondaryButton}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Button Text="Tester la connexion" Command="{Binding TestConnectionCommand}" Style="{StaticResource PrimaryButton}" />
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource SuccessBackground}" BorderColor="{StaticResource SuccessBorder}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding ConnectionTitle}" TextColor="{StaticResource SuccessText}" FontAttributes="Bold" FontSize="20" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding ConnectionMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource WarningBackground}" BorderColor="{StaticResource WarningBorder}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Avertissement" TextColor="{StaticResource WarningText}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="Il faut être connecté au Wi-Fi du dépôt pour charger ou synchroniser la tournée. Une tournée déjà chargée reste consultable hors connexion." TextColor="{StaticResource WarningText}" FontSize="13" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Frame>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button Grid.Row="1" Text="Continuer vers l'identification" Command="{Binding ContinueCommand}" Style="{StaticResource PrimaryButton}" Margin="0,14,0,0" />
+    </Grid>
+</ContentPage>

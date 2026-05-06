@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.DetailPointLivraisonPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Détail point" Style="{StaticResource PageTitle}" />
+                <Label Text="Saisie rapide des quantités livrées et récupérées." Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}">
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4">
+                        <Label Text="Infos préremplies" Style="{StaticResource MutedText}" />
+                        <Label Grid.Row="1" Text="{Binding OrdreText}" TextColor="{StaticResource TextMuted}" FontSize="12" />
+                        <Label Grid.Row="2" Text="{Binding ClientText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                        <Label Grid.Row="3" Text="{Binding PointText}" TextColor="{StaticResource TextMain}" />
+                        <Label Grid.Row="4" Text="{Binding ZoneText}" Style="{StaticResource MutedText}" />
+                    </Grid>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
+                    <Label Text="{Binding InstructionsText}" TextColor="{StaticResource InfoText}" FontSize="13" />
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,90,90">
+                            <Label Text="Quantités article" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="1" Text="Livré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
+                        </Grid>
+                        <CollectionView ItemsSource="{Binding Quantites}" SelectionMode="None">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,90,90" ColumnSpacing="8" Padding="0,3">
+                                        <Label Text="{Binding Libelle}" VerticalTextAlignment="Center" TextColor="{StaticResource TextMain}" />
+                                        <Entry Grid.Column="1" Text="{Binding QuantiteLivreeText}" Keyboard="Numeric" HorizontalTextAlignment="Center" Style="{StaticResource Input}" />
+                                        <Entry Grid.Column="2" Text="{Binding QuantiteRecupereeText}" Keyboard="Numeric" HorizontalTextAlignment="Center" Style="{StaticResource Input}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Statut du passage" Style="{StaticResource MutedText}" />
+                        <HorizontalStackLayout Spacing="6">
+                            <Button Text="Fait" Command="{Binding SetStatutCommand}" CommandParameter="FAIT" Style="{StaticResource PrimaryButton}" HeightRequest="38" WidthRequest="76" />
+                            <Button Text="Non fait" Command="{Binding SetStatutCommand}" CommandParameter="NON_FAIT" Style="{StaticResource SecondaryButton}" HeightRequest="38" WidthRequest="96" />
+                            <Button Text="Anomalie" Command="{Binding SetStatutCommand}" CommandParameter="ANOMALIE" Style="{StaticResource SecondaryButton}" HeightRequest="38" WidthRequest="100" />
+                        </HorizontalStackLayout>
+                        <Label Text="Statut sélectionné :" Style="{StaticResource MutedText}" />
+                        <Label Text="{Binding SelectedStatut}" TextColor="{StaticResource Primary}" FontAttributes="Bold" />
+                        <Label Text="Commentaire livreur" Style="{StaticResource MutedText}" />
+                        <Editor Text="{Binding CommentaireLivreur}" Placeholder="Obligatoire si Non fait ou Anomalie" HeightRequest="86" BackgroundColor="White" TextColor="{StaticResource TextMain}" />
+                        <Label Text="Heure de validation automatique." Style="{StaticResource MutedText}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Label Text="{Binding InfoText}" TextColor="{StaticResource SuccessText}" FontSize="13" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button Text="Valider le passage" Command="{Binding ValidateCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

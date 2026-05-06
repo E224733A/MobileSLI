@@ -1,6 +1,6 @@
-using TourneesMobile.Pages;
+using MobileSLI.Pages;
 
-namespace TourneesMobile;
+namespace MobileSLI;
 
 public partial class AppShell : Shell
 {
@@ -8,10 +8,14 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
 
-        Routing.RegisterRoute(nameof(ChargementPage), typeof(ChargementPage));
-        Routing.RegisterRoute(nameof(ListeArretsPage), typeof(ListeArretsPage));
-        Routing.RegisterRoute(nameof(DetailArretPage), typeof(DetailArretPage));
-        Routing.RegisterRoute(nameof(FinTourneePage), typeof(FinTourneePage));
-        Routing.RegisterRoute(nameof(SynchronisationResultPage), typeof(SynchronisationResultPage));
+        Routing.RegisterRoute(nameof(IdentificationLivreurPage), typeof(IdentificationLivreurPage));
+        Routing.RegisterRoute(nameof(ChoixTourneePage), typeof(ChoixTourneePage));
+        Routing.RegisterRoute(nameof(ConfirmationTourneePage), typeof(ConfirmationTourneePage));
+        Routing.RegisterRoute(nameof(ListePointsLivraisonPage), typeof(ListePointsLivraisonPage));
+        Routing.RegisterRoute(nameof(DetailPointLivraisonPage), typeof(DetailPointLivraisonPage));
+        Routing.RegisterRoute(nameof(DechargementPage), typeof(DechargementPage));
+        Routing.RegisterRoute(nameof(RecapitulatifTourneePage), typeof(RecapitulatifTourneePage));
+        Routing.RegisterRoute(nameof(SyncResultPage), typeof(SyncResultPage));
+        Routing.RegisterRoute(nameof(SyncErrorPage), typeof(SyncErrorPage));
     }
 }

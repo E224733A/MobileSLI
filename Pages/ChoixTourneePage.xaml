@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.ChoixTourneePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Choix de Tournée" Style="{StaticResource PageTitle}" />
+                <Label Text="Sélectionner la tournée du jour." Style="{StaticResource PageSubtitle}" />
+
+                <Frame Style="{StaticResource Card}">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Livreur" Style="{StaticResource MutedText}" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="Date" Style="{StaticResource MutedText}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding LivreurText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                    </Grid>
+                </Frame>
+
+                <Entry Text="{Binding SearchText}" Placeholder="Rechercher par code ou nom de tournée" Style="{StaticResource Input}" />
+
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label Text="Tournées disponibles" Style="{StaticResource SectionTitle}" />
+                    <Label Grid.Column="1" Text="{Binding CountText}" TextColor="{StaticResource Primary}" FontSize="12" />
+                </Grid>
+
+                <CollectionView ItemsSource="{Binding Tournees}" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Style="{StaticResource Card}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                    <Frame Grid.Column="0" Style="{StaticResource SmallPill}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
+                                        <Label Text="{Binding CodeTournee}" TextColor="{StaticResource Primary}" FontSize="12" FontAttributes="Bold" />
+                                    </Frame>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                        <Label Text="{Binding LibelleTournee}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                                        <Label Text="{Binding NombrePointsText}" Style="{StaticResource MutedText}" />
+                                    </VerticalStackLayout>
+                                    <Button Grid.Column="2" Text="Choisir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}" CommandParameter="{Binding .}" Style="{StaticResource SecondaryButton}" WidthRequest="86" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button Text="Continuer avec cette tournée" Command="{Binding ContinueCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
