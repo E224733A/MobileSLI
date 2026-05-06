@@ -206,7 +206,8 @@ Exemple :
 
 Remarque :
 
-`SupportedOSPlatformVersion` indique la version minimale supportée côté application .NET. La cible métier peut rester Android 12 même si la valeur technique minimale est plus basse pour faciliter les tests.
+`SupportedOSPlatformVersion` indique la version minimale supportée côté application .NET. 
+La cible métier peut rester Android 12 même si la valeur technique minimale est plus basse pour faciliter les tests.
 
 ---
 
@@ -347,7 +348,7 @@ Le téléphone avait par exemple :
 192.168.1.26
 ```
 
-Même si les deux adresses semblent appartenir au même réseau `192.168.1.0/24`, les tests ont montré que la communication directe ne fonctionne pas.
+Même si les deux adresses semblent appartenir au même réseau `192.168.1.0/24`, les tests ont montré que la communication directe ne fonctionne pas. Car le reseaux stralink sur le téléphone n'est pas le même reseau que la connexion filaire du PC. 
 
 Informations observées :
 
@@ -469,7 +470,6 @@ Les données préremplies peuvent contenir :
 - description du retour si disponible ;
 - instructions ;
 - commentaire de fiche ;
-- zone ;
 - zone de déchargement ;
 - articles saisissables ;
 - quantités ou informations prévues si disponibles.
@@ -616,7 +616,7 @@ GET /api/tournees/jour?dateTournee=2026-04-27&codeTournee=1001&codeLivreur=3
 
 Pour afficher une vraie liste de tournées dans cet écran, deux possibilités existent :
 
-#### Option A — Ajouter une route API dédiée
+#### — Ajouter une route API dédiée
 
 Exemple cible :
 
@@ -637,14 +637,6 @@ Réponse attendue :
   }
 ]
 ```
-
-#### Option B — Saisie temporaire du code tournée
-
-Si la route de liste n’existe pas encore, l’écran peut temporairement permettre de saisir un `codeTournee`.
-
-Cette solution est moins ergonomique mais permet de tester le chargement réel.
-
----
 
 ### 03 — Confirmation du choix de tournée
 
@@ -671,6 +663,11 @@ La confirmation doit appeler l’API uniquement si les informations nécessaires
 dateTournee
 codeTournee
 codeLivreur
+```
+Exemple :
+
+```http
+GET /api/tournees/jour?dateTournee=2026-04-27&codeTournee=1001&codeLivreur=3
 ```
 
 ---
@@ -1130,7 +1127,6 @@ Elle est affichée dans l’interface mais non modifiable par le livreur.
       "nomClient": "HOTEL EXEMPLE",
       "codePDL": "PDL01",
       "descriptionPDL": "Entrée principale",
-      "zone": "Centre",
       "zoneDechargement": "Zone 1",
       "instructions": "Livraison par l'arrière",
       "commentaireFiche": null,

@@ -11,6 +11,7 @@ public partial class IdentificationLivreurPage : ContentPage
     public IdentificationLivreurPage()
     {
         InitializeComponent();
+
         BindingContext = MauiProgram.Services.GetRequiredService<IdentificationLivreurViewModel>();
     }
 
@@ -18,6 +19,18 @@ public partial class IdentificationLivreurPage : ContentPage
     {
         base.OnAppearing();
 
-        await ViewModel.LoadLivreursAsync();
+        try
+        {
+            await ViewModel.LoadLivreursAsync();
+        }
+        catch (Exception exception)
+        {
+            ViewModel.ErrorMessage = $"Impossible de charger les livreurs : {exception.Message}";
+
+            await DisplayAlertAsync(
+                "Chargement des livreurs impossible",
+                ViewModel.ErrorMessage,
+                "OK");
+        }
     }
 }

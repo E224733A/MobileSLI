@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Api;
 using MobileSLI.ViewModels;
 
 namespace MobileSLI;
@@ -36,10 +37,16 @@ public static class MauiProgram
     {
         services.AddSingleton<AppStateService>();
         services.AddSingleton<SettingsService>();
-        services.AddSingleton<ApiService>();
         services.AddSingleton<DatabaseService>();
         services.AddSingleton<DemoDataService>();
         services.AddSingleton<ConnectivityService>();
+
+        services.AddSingleton<ApiClient>();
+        services.AddSingleton<HealthApiService>();
+        services.AddSingleton<LivreursApiService>();
+        services.AddSingleton<TourneesApiService>();
+        services.AddSingleton<SynchronisationsApiService>();
+
         services.AddSingleton<SynchronisationService>();
     }
 

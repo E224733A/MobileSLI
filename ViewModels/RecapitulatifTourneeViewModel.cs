@@ -102,7 +102,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
-        var confirmed = await Shell.Current.DisplayAlert(
+        var confirmed = await Shell.Current.CurrentPage.DisplayAlertAsync(
             "Validation définitive",
             "Après synchronisation réussie, la tournée sera verrouillée et ne sera plus modifiable.",
             "Envoyer",

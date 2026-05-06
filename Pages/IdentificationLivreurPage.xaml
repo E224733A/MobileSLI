@@ -38,7 +38,7 @@
                                     <Label
                                         Text="Vérifiez que l'API est lancée et que adb reverse tcp:5000 tcp:5000 est actif."
                                         FontSize="13"
-                                        TextColor="{StaticResource MutedText}" />
+                                        TextColor="{StaticResource TextMuted}" />
                                 </VerticalStackLayout>
                             </CollectionView.EmptyView>
 
@@ -48,13 +48,14 @@
                                         <Border
                                             Grid.ColumnSpan="2"
                                             StrokeThickness="1"
-                                            Stroke="{StaticResource CardBorder}"
+                                            Stroke="{StaticResource BorderColor}"
                                             BackgroundColor="{StaticResource CardBackground}"
                                             StrokeShape="RoundRectangle 12" />
 
                                         <Label
                                             Grid.Column="0"
                                             Text="{Binding CodeLivreur}"
+                                            TextColor="{StaticResource TextMain}"
                                             FontAttributes="Bold"
                                             FontSize="18"
                                             VerticalOptions="Center"
@@ -63,12 +64,13 @@
                                         <VerticalStackLayout Grid.Column="1" Spacing="2">
                                             <Label
                                                 Text="{Binding NomLivreur}"
+                                                TextColor="{StaticResource TextMain}"
                                                 FontAttributes="Bold"
                                                 FontSize="15" />
                                             <Label
                                                 Text="{Binding NomAffiche}"
                                                 FontSize="12"
-                                                TextColor="{StaticResource MutedText}" />
+                                                TextColor="{StaticResource TextMuted}" />
                                         </VerticalStackLayout>
                                     </Grid>
                                 </DataTemplate>

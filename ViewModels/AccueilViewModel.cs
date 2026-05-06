@@ -1,13 +1,15 @@
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using System.Windows.Input;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
 
 public sealed class AccueilViewModel : BaseViewModel
 {
-    private readonly ApiService _apiService;
+    private readonly HealthApiService _healthApiService;
     private readonly SettingsService _settingsService;
     private readonly ConnectivityService _connectivityService;
 
@@ -16,15 +18,24 @@ public sealed class AccueilViewModel : BaseViewModel
     private string _connectionMessage = "Testez la connexion au Wi-Fi du dépôt avant de continuer.";
     private bool _isConnected;
 
-    public AccueilViewModel(ApiService apiService, SettingsService settingsService, ConnectivityService connectivityService)
+    public AccueilViewModel(
+        HealthApiService healthApiService,
+        SettingsService settingsService,
+        ConnectivityService connectivityService)
     {
-        _apiService = apiService;
+        _healthApiService = healthApiService;
         _settingsService = settingsService;
         _connectivityService = connectivityService;
         _apiBaseUrl = _settingsService.ApiBaseUrl;
 
-        TestConnectionCommand = new Command(async () => await TestConnectionAsync(), () => !IsBusy);
-        ContinueCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage)));
+        TestConnectionCommand = new Command(
+            async () => await TestConnectionAsync(),
+            () => !IsBusy);
+
+        ContinueCommand = new Command(
+            async () => await ContinueAsync(),
+            () => !IsBusy);
+
         SaveApiUrlCommand = new Command(SaveApiUrl);
     }
 
@@ -53,14 +64,19 @@ public sealed class AccueilViewModel : BaseViewModel
     }
 
     public ICommand TestConnectionCommand { get; }
+
     public ICommand ContinueCommand { get; }
+
     public ICommand SaveApiUrlCommand { get; }
 
     private void SaveApiUrl()
     {
         _settingsService.ApiBaseUrl = ApiBaseUrl;
+        ApiBaseUrl = _settingsService.ApiBaseUrl;
+
         ConnectionTitle = "Adresse API enregistrée";
         ConnectionMessage = _settingsService.ApiBaseUrl;
+        ErrorMessage = string.Empty;
     }
 
     private async Task TestConnectionAsync()
@@ -72,7 +88,9 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            SetBusy(true);
+            ErrorMessage = string.Empty;
+
             SaveApiUrl();
 
             if (!_connectivityService.HasInternetOrLocalNetwork)
@@ -83,15 +101,76 @@ public sealed class AccueilViewModel : BaseViewModel
                 return;
             }
 
-            var result = await _apiService.TestConnectionAsync();
+            var result = await _healthApiService.TestConnectionAsync();
+
             IsConnected = result.Success;
             ConnectionTitle = result.Success ? "Connecté" : "Connexion impossible";
-            ConnectionMessage = result.Success ? "Le téléphone peut contacter l'API." : result.Message;
+            ConnectionMessage = result.Success
+                ? "Le téléphone peut contacter l'API."
+                : result.Message;
+        }
+        catch (Exception exception)
+        {
+            IsConnected = false;
+            ConnectionTitle = "Erreur lors du test";
+            ConnectionMessage = exception.Message;
+            ErrorMessage = exception.Message;
         }
         finally
         {
-            IsBusy = false;
-            ((Command)TestConnectionCommand).ChangeCanExecute();
+            SetBusy(false);
+        }
+    }
+
+    private async Task ContinueAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            SetBusy(true);
+            ErrorMessage = string.Empty;
+
+            await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage));
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = $"Impossible d'ouvrir l'écran d'identification : {exception.Message}";
+            ConnectionTitle = "Navigation impossible";
+            ConnectionMessage = ErrorMessage;
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Shell.Current is not null)
+                {
+                    await Shell.Current.DisplayAlertAsync(
+                        "Navigation impossible",
+                        ErrorMessage,
+                        "OK");
+                }
+            });
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool value)
+    {
+        IsBusy = value;
+
+        if (TestConnectionCommand is Command testCommand)
+        {
+            testCommand.ChangeCanExecute();
+        }
+
+        if (ContinueCommand is Command continueCommand)
+        {
+            continueCommand.ChangeCanExecute();
         }
     }
 }

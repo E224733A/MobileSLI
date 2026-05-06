@@ -3,12 +3,13 @@ using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
 
 public sealed class IdentificationLivreurViewModel : BaseViewModel
 {
-    private readonly ApiService _apiService;
+    private readonly LivreursApiService _livreursApiService;
     private readonly AppStateService _appStateService;
     private readonly SettingsService _settingsService;
 
@@ -20,11 +21,11 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
     private LivreurItemViewModel? _selectedLivreur;
 
     public IdentificationLivreurViewModel(
-        ApiService apiService,
+        LivreursApiService livreursApiService,
         AppStateService appStateService,
         SettingsService settingsService)
     {
-        _apiService = apiService;
+        _livreursApiService = livreursApiService;
         _appStateService = appStateService;
         _settingsService = settingsService;
 
@@ -54,12 +55,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         {
             if (SetProperty(ref _codeLivreur, value))
             {
-                IsLivreurRecognized = false;
-                NomLivreur = string.Empty;
-                _appStateService.CurrentLivreur = null;
-                _appStateService.SelectedTournee = null;
-                _appStateService.CurrentTourneeId = 0;
-                _appStateService.SelectedLigneId = 0;
+                ClearSelectedLivreur();
             }
         }
     }
@@ -132,7 +128,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         {
             Livreurs.Clear();
 
-            var livreursApi = await _apiService.GetLivreursAsync();
+            var livreursApi = await _livreursApiService.GetLivreursAsync();
 
             foreach (var livreur in livreursApi)
             {
@@ -158,7 +154,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
 
             TrySelectLastLivreur();
         }
-        catch (ApiServiceException exception)
+        catch (ApiClientException exception)
         {
             ErrorMessage =
                 $"Impossible de charger les livreurs depuis l'API. " +
@@ -184,12 +180,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
             await LoadLivreursAsync(forceReload: true);
         }
 
-        IsLivreurRecognized = false;
-        NomLivreur = string.Empty;
-        _appStateService.CurrentLivreur = null;
-        _appStateService.SelectedTournee = null;
-        _appStateService.CurrentTourneeId = 0;
-        _appStateService.SelectedLigneId = 0;
+        ClearSelectedLivreur();
 
         if (string.IsNullOrWhiteSpace(CodeLivreur))
         {
@@ -208,8 +199,14 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
             return;
         }
 
-        SelectedLivreur = livreur;
-        SelectLivreur(livreur);
+        if (!ReferenceEquals(SelectedLivreur, livreur))
+        {
+            SelectedLivreur = livreur;
+        }
+        else
+        {
+            SelectLivreur(livreur);
+        }
     }
 
     private async Task ContinueAsync()
@@ -229,7 +226,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
     {
         ErrorMessage = string.Empty;
 
-        CodeLivreur = livreur.CodeLivreur;
+        SetProperty(ref _codeLivreur, livreur.CodeLivreur, nameof(CodeLivreur));
         NomLivreur = livreur.NomLivreur;
 
         _appStateService.CurrentLivreur = new LivreurDto
@@ -245,6 +242,16 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         _settingsService.LastLivreurCode = livreur.CodeLivreur;
 
         IsLivreurRecognized = true;
+    }
+
+    private void ClearSelectedLivreur()
+    {
+        IsLivreurRecognized = false;
+        NomLivreur = string.Empty;
+        _appStateService.CurrentLivreur = null;
+        _appStateService.SelectedTournee = null;
+        _appStateService.CurrentTourneeId = 0;
+        _appStateService.SelectedLigneId = 0;
     }
 
     private void TrySelectLastLivreur()
