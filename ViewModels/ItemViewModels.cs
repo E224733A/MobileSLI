@@ -4,31 +4,70 @@ namespace MobileSLI.ViewModels;
 
 public sealed class TourneeListItemViewModel : ObservableObject
 {
-    public TourneeResumeDto Dto { get; }
-
     public TourneeListItemViewModel(TourneeResumeDto dto)
     {
         Dto = dto;
     }
 
+    public TourneeResumeDto Dto { get; }
+
     public string CodeTournee => Dto.CodeTournee;
+
     public string LibelleTournee => Dto.LibelleTournee;
-    public string NombrePointsText => Dto.NombrePoints <= 0 ? "" : $"{Dto.NombrePoints} points";
+
+    public string NomAffiche =>
+        string.IsNullOrWhiteSpace(LibelleTournee)
+            ? CodeTournee
+            : $"{CodeTournee} - {LibelleTournee}";
+
+    /*
+     * Conservé pour compatibilité avec d'anciennes versions de ChoixTourneePage.xaml.
+     * Le nouvel écran n'a pas besoin d'afficher le nombre de points.
+     */
+    public string NombrePointsText =>
+        Dto.NombrePoints <= 0
+            ? string.Empty
+            : $"{Dto.NombrePoints} points";
 }
 
 public sealed class LigneListItemViewModel : ObservableObject
 {
-    public LocalTourneeLigne Ligne { get; }
-
     public LigneListItemViewModel(LocalTourneeLigne ligne)
     {
         Ligne = ligne;
     }
 
+    public LocalTourneeLigne Ligne { get; }
+
     public int Id => Ligne.Id;
+
     public string OrdreText => $"Arrêt {Ligne.OrdreArret}";
-    public string ClientText => $"{Ligne.NumClient} - {Ligne.NomClient}";
-    public string DetailText => string.IsNullOrWhiteSpace(Ligne.AdresseLigne1) ? Ligne.DescriptionPDL ?? string.Empty : Ligne.AdresseLigne1;
+
+    public string ClientText =>
+        string.IsNullOrWhiteSpace(Ligne.NomClient)
+            ? Ligne.NumClient
+            : $"{Ligne.NumClient} - {Ligne.NomClient}";
+
+    public string PointText =>
+        string.IsNullOrWhiteSpace(Ligne.DescriptionPDL)
+            ? Ligne.CodePDL ?? string.Empty
+            : Ligne.DescriptionPDL;
+
+    public string DetailText =>
+        string.IsNullOrWhiteSpace(Ligne.AdresseLigne1)
+            ? PointText
+            : Ligne.AdresseLigne1;
+
+    public string AdresseText =>
+        string.Join(
+            " ",
+            new[]
+            {
+                Ligne.AdresseLigne1,
+                Ligne.CodePostal,
+                Ligne.Ville
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
     public string StatutText => Ligne.StatutPassage switch
     {
         StatutPassageConstants.Fait => "Fait",
@@ -40,8 +79,6 @@ public sealed class LigneListItemViewModel : ObservableObject
 
 public sealed class QuantiteSaisieViewModel : ObservableObject
 {
-    public LocalTourneeLigneQuantite Entity { get; }
-
     private string _quantiteLivreeText;
     private string _quantiteRecupereeText;
 
@@ -51,6 +88,10 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
         _quantiteLivreeText = entity.QuantiteLivree.ToString();
         _quantiteRecupereeText = entity.QuantiteRecuperee.ToString();
     }
+
+    public LocalTourneeLigneQuantite Entity { get; }
+
+    public string CodeArticle => Entity.CodeArticle;
 
     public string Libelle => Entity.Libelle;
 
@@ -70,26 +111,31 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         error = string.Empty;
 
-        if (!int.TryParse(string.IsNullOrWhiteSpace(QuantiteLivreeText) ? "0" : QuantiteLivreeText, out var livree))
+        if (!int.TryParse(
+                string.IsNullOrWhiteSpace(QuantiteLivreeText) ? "0" : QuantiteLivreeText.Trim(),
+                out var quantiteLivree))
         {
             error = $"Quantité livrée invalide pour {Libelle}.";
             return false;
         }
 
-        if (!int.TryParse(string.IsNullOrWhiteSpace(QuantiteRecupereeText) ? "0" : QuantiteRecupereeText, out var recuperee))
+        if (!int.TryParse(
+                string.IsNullOrWhiteSpace(QuantiteRecupereeText) ? "0" : QuantiteRecupereeText.Trim(),
+                out var quantiteRecuperee))
         {
             error = $"Quantité récupérée invalide pour {Libelle}.";
             return false;
         }
 
-        if (livree < 0 || recuperee < 0)
+        if (quantiteLivree < 0 || quantiteRecuperee < 0)
         {
             error = $"Quantité négative interdite pour {Libelle}.";
             return false;
         }
 
-        Entity.QuantiteLivree = livree;
-        Entity.QuantiteRecuperee = recuperee;
+        Entity.QuantiteLivree = quantiteLivree;
+        Entity.QuantiteRecuperee = quantiteRecuperee;
+
         return true;
     }
 }
@@ -97,14 +143,21 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
 public sealed class RecapArticleViewModel
 {
     public string Libelle { get; set; } = string.Empty;
+
     public int TotalLivre { get; set; }
+
     public int TotalRecupere { get; set; }
+
+    public string TotalText => $"Livré : {TotalLivre} · Récupéré : {TotalRecupere}";
 }
 
 public sealed class DechargementItemViewModel
 {
     public string ClientText { get; set; } = string.Empty;
+
     public string PointText { get; set; } = string.Empty;
+
     public string ZoneText { get; set; } = string.Empty;
+
     public string ArticlesText { get; set; } = string.Empty;
 }

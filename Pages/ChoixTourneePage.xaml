@@ -7,8 +7,8 @@
     <Grid Padding="20" RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
             <VerticalStackLayout Spacing="12">
-                <Label Text="Choix de Tournée" Style="{StaticResource PageTitle}" />
-                <Label Text="Sélectionner la tournée du jour." Style="{StaticResource PageSubtitle}" />
+                <Label Text="Choix de la tournée" Style="{StaticResource PageTitle}" />
+                <Label Text="Sélectionnez une tournée proposée pour aujourd'hui." Style="{StaticResource PageSubtitle}" />
 
                 <Frame Style="{StaticResource Card}">
                     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8">
@@ -19,26 +19,88 @@
                     </Grid>
                 </Frame>
 
-                <Entry Text="{Binding SearchText}" Placeholder="Rechercher par code ou nom de tournée" Style="{StaticResource Input}" />
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}">
+                    <Label
+                        Text="{Binding HelpText}"
+                        TextColor="{StaticResource InfoText}"
+                        FontSize="13" />
+                </Frame>
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Entry
+                        Grid.Column="0"
+                        Text="{Binding SearchText}"
+                        Placeholder="Filtrer par code ou libellé"
+                        Style="{StaticResource Input}" />
+
+                    <Button
+                        Grid.Column="1"
+                        Text="↻"
+                        Command="{Binding RefreshCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        WidthRequest="56" />
+                </Grid>
 
                 <Grid ColumnDefinitions="*,Auto">
                     <Label Text="Tournées disponibles" Style="{StaticResource SectionTitle}" />
                     <Label Grid.Column="1" Text="{Binding CountText}" TextColor="{StaticResource Primary}" FontSize="12" />
                 </Grid>
 
+                <ActivityIndicator
+                    IsRunning="{Binding IsBusy}"
+                    IsVisible="{Binding IsBusy}" />
+
                 <CollectionView ItemsSource="{Binding Tournees}" SelectionMode="None">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout Padding="12" Spacing="4">
+                            <Label
+                                Text="Aucune tournée disponible."
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource TextMain}" />
+                            <Label
+                                Text="Vérifiez que l'API est lancée et que des tournées existent pour la date du jour."
+                                FontSize="13"
+                                TextColor="{StaticResource TextMuted}" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
                             <Frame Style="{StaticResource Card}">
                                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                    <Frame Grid.Column="0" Style="{StaticResource SmallPill}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
-                                        <Label Text="{Binding CodeTournee}" TextColor="{StaticResource Primary}" FontSize="12" FontAttributes="Bold" />
+                                    <Frame
+                                        Grid.Column="0"
+                                        Style="{StaticResource SmallPill}"
+                                        BackgroundColor="{StaticResource InfoBackground}"
+                                        BorderColor="{StaticResource InfoBorder}">
+                                        <Label
+                                            Text="{Binding CodeTournee}"
+                                            TextColor="{StaticResource Primary}"
+                                            FontSize="12"
+                                            FontAttributes="Bold" />
                                     </Frame>
+
                                     <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                        <Label Text="{Binding LibelleTournee}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
-                                        <Label Text="{Binding NombrePointsText}" Style="{StaticResource MutedText}" />
+                                        <Label
+                                            Text="{Binding LibelleTournee}"
+                                            TextColor="{StaticResource TextMain}"
+                                            FontAttributes="Bold" />
+                                        <Label
+                                            Text="{Binding CodeTournee}"
+                                            TextColor="{StaticResource TextMuted}"
+                                            FontSize="12" />
                                     </VerticalStackLayout>
-                                    <Button Grid.Column="2" Text="Choisir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}" CommandParameter="{Binding .}" Style="{StaticResource SecondaryButton}" WidthRequest="86" />
+
+                                    <Button
+                                        Grid.Column="2"
+                                        Text="Choisir"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
+                                        CommandParameter="{Binding .}"
+                                        Style="{StaticResource SecondaryButton}"
+                                        WidthRequest="86" />
                                 </Grid>
                             </Frame>
                         </DataTemplate>

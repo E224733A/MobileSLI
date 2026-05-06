@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using MobileSLI.Models;
 
 namespace MobileSLI.Services.Api;
@@ -13,6 +12,64 @@ public sealed class TourneesApiService
         _apiClient = apiClient;
     }
 
+    /*
+     * Écran "Choix de tournée"
+     *
+     * Appel léger :
+     * GET /api/tournees/disponibles?dateTournee=YYYY-MM-DD&codeLivreur=XX
+     *
+     * Réponse attendue :
+     * [
+     *   { "codeTournee": "3001", "libelleTournee": "MDR VENDEE" }
+     * ]
+     */
+    public async Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
+        DateTime dateTournee,
+        string codeLivreur,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(codeLivreur))
+        {
+            throw new ArgumentException("Le code livreur est obligatoire.", nameof(codeLivreur));
+        }
+
+        var route = _apiClient.BuildRoute(
+            "/api/tournees/disponibles",
+            new Dictionary<string, string?>
+            {
+                ["dateTournee"] = _apiClient.FormatDate(dateTournee),
+                ["codeLivreur"] = codeLivreur.Trim()
+            });
+
+        var tournees = await _apiClient.GetAsync<List<TourneeResumeDto>>(
+            route,
+            cancellationToken);
+
+        return (tournees ?? [])
+            .Where(tournee => !string.IsNullOrWhiteSpace(tournee.CodeTournee))
+            .Select(tournee =>
+            {
+                tournee.DateTournee = dateTournee.Date;
+                return tournee;
+            })
+            .OrderBy(tournee => TryParseInt(tournee.CodeTournee))
+            .ThenBy(tournee => tournee.LibelleTournee)
+            .ToList();
+    }
+
+    public Task<IReadOnlyList<TourneeResumeDto>> ChargerTourneesDuJourAsync(
+        DateTime dateTournee,
+        string codeLivreur,
+        CancellationToken cancellationToken = default)
+    {
+        return GetTourneesDuJourAsync(dateTournee, codeLivreur, cancellationToken);
+    }
+
+    /*
+     * Écran "Confirmation de tournée"
+     *
+     * Une fois la tournée sélectionnée, on charge la tournée complète.
+     */
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         DateTime dateTournee,
         string codeTournee,
@@ -47,6 +104,8 @@ public sealed class TourneesApiService
             throw new InvalidOperationException(
                 "La réponse de l'API est vide pour le chargement de la tournée.");
         }
+
+        NormalizeTournee(tournee);
 
         return tournee;
     }
@@ -99,128 +158,23 @@ public sealed class TourneesApiService
             cancellationToken);
     }
 
-    /*
-     * Cette méthode est prévue seulement si l'API ajoute plus tard
-     * une route de liste des tournées.
-     *
-     * La route confirmée actuellement charge une tournée complète avec :
-     * dateTournee + codeTournee + codeLivreur.
-     */
-    public async Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
-        DateTime dateTournee,
-        string codeLivreur,
-        CancellationToken cancellationToken = default)
+    private static void NormalizeTournee(TourneeJourDto tournee)
     {
-        if (string.IsNullOrWhiteSpace(codeLivreur))
+        tournee.Livreur ??= new LivreurDto();
+        tournee.Chargement ??= new ChargementDto();
+        tournee.ArticlesSaisissables ??= [];
+        tournee.Lignes ??= [];
+
+        foreach (var ligne in tournee.Lignes)
         {
-            throw new ArgumentException("Le code livreur est obligatoire.", nameof(codeLivreur));
+            ligne.Client ??= new ClientDto();
+            ligne.PointLivraison ??= new PointLivraisonDto();
+            ligne.Tournee ??= new TourneeInfoDto();
+            ligne.Retour ??= new RetourInfoDto();
+            ligne.InfosLivreur ??= new InfosLivreurDto();
+            ligne.Saisie ??= new SaisieMobileDto();
+            ligne.Saisie.Quantites ??= [];
         }
-
-        var route = _apiClient.BuildRoute(
-            "/api/tournees/jour",
-            new Dictionary<string, string?>
-            {
-                ["dateTournee"] = _apiClient.FormatDate(dateTournee),
-                ["codeLivreur"] = codeLivreur.Trim()
-            });
-
-        using var document = await GetJsonDocumentAsync(route, cancellationToken);
-
-        var tournees = ExtractList<TourneeResumeDto>(
-            document.RootElement,
-            "tournees");
-
-        return tournees
-            .Where(tournee => !string.IsNullOrWhiteSpace(tournee.CodeTournee))
-            .OrderBy(tournee => TryParseInt(tournee.CodeTournee))
-            .ThenBy(tournee => tournee.LibelleTournee)
-            .ToList();
-    }
-
-    private async Task<JsonDocument> GetJsonDocumentAsync(
-        string route,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await _apiClient.GetRawAsync(route, cancellationToken);
-
-        if (!response.IsSuccess)
-        {
-            throw new InvalidOperationException(
-                $"Erreur API HTTP {response.StatusCode} sur {route}. {response.Body}");
-        }
-
-        if (string.IsNullOrWhiteSpace(response.Body))
-        {
-            throw new InvalidOperationException("La réponse de l'API est vide.");
-        }
-
-        return JsonDocument.Parse(response.Body);
-    }
-
-    private static List<T> ExtractList<T>(
-        JsonElement root,
-        string preferredPropertyName)
-    {
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            return DeserializeList<T>(root);
-        }
-
-        if (root.ValueKind != JsonValueKind.Object)
-        {
-            return [];
-        }
-
-        var propertyNames = new[]
-        {
-            preferredPropertyName,
-            "items",
-            "data",
-            "result",
-            "results",
-            "value"
-        };
-
-        foreach (var propertyName in propertyNames)
-        {
-            if (!root.TryGetProperty(propertyName, out var property))
-            {
-                continue;
-            }
-
-            if (property.ValueKind == JsonValueKind.Array)
-            {
-                return DeserializeList<T>(property);
-            }
-
-            if (property.ValueKind == JsonValueKind.Object)
-            {
-                var singleItem = property.Deserialize<T>(
-                    new JsonSerializerOptions(JsonSerializerDefaults.Web)
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-
-                return singleItem is null ? [] : [singleItem];
-            }
-        }
-
-        var item = root.Deserialize<T>(
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-        return item is null ? [] : [item];
-    }
-
-    private static List<T> DeserializeList<T>(JsonElement element)
-    {
-        return element.Deserialize<List<T>>(
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            {
-                PropertyNameCaseInsensitive = true
-            }) ?? [];
     }
 
     private static int TryParseInt(string? value)

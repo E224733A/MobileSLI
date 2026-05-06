@@ -13,9 +13,10 @@ public partial class ChoixTourneePage : ContentPage
         BindingContext = MauiProgram.Services.GetRequiredService<ChoixTourneeViewModel>();
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
-        ViewModel.LoadTournees();
+
+        await ViewModel.LoadTourneesAsync();
     }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Maui.Storage;
 using MobileSLI.Models;
 using SQLite;
@@ -35,10 +36,26 @@ public sealed class DatabaseService
 
     public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
     {
+        if (dto is null)
+        {
+            throw new ArgumentNullException(nameof(dto));
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.CodeTournee))
+        {
+            throw new InvalidOperationException("Le code tournée est absent de la réponse API.");
+        }
+
+        if (dto.Livreur is null || string.IsNullOrWhiteSpace(dto.Livreur.CodeLivreur))
+        {
+            throw new InvalidOperationException("Le livreur est absent de la réponse API.");
+        }
+
         var db = await GetDatabaseAsync();
+        var dateTournee = dto.DateTournee.Date;
 
         var existing = await db.Table<LocalTournee>()
-            .Where(t => t.DateTournee == dto.DateTournee.Date
+            .Where(t => t.DateTournee == dateTournee
                         && t.CodeTournee == dto.CodeTournee
                         && t.CodeLivreur == dto.Livreur.CodeLivreur)
             .FirstOrDefaultAsync();
@@ -55,7 +72,7 @@ public sealed class DatabaseService
 
         var tournee = new LocalTournee
         {
-            DateTournee = dto.DateTournee.Date,
+            DateTournee = dateTournee,
             CodeTournee = dto.CodeTournee,
             LibelleTournee = dto.LibelleTournee,
             CodeLivreur = dto.Livreur.CodeLivreur,
@@ -70,22 +87,26 @@ public sealed class DatabaseService
 
         foreach (var ligneDto in dto.Lignes.OrderBy(l => l.OrdreArret))
         {
+            var client = ligneDto.Client ?? new ClientDto();
+            var pointLivraison = ligneDto.PointLivraison ?? new PointLivraisonDto();
+            var infosLivreur = ligneDto.InfosLivreur ?? new InfosLivreurDto();
+
             var ligne = new LocalTourneeLigne
             {
                 TourneeId = tournee.Id,
                 IdLigneSource = ligneDto.IdLigneSource,
                 OrdreArret = ligneDto.OrdreArret,
-                NumClient = ligneDto.NumClient,
-                NomClient = ligneDto.NomClient,
-                CodePDL = ligneDto.CodePDL,
-                DescriptionPDL = ligneDto.DescriptionPDL,
-                AdresseLigne1 = ligneDto.AdresseLigne1,
-                Ville = ligneDto.Ville,
-                CodePostal = ligneDto.CodePostal,
-                Zone = ligneDto.Zone,
-                ZoneDechargement = ligneDto.ZoneDechargement,
-                Instructions = ligneDto.Instructions,
-                CommentaireFiche = ligneDto.CommentaireFiche,
+                NumClient = client.NumClient,
+                NomClient = client.NomClient,
+                CodePDL = pointLivraison.CodePDL,
+                DescriptionPDL = pointLivraison.DescriptionPDL,
+                AdresseLigne1 = pointLivraison.AdresseLigne1,
+                Ville = pointLivraison.Ville,
+                CodePostal = pointLivraison.CodePostal,
+                Zone = infosLivreur.Zone,
+                ZoneDechargement = infosLivreur.ZoneDechargement,
+                Instructions = infosLivreur.Instructions,
+                CommentaireFiche = infosLivreur.CommentaireFiche,
                 StatutPassage = StatutPassageConstants.AFaire,
                 EstValidee = false,
                 HeureValidation = null,
@@ -94,16 +115,35 @@ public sealed class DatabaseService
 
             await db.InsertAsync(ligne);
 
-            foreach (var article in dto.ArticlesSaisissables)
+            var quantitesInitiales = ligneDto.Saisie?.Quantites ?? [];
+
+            if (quantitesInitiales.Count > 0)
             {
-                await db.InsertAsync(new LocalTourneeLigneQuantite
+                foreach (var quantite in quantitesInitiales)
                 {
-                    LigneId = ligne.Id,
-                    CodeArticle = article.CodeArticle,
-                    Libelle = article.Libelle,
-                    QuantiteLivree = 0,
-                    QuantiteRecuperee = 0
-                });
+                    await db.InsertAsync(new LocalTourneeLigneQuantite
+                    {
+                        LigneId = ligne.Id,
+                        CodeArticle = quantite.CodeArticle,
+                        Libelle = quantite.Libelle ?? quantite.CodeArticle,
+                        QuantiteLivree = Math.Max(0, quantite.QuantiteLivree),
+                        QuantiteRecuperee = Math.Max(0, quantite.QuantiteRecuperee)
+                    });
+                }
+            }
+            else
+            {
+                foreach (var article in dto.ArticlesSaisissables)
+                {
+                    await db.InsertAsync(new LocalTourneeLigneQuantite
+                    {
+                        LigneId = ligne.Id,
+                        CodeArticle = article.CodeArticle,
+                        Libelle = article.Libelle,
+                        QuantiteLivree = 0,
+                        QuantiteRecuperee = 0
+                    });
+                }
             }
         }
 
@@ -148,7 +188,9 @@ public sealed class DatabaseService
             .ToListAsync();
     }
 
-    public async Task SaveLigneAsync(LocalTourneeLigne ligne, IEnumerable<LocalTourneeLigneQuantite> quantites)
+    public async Task SaveLigneAsync(
+        LocalTourneeLigne ligne,
+        IEnumerable<LocalTourneeLigneQuantite> quantites)
     {
         var db = await GetDatabaseAsync();
 
@@ -183,68 +225,92 @@ public sealed class DatabaseService
             ?? throw new InvalidOperationException("Aucune tournée locale trouvée.");
 
         var lignes = await GetLignesAsync(tourneeId);
+
         var request = new SynchronisationTourneeRequest
         {
             SchemaVersion = "1.1",
             IdSynchronisation = tournee.IdSynchronisation,
-            DateTournee = tournee.DateTournee,
+            DateTournee = tournee.DateTournee.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             CodeTournee = tournee.CodeTournee,
             LibelleTournee = tournee.LibelleTournee,
-            Livreur = new LivreurDto
+            Livreur = new SynchronisationLivreurRequest
             {
                 CodeLivreur = tournee.CodeLivreur,
                 NomLivreur = tournee.NomLivreur
             },
-            Mobile = new MobileInfoDto
+            Mobile = new SynchronisationMobileRequest
             {
                 NomAppareil = _settings.DeviceName,
                 VersionApplication = _settings.ApplicationVersion,
-                DateChargement = tournee.DateChargement,
-                DateEnvoi = DateTime.Now
+                DateChargementMobile = FormatDateTime(tournee.DateChargement),
+                DateEnvoiMobile = FormatDateTime(DateTime.Now)
             },
-            CommentaireGlobal = tournee.CommentaireGlobal,
+            CommentaireGlobal = string.IsNullOrWhiteSpace(tournee.CommentaireGlobal)
+                ? null
+                : tournee.CommentaireGlobal.Trim(),
             Lignes = new List<SynchronisationLigneRequest>()
         };
 
         foreach (var ligne in lignes)
         {
             var quantites = await GetQuantitesAsync(ligne.Id);
+
             request.Lignes.Add(new SynchronisationLigneRequest
             {
                 IdLigneSource = ligne.IdLigneSource,
                 OrdreArret = ligne.OrdreArret,
-                NumClient = ligne.NumClient,
-                NomClient = ligne.NomClient,
-                CodePDL = ligne.CodePDL,
-                DescriptionPDL = ligne.DescriptionPDL,
-                StatutPassage = ligne.StatutPassage,
-                EstValidee = ligne.EstValidee,
-                HeureValidation = ligne.HeureValidation,
-                CommentaireLivreur = string.IsNullOrWhiteSpace(ligne.CommentaireLivreur) ? null : ligne.CommentaireLivreur,
-                Quantites = quantites.Select(q => new QuantiteArticleRequest
+                Client = new SynchronisationClientRequest
                 {
-                    CodeArticle = q.CodeArticle,
-                    Libelle = q.Libelle,
-                    QuantiteLivree = q.QuantiteLivree,
-                    QuantiteRecuperee = q.QuantiteRecuperee
-                }).ToList()
+                    NumClient = ligne.NumClient,
+                    NomClient = ligne.NomClient,
+                    NomAffiche = string.IsNullOrWhiteSpace(ligne.NomClient)
+                        ? ligne.NumClient
+                        : $"{ligne.NumClient} - {ligne.NomClient}"
+                },
+                PointLivraison = new SynchronisationPointLivraisonRequest
+                {
+                    CodePDL = ligne.CodePDL ?? string.Empty,
+                    DescriptionPDL = ligne.DescriptionPDL ?? string.Empty
+                },
+                Saisie = new SynchronisationSaisieRequest
+                {
+                    PrecisionLivreur = null,
+                    StatutPassage = ligne.StatutPassage,
+                    CommentaireLivreur = string.IsNullOrWhiteSpace(ligne.CommentaireLivreur)
+                        ? null
+                        : ligne.CommentaireLivreur.Trim(),
+                    HeureValidation = ligne.HeureValidation.HasValue
+                        ? FormatDateTime(ligne.HeureValidation.Value)
+                        : null,
+                    EstValidee = ligne.EstValidee,
+                    Quantites = quantites.Select(q => new SynchronisationQuantiteRequest
+                    {
+                        CodeArticle = q.CodeArticle,
+                        Libelle = q.Libelle,
+                        QuantiteLivree = q.QuantiteLivree,
+                        QuantiteRecuperee = q.QuantiteRecuperee
+                    }).ToList()
+                }
             });
         }
 
         return request;
     }
 
-
     public async Task UpdateCommentaireGlobalAsync(int tourneeId, string? commentaireGlobal)
     {
         var db = await GetDatabaseAsync();
         var tournee = await GetTourneeAsync(tourneeId);
+
         if (tournee is null || tournee.EstVerrouillee)
         {
             return;
         }
 
-        tournee.CommentaireGlobal = string.IsNullOrWhiteSpace(commentaireGlobal) ? null : commentaireGlobal.Trim();
+        tournee.CommentaireGlobal = string.IsNullOrWhiteSpace(commentaireGlobal)
+            ? null
+            : commentaireGlobal.Trim();
+
         await db.UpdateAsync(tournee);
     }
 
@@ -252,6 +318,7 @@ public sealed class DatabaseService
     {
         var db = await GetDatabaseAsync();
         var tournee = await GetTourneeAsync(tourneeId);
+
         if (tournee is null)
         {
             return;
@@ -260,6 +327,7 @@ public sealed class DatabaseService
         tournee.StatutLocal = TourneeLocalStatus.Synchronisee;
         tournee.DateEnvoi = DateTime.Now;
         tournee.EstVerrouillee = true;
+
         await db.UpdateAsync(tournee);
     }
 
@@ -267,12 +335,14 @@ public sealed class DatabaseService
     {
         var db = await GetDatabaseAsync();
         var tournee = await GetTourneeAsync(tourneeId);
+
         if (tournee is null || tournee.EstVerrouillee)
         {
             return;
         }
 
         tournee.StatutLocal = TourneeLocalStatus.ErreurSynchronisation;
+
         await db.UpdateAsync(tournee);
     }
 
@@ -280,6 +350,7 @@ public sealed class DatabaseService
     {
         var db = await GetDatabaseAsync();
         var tournee = await GetTourneeAsync(tourneeId);
+
         if (tournee is null)
         {
             return;
@@ -288,17 +359,24 @@ public sealed class DatabaseService
         tournee.StatutLocal = TourneeLocalStatus.DejaSynchronisee;
         tournee.DateEnvoi = DateTime.Now;
         tournee.EstVerrouillee = true;
+
         await db.UpdateAsync(tournee);
     }
 
     private async Task DeleteTourneeDataAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
-        var lignes = await db.Table<LocalTourneeLigne>().Where(l => l.TourneeId == tourneeId).ToListAsync();
+
+        var lignes = await db.Table<LocalTourneeLigne>()
+            .Where(l => l.TourneeId == tourneeId)
+            .ToListAsync();
 
         foreach (var ligne in lignes)
         {
-            var quantites = await db.Table<LocalTourneeLigneQuantite>().Where(q => q.LigneId == ligne.Id).ToListAsync();
+            var quantites = await db.Table<LocalTourneeLigneQuantite>()
+                .Where(q => q.LigneId == ligne.Id)
+                .ToListAsync();
+
             foreach (var quantite in quantites)
             {
                 await db.DeleteAsync(quantite);
@@ -307,10 +385,22 @@ public sealed class DatabaseService
             await db.DeleteAsync(ligne);
         }
 
-        var tournee = await db.Table<LocalTournee>().Where(t => t.Id == tourneeId).FirstOrDefaultAsync();
+        var tournee = await db.Table<LocalTournee>()
+            .Where(t => t.Id == tourneeId)
+            .FirstOrDefaultAsync();
+
         if (tournee is not null)
         {
             await db.DeleteAsync(tournee);
         }
+    }
+
+    private static string FormatDateTime(DateTime value)
+    {
+        var local = value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Local)
+            : value.ToLocalTime();
+
+        return new DateTimeOffset(local).ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
     }
 }

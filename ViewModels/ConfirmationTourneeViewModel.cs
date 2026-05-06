@@ -11,20 +11,17 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     private readonly AppStateService _appStateService;
     private readonly TourneesApiService _tourneesApiService;
     private readonly DatabaseService _databaseService;
-    private readonly DemoDataService _demoDataService;
 
     private string _loadMessage = string.Empty;
 
     public ConfirmationTourneeViewModel(
         AppStateService appStateService,
         TourneesApiService tourneesApiService,
-        DatabaseService databaseService,
-        DemoDataService demoDataService)
+        DatabaseService databaseService)
     {
         _appStateService = appStateService;
         _tourneesApiService = tourneesApiService;
         _databaseService = databaseService;
-        _demoDataService = demoDataService;
 
         LoadTourneeCommand = new Command(
             async () => await LoadTourneeAsync(),
@@ -38,17 +35,12 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         _appStateService.CurrentLivreur?.NomLivreur ?? "Livreur non identifié";
 
     public string DateText =>
-        DateTime.Today.ToString("dd/MM/yyyy");
+        (_appStateService.SelectedTournee?.DateTournee ?? DateTime.Today).ToString("dd/MM/yyyy");
 
     public string TourneeText =>
         _appStateService.SelectedTournee is null
             ? "Aucune tournée"
-            : $"{_appStateService.SelectedTournee.CodeTournee} — {_appStateService.SelectedTournee.LibelleTournee}";
-
-    public string NombrePointsText =>
-        _appStateService.SelectedTournee is null
-            ? string.Empty
-            : $"{_appStateService.SelectedTournee.NombrePoints} points de livraison prévus";
+            : _appStateService.SelectedTournee.NomAffiche;
 
     public string LoadMessage
     {
@@ -77,12 +69,15 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         {
             IsBusy = true;
             RefreshCommandStates();
+
             ErrorMessage = string.Empty;
             LoadMessage = "Chargement depuis l'API…";
 
+            var selectedTournee = _appStateService.SelectedTournee;
+
             var dto = await _tourneesApiService.GetTourneeJourAsync(
-                DateTime.Today,
-                _appStateService.SelectedTournee.CodeTournee,
+                selectedTournee.DateTournee,
+                selectedTournee.CodeTournee,
                 _appStateService.CurrentLivreur.CodeLivreur);
 
             var tourneeId = await _databaseService.SaveTourneeAsync(dto);
@@ -90,32 +85,22 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             _appStateService.CurrentTourneeId = tourneeId;
             _appStateService.SelectedLigneId = 0;
 
+            LoadMessage = "Tournée chargée localement.";
+
             await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
         }
         catch (Exception exception)
         {
-            /*
-             * Mode de secours conservé pendant la migration.
-             * Il permet de continuer à tester l'application si l'API ou le réseau est indisponible.
-             * À désactiver en production.
-             */
-            LoadMessage = "API indisponible. Chargement d'une tournée de démonstration pour continuer les tests.";
+            ErrorMessage =
+                "Chargement impossible. La tournée sélectionnée n'a pas pu être récupérée depuis l'API. " +
+                $"Détail : {exception.Message}";
 
-            var demo = _demoDataService.BuildTourneeJour(
-                _appStateService.SelectedTournee,
-                _appStateService.CurrentLivreur);
-
-            var tourneeId = await _databaseService.SaveTourneeAsync(demo);
-
-            _appStateService.CurrentTourneeId = tourneeId;
-            _appStateService.SelectedLigneId = 0;
+            LoadMessage = ErrorMessage;
 
             await Shell.Current.CurrentPage.DisplayAlertAsync(
-                "Mode démonstration",
-                $"La tournée de démonstration a été chargée localement. Détail technique : {exception.Message}",
+                "Chargement impossible",
+                ErrorMessage,
                 "OK");
-
-            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
         }
         finally
         {
