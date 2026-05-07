@@ -45,12 +45,68 @@ public sealed class LocalTourneeLigne
     public string? CodePostal { get; set; }
     public string? Zone { get; set; }
     public string? ZoneDechargement { get; set; }
+    public int? JourTourneeRetour { get; set; }
+
+    public bool EstFerme { get; set; }
+    public DateTime? DateFermeture { get; set; }
+    public string? MotifFermeture { get; set; }
+
     public string? Instructions { get; set; }
     public string? CommentaireFiche { get; set; }
     public string StatutPassage { get; set; } = StatutPassageConstants.AFaire;
     public bool EstValidee { get; set; }
     public DateTime? HeureValidation { get; set; }
     public string? CommentaireLivreur { get; set; }
+
+    [Ignore]
+    public string? ZoneDechargementAffichee
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(ZoneDechargement))
+            {
+                return JourTourneeRetour?.ToString();
+            }
+
+            var zone = ZoneDechargement.Trim();
+
+            if (zone.StartsWith("+", StringComparison.Ordinal))
+            {
+                return JourTourneeRetour.HasValue
+                    ? $"{JourTourneeRetour.Value} {zone}"
+                    : zone;
+            }
+
+            return zone;
+        }
+    }
+
+    [Ignore]
+    public bool IsFermetureVisible => EstFerme;
+
+    [Ignore]
+    public string FermetureText
+    {
+        get
+        {
+            if (!EstFerme)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(MotifFermeture))
+            {
+                return $"Client fermé : {MotifFermeture}";
+            }
+
+            if (DateFermeture.HasValue)
+            {
+                return $"Client fermé le {DateFermeture.Value:dd/MM/yyyy}";
+            }
+
+            return "Client fermé.";
+        }
+    }
 }
 
 public sealed class LocalTourneeLigneQuantite

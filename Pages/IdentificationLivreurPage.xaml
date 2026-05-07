@@ -21,7 +21,8 @@
 
                         <ActivityIndicator
                             IsRunning="{Binding IsLoading}"
-                            IsVisible="{Binding IsLoading}" />
+                            IsVisible="{Binding IsLoading}"
+                            Color="{StaticResource Primary}" />
 
                         <CollectionView
                             ItemsSource="{Binding Livreurs}"
@@ -34,7 +35,7 @@
                                     <Label
                                         Text="Aucun livreur chargé."
                                         FontAttributes="Bold"
-                                        TextColor="{StaticResource DangerText}" />
+                                        TextColor="{StaticResource TextMain}" />
                                     <Label
                                         Text="Vérifiez que l'API est lancée et que adb reverse tcp:5000 tcp:5000 est actif."
                                         FontSize="13"
@@ -55,7 +56,7 @@
                                         <Label
                                             Grid.Column="0"
                                             Text="{Binding CodeLivreur}"
-                                            TextColor="{StaticResource TextMain}"
+                                            TextColor="{StaticResource Primary}"
                                             FontAttributes="Bold"
                                             FontSize="18"
                                             VerticalOptions="Center"
@@ -114,21 +115,22 @@
 
                 <Frame
                     Style="{StaticResource Card}"
-                    BackgroundColor="{StaticResource WarningBackground}"
-                    BorderColor="{StaticResource WarningBorder}">
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}">
                     <VerticalStackLayout Spacing="4">
                         <Label
                             Text="État du chargement"
-                            TextColor="{StaticResource WarningText}"
+                            TextColor="{StaticResource InfoText}"
                             FontSize="12" />
                         <Label
                             Text="Les livreurs sont chargés depuis l'API réelle."
-                            TextColor="{StaticResource WarningText}"
+                            TextColor="{StaticResource InfoText}"
                             FontSize="13" />
                         <Label
                             Text="{Binding ErrorMessage}"
                             TextColor="{StaticResource DangerText}"
-                            FontSize="13" />
+                            FontSize="13"
+                            IsVisible="{Binding HasErrorMessage}" />
                     </VerticalStackLayout>
                 </Frame>
             </VerticalStackLayout>

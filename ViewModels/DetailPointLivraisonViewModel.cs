@@ -32,7 +32,17 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public string ClientText => _ligne is null ? "Client" : $"{_ligne.NumClient} — {_ligne.NomClient}";
     public string PointText => _ligne?.DescriptionPDL ?? string.Empty;
     public string AdresseText => _ligne?.AdresseLigne1 ?? string.Empty;
-    public string ZoneText => _ligne is null ? string.Empty : $"Zone : {_ligne.Zone ?? "-"}";
+
+    public string ZoneText => _ligne is null
+        ? string.Empty
+        : string.IsNullOrWhiteSpace(_ligne.ZoneDechargementAffichee)
+            ? $"Zone : {_ligne.Zone ?? "-"}"
+            : $"Zone : {_ligne.ZoneDechargementAffichee}";
+
+    public bool IsFermetureVisible => _ligne?.EstFerme == true;
+
+    public string FermetureText => _ligne?.FermetureText ?? string.Empty;
+
     public string OrdreText => _ligne is null ? string.Empty : $"Arrêt {_ligne.OrdreArret}";
     public string InstructionsText => _ligne?.Instructions ?? "Aucune instruction particulière.";
 
@@ -74,6 +84,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         SelectedStatut = _ligne.StatutPassage == StatutPassageConstants.AFaire
             ? StatutPassageConstants.Fait
             : _ligne.StatutPassage;
+
         CommentaireLivreur = _ligne.CommentaireLivreur ?? string.Empty;
 
         var quantites = await _databaseService.GetQuantitesAsync(_ligne.Id);
@@ -86,6 +97,8 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(PointText));
         OnPropertyChanged(nameof(AdresseText));
         OnPropertyChanged(nameof(ZoneText));
+        OnPropertyChanged(nameof(IsFermetureVisible));
+        OnPropertyChanged(nameof(FermetureText));
         OnPropertyChanged(nameof(OrdreText));
         OnPropertyChanged(nameof(InstructionsText));
     }
@@ -139,6 +152,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         _ligne.CommentaireLivreur = string.IsNullOrWhiteSpace(CommentaireLivreur) ? null : CommentaireLivreur.Trim();
 
         await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
-        InfoText = $"Passage validé à {_ligne.HeureValidation:HH:mm}.";
+
+        await Shell.Current.GoToAsync("..");
     }
 }

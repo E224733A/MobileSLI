@@ -44,7 +44,9 @@ public sealed class DechargementViewModel : BaseViewModel
             {
                 ClientText = $"{ligne.NumClient} - {ligne.NomClient}",
                 PointText = ligne.DescriptionPDL ?? string.Empty,
-                ZoneText = string.IsNullOrWhiteSpace(ligne.ZoneDechargement) ? "Zone non renseignée" : ligne.ZoneDechargement,
+                ZoneText = string.IsNullOrWhiteSpace(ligne.ZoneDechargementAffichee)
+                    ? "Zone non renseignée"
+                    : ligne.ZoneDechargementAffichee,
                 ArticlesText = string.Join(" · ", recuperees.Select(q => $"{q.QuantiteRecuperee} {q.Libelle}"))
             });
         }

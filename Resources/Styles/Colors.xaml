@@ -1,23 +1,36 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
-    <Color x:Key="Primary">#3157F6</Color>
-    <Color x:Key="PrimaryDark">#2447D8</Color>
-    <Color x:Key="PageBackground">#EEF1F6</Color>
-    <Color x:Key="CardBackground">#FFFFFF</Color>
-    <Color x:Key="BorderColor">#DDE3EE</Color>
-    <Color x:Key="TextMain">#162033</Color>
-    <Color x:Key="TextMuted">#6B7280</Color>
-    <Color x:Key="SuccessBackground">#EAFBF0</Color>
-    <Color x:Key="SuccessBorder">#B7E8C8</Color>
-    <Color x:Key="SuccessText">#0F7A3A</Color>
-    <Color x:Key="WarningBackground">#FFF4E8</Color>
-    <Color x:Key="WarningBorder">#FFD7A8</Color>
-    <Color x:Key="WarningText">#B45309</Color>
-    <Color x:Key="DangerBackground">#FFF1F1</Color>
-    <Color x:Key="DangerBorder">#FFC6C6</Color>
-    <Color x:Key="DangerText">#C62828</Color>
-    <Color x:Key="InfoBackground">#EEF6FF</Color>
-    <Color x:Key="InfoBorder">#BBD7FF</Color>
-    <Color x:Key="InfoText">#2256A3</Color>
+
+    <Color x:Key="Primary">#60A5FA</Color>
+    <Color x:Key="PrimaryDark">#2563EB</Color>
+
+    <Color x:Key="PageBackground">#0F172A</Color>
+    <Color x:Key="CardBackground">#1E293B</Color>
+    <Color x:Key="InputBackground">#0B1120</Color>
+    <Color x:Key="BorderColor">#334155</Color>
+
+    <Color x:Key="TextMain">#F8FAFC</Color>
+    <Color x:Key="TextMuted">#CBD5E1</Color>
+
+    <Color x:Key="SuccessBackground">#052E1B</Color>
+    <Color x:Key="SuccessBorder">#166534</Color>
+    <Color x:Key="SuccessText">#86EFAC</Color>
+
+    <Color x:Key="WarningBackground">#3B2604</Color>
+    <Color x:Key="WarningBorder">#92400E</Color>
+    <Color x:Key="WarningText">#FCD34D</Color>
+
+    <Color x:Key="DangerBackground">#450A0A</Color>
+    <Color x:Key="DangerBorder">#991B1B</Color>
+    <Color x:Key="DangerText">#FCA5A5</Color>
+
+    <Color x:Key="InfoBackground">#082F49</Color>
+    <Color x:Key="InfoBorder">#0369A1</Color>
+    <Color x:Key="InfoText">#BAE6FD</Color>
+
+    <Color x:Key="SelectedBackground">#1E40AF</Color>
+    <Color x:Key="SelectedBorder">#93C5FD</Color>
+    <Color x:Key="SelectedText">#FFFFFF</Color>
+
 </ResourceDictionary>

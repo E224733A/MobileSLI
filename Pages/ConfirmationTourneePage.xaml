@@ -39,7 +39,12 @@
                 </Frame>
 
                 <Label Text="{Binding LoadMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="{StaticResource DangerText}"
+                    FontSize="13"
+                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 

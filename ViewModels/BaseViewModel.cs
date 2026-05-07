@@ -21,6 +21,14 @@ public abstract class BaseViewModel : ObservableObject
     public string ErrorMessage
     {
         get => _errorMessage;
-        set => SetProperty(ref _errorMessage, value);
+        set
+        {
+            if (SetProperty(ref _errorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasErrorMessage));
+            }
+        }
     }
+
+    public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
 }

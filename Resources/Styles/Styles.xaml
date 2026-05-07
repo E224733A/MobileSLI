@@ -6,6 +6,14 @@
         <Setter Property="BackgroundColor" Value="{StaticResource PageBackground}" />
     </Style>
 
+    <Style TargetType="Shell">
+        <Setter Property="BackgroundColor" Value="{StaticResource PageBackground}" />
+        <Setter Property="ForegroundColor" Value="{StaticResource TextMain}" />
+        <Setter Property="TitleColor" Value="{StaticResource TextMain}" />
+        <Setter Property="DisabledColor" Value="{StaticResource TextMuted}" />
+        <Setter Property="UnselectedColor" Value="{StaticResource TextMuted}" />
+    </Style>
+
     <Style x:Key="PageTitle" TargetType="Label">
         <Setter Property="TextColor" Value="{StaticResource TextMain}" />
         <Setter Property="FontSize" Value="24" />
@@ -41,7 +49,7 @@
 
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
-        <Setter Property="TextColor" Value="White" />
+        <Setter Property="TextColor" Value="#0B1120" />
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="HeightRequest" Value="46" />
         <Setter Property="FontAttributes" Value="Bold" />
@@ -50,7 +58,7 @@
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button">
-        <Setter Property="BackgroundColor" Value="White" />
+        <Setter Property="BackgroundColor" Value="{StaticResource CardBackground}" />
         <Setter Property="TextColor" Value="{StaticResource Primary}" />
         <Setter Property="BorderColor" Value="{StaticResource Primary}" />
         <Setter Property="BorderWidth" Value="1" />
@@ -58,15 +66,23 @@
         <Setter Property="HeightRequest" Value="44" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="12,0" />
     </Style>
 
     <Style x:Key="Input" TargetType="Entry">
-        <Setter Property="BackgroundColor" Value="White" />
+        <Setter Property="BackgroundColor" Value="{StaticResource InputBackground}" />
         <Setter Property="TextColor" Value="{StaticResource TextMain}" />
         <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}" />
         <Setter Property="HeightRequest" Value="44" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="ClearButtonVisibility" Value="WhileEditing" />
+    </Style>
+
+    <Style x:Key="InputEditor" TargetType="Editor">
+        <Setter Property="BackgroundColor" Value="{StaticResource InputBackground}" />
+        <Setter Property="TextColor" Value="{StaticResource TextMain}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}" />
+        <Setter Property="FontSize" Value="14" />
     </Style>
 
     <Style x:Key="SmallPill" TargetType="Frame">

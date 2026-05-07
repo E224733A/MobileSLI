@@ -11,12 +11,18 @@ public sealed class SyncResultViewModel : BaseViewModel
     public SyncResultViewModel(AppStateService appStateService)
     {
         _appStateService = appStateService;
-        BackHomeCommand = new Command(async () => await Shell.Current.GoToAsync("//AccueilPage"));
+
+        BackHomeCommand = new Command(async () => await BackHomeAsync());
     }
 
-    public string Message => _appStateService.LastSyncResult?.Message ?? "Tournée envoyée avec succès";
-    public string DateText => (_appStateService.LastSyncResult?.DateResult ?? DateTime.Now).ToString("dd/MM/yyyy HH:mm");
-    public string LignesText => $"{_appStateService.LastSyncResult?.LignesEnvoyees ?? 0} envoyées";
+    public string Message =>
+        string.IsNullOrWhiteSpace(_appStateService.LastSyncResult?.Message)
+            ? "Tournée envoyée avec succès."
+            : _appStateService.LastSyncResult.Message;
+
+    public string DateText =>
+        (_appStateService.LastSyncResult?.DateResult ?? DateTime.Now)
+        .ToString("dd/MM/yyyy à HH:mm");
 
     public ICommand BackHomeCommand { get; }
 
@@ -24,6 +30,10 @@ public sealed class SyncResultViewModel : BaseViewModel
     {
         OnPropertyChanged(nameof(Message));
         OnPropertyChanged(nameof(DateText));
-        OnPropertyChanged(nameof(LignesText));
+    }
+
+    private async Task BackHomeAsync()
+    {
+        await Shell.Current.GoToAsync("//AccueilPage");
     }
 }

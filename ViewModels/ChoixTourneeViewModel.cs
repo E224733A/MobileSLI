@@ -49,7 +49,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
     public string CountText => $"{Tournees.Count} tournée(s) disponible(s)";
 
     public string HelpText =>
-        "Choisissez une tournée proposée pour aujourd'hui. Le code tournée sera envoyé automatiquement à l'API.";
+        "Choisissez une tournée proposée pour aujourd'hui. Une seule tournée peut être sélectionnée à la fois.";
 
     public string SearchText
     {
@@ -70,6 +70,11 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
         {
             if (SetProperty(ref _selectedTournee, value))
             {
+                foreach (var tournee in Tournees)
+                {
+                    tournee.IsSelected = ReferenceEquals(tournee, value);
+                }
+
                 RefreshCommandStates();
             }
         }

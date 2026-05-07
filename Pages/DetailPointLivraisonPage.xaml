@@ -20,6 +20,18 @@
                     </Grid>
                 </Frame>
 
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource DangerBackground}"
+                    BorderColor="{StaticResource DangerBorder}"
+                    IsVisible="{Binding IsFermetureVisible}">
+                    <Label
+                        Text="{Binding FermetureText}"
+                        TextColor="{StaticResource DangerText}"
+                        FontAttributes="Bold"
+                        FontSize="13" />    
+                </Frame>
+
                 <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
                     <Label Text="{Binding InstructionsText}" TextColor="{StaticResource InfoText}" FontSize="13" />
                 </Frame>
@@ -31,6 +43,7 @@
                             <Label Grid.Column="1" Text="Livré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
                             <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
                         </Grid>
+
                         <CollectionView ItemsSource="{Binding Quantites}" SelectionMode="None">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
@@ -48,21 +61,30 @@
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Statut du passage" Style="{StaticResource MutedText}" />
+
                         <HorizontalStackLayout Spacing="6">
                             <Button Text="Fait" Command="{Binding SetStatutCommand}" CommandParameter="FAIT" Style="{StaticResource PrimaryButton}" HeightRequest="38" WidthRequest="76" />
                             <Button Text="Non fait" Command="{Binding SetStatutCommand}" CommandParameter="NON_FAIT" Style="{StaticResource SecondaryButton}" HeightRequest="38" WidthRequest="96" />
                             <Button Text="Anomalie" Command="{Binding SetStatutCommand}" CommandParameter="ANOMALIE" Style="{StaticResource SecondaryButton}" HeightRequest="38" WidthRequest="100" />
                         </HorizontalStackLayout>
+
                         <Label Text="Statut sélectionné :" Style="{StaticResource MutedText}" />
                         <Label Text="{Binding SelectedStatut}" TextColor="{StaticResource Primary}" FontAttributes="Bold" />
+
                         <Label Text="Commentaire livreur" Style="{StaticResource MutedText}" />
-                        <Editor Text="{Binding CommentaireLivreur}" Placeholder="Obligatoire si Non fait ou Anomalie" HeightRequest="86" BackgroundColor="White" TextColor="{StaticResource TextMain}" />
+                        <Editor Text="{Binding CommentaireLivreur}" Placeholder="Obligatoire si Non fait ou Anomalie" HeightRequest="86" Style="{StaticResource InputEditor}" />
+
                         <Label Text="Heure de validation automatique." Style="{StaticResource MutedText}" />
                     </VerticalStackLayout>
                 </Frame>
 
                 <Label Text="{Binding InfoText}" TextColor="{StaticResource SuccessText}" FontSize="13" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="{StaticResource DangerText}"
+                    FontSize="13"
+                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
