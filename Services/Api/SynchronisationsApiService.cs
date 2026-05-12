@@ -29,44 +29,59 @@ public sealed class SynchronisationsApiService
             cancellationToken);
 
         var apiResult = _apiClient.Deserialize<ApiSynchronisationResult>(response.Body);
+        var code = GetCode(apiResult);
 
         if (response.IsSuccess)
         {
             return new OperationResult
             {
                 Success = true,
-                Message = apiResult?.Message ?? "Synchronisation envoyée avec succès."
+                Code = string.IsNullOrWhiteSpace(code) ? "SUCCESS" : code,
+                Message = apiResult?.Message ?? "Synchronisation envoyée avec succès.",
+                LignesEnvoyees = request.Lignes.Count
             };
         }
 
         if (response.StatusCode == 409)
         {
+            var isAlreadySynchronized =
+                string.Equals(code, "SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "CONFLICT", StringComparison.OrdinalIgnoreCase);
+
             return new OperationResult
             {
                 Success = false,
+                AlreadySynchronized = isAlreadySynchronized,
+                Code = code,
                 Message = apiResult?.Message
-                    ?? "Cette tournée a déjà été synchronisée ou existe déjà côté API."
+                    ?? "Cette tournée a déjà été synchronisée ou existe déjà côté API.",
+                TechnicalDetail = response.Body
             };
         }
 
         if (response.StatusCode == 400)
         {
-            var details = apiResult?.Errors is { Count: > 0 }
-                ? string.Join(Environment.NewLine, apiResult.Errors)
-                : response.Body;
+            var details = ExtractValidationDetails(apiResult, response.Body);
 
             return new OperationResult
             {
                 Success = false,
-                Message = $"Données invalides pour la synchronisation. {details}"
+                Code = string.IsNullOrWhiteSpace(code) ? "VALIDATION_ERROR" : code,
+                Message = string.IsNullOrWhiteSpace(details)
+                    ? "Données invalides pour la synchronisation."
+                    : $"Données invalides pour la synchronisation. {details}",
+                TechnicalDetail = response.Body
             };
         }
 
         return new OperationResult
         {
             Success = false,
+            Code = string.IsNullOrWhiteSpace(code) ? $"HTTP_{response.StatusCode}" : code,
             Message = apiResult?.Message
-                ?? $"Erreur API HTTP {response.StatusCode}. {response.Body}"
+                ?? $"Erreur API HTTP {response.StatusCode}. {response.Body}",
+            TechnicalDetail = response.Body
         };
     }
 
@@ -84,6 +99,38 @@ public sealed class SynchronisationsApiService
         return PostSynchronisationAsync(request, cancellationToken);
     }
 
+    private static string GetCode(ApiSynchronisationResult? result)
+    {
+        if (!string.IsNullOrWhiteSpace(result?.Code))
+        {
+            return result.Code.Trim();
+        }
+
+        return result?.Statut?.Trim() ?? string.Empty;
+    }
+
+    private static string ExtractValidationDetails(
+        ApiSynchronisationResult? apiResult,
+        string rawBody)
+    {
+        if (apiResult?.Errors is { Count: > 0 })
+        {
+            return string.Join(Environment.NewLine, apiResult.Errors);
+        }
+
+        if (apiResult?.Erreurs is { Count: > 0 })
+        {
+            return string.Join(
+                Environment.NewLine,
+                apiResult.Erreurs.Select(error =>
+                    string.IsNullOrWhiteSpace(error.Champ)
+                        ? error.Message
+                        : $"{error.Champ} : {error.Message}"));
+        }
+
+        return rawBody;
+    }
+
     private sealed class ApiSynchronisationResult
     {
         [JsonPropertyName("statut")]
@@ -97,5 +144,17 @@ public sealed class SynchronisationsApiService
 
         [JsonPropertyName("errors")]
         public List<string>? Errors { get; set; }
+
+        [JsonPropertyName("erreurs")]
+        public List<ApiValidationError>? Erreurs { get; set; }
+    }
+
+    private sealed class ApiValidationError
+    {
+        [JsonPropertyName("champ")]
+        public string? Champ { get; set; }
+
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
     }
 }

@@ -18,4 +18,10 @@ public partial class SyncResultPage : ContentPage
         base.OnAppearing();
         ViewModel.Refresh();
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        // Après succès, on ne doit pas revenir vers les écrans de saisie.
+        return true;
+    }
 }

@@ -29,6 +29,14 @@ public sealed class SynchronisationService
             return Failure("Tournée locale introuvable.");
         }
 
+        if (tournee.EstVerrouillee)
+        {
+            return Failure(
+                "Cette tournée est déjà verrouillée sur le téléphone.",
+                alreadySynchronized: true,
+                code: tournee.StatutLocal);
+        }
+
         var lignes = await _databaseService.GetLignesAsync(idTourneeLocale);
         var validation = await ValidateBeforeSendAsync(lignes);
 
@@ -47,7 +55,7 @@ public sealed class SynchronisationService
             return result;
         }
 
-        if (ContainsAlreadySentMessage(result.Message))
+        if (result.AlreadySynchronized || IsAlreadySentCode(result.Code) || ContainsAlreadySentMessage(result.Message))
         {
             await _databaseService.MarkDejaSynchroniseeAsync(idTourneeLocale);
             return result;
@@ -62,7 +70,7 @@ public sealed class SynchronisationService
     {
         if (lignes.Count == 0)
         {
-            return Failure("La tournée ne contient aucune ligne à synchroniser.");
+            return Failure("La tournée ne contient aucune ligne à synchroniser.", code: "VALIDATION_ERROR");
         }
 
         var idLignes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -71,40 +79,54 @@ public sealed class SynchronisationService
         {
             if (string.IsNullOrWhiteSpace(ligne.IdLigneSource))
             {
-                return Failure("Une ligne ne possède pas d'identifiant source. Synchronisation impossible.");
+                return Failure(
+                    "Une ligne ne possède pas d'identifiant source. Synchronisation impossible.",
+                    code: "VALIDATION_ERROR");
             }
 
             if (!idLignes.Add(ligne.IdLigneSource))
             {
-                return Failure($"L'identifiant de ligne source est présent plusieurs fois : {ligne.IdLigneSource}.");
+                return Failure(
+                    $"L'identifiant de ligne source est présent plusieurs fois : {ligne.IdLigneSource}.",
+                    code: "VALIDATION_ERROR");
             }
 
             if (string.Equals(ligne.StatutPassage, StatutPassageConstants.AFaire, StringComparison.OrdinalIgnoreCase))
             {
-                return Failure($"Le point {ligne.NumClient} - {ligne.NomClient} est encore à faire.");
+                return Failure(
+                    $"Le point {ligne.NumClient} - {ligne.NomClient} est encore à faire.",
+                    code: "VALIDATION_ERROR");
             }
 
             if ((string.Equals(ligne.StatutPassage, StatutPassageConstants.NonFait, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(ligne.StatutPassage, StatutPassageConstants.Anomalie, StringComparison.OrdinalIgnoreCase))
                 && string.IsNullOrWhiteSpace(ligne.CommentaireLivreur))
             {
-                return Failure($"Un commentaire est obligatoire pour {ligne.NumClient} - {ligne.NomClient}.");
+                return Failure(
+                    $"Un commentaire est obligatoire pour {ligne.NumClient} - {ligne.NomClient}.",
+                    code: "VALIDATION_ERROR");
             }
 
             if (!ligne.EstValidee)
             {
-                return Failure($"Le point {ligne.NumClient} - {ligne.NomClient} n'est pas validé.");
+                return Failure(
+                    $"Le point {ligne.NumClient} - {ligne.NomClient} n'est pas validé.",
+                    code: "VALIDATION_ERROR");
             }
 
             if (ligne.HeureValidation is null)
             {
-                return Failure($"Le point {ligne.NumClient} - {ligne.NomClient} n'a pas d'heure de validation.");
+                return Failure(
+                    $"Le point {ligne.NumClient} - {ligne.NomClient} n'a pas d'heure de validation.",
+                    code: "VALIDATION_ERROR");
             }
 
             var quantites = await _databaseService.GetQuantitesAsync(ligne.Id);
             if (quantites.Count == 0)
             {
-                return Failure($"Le point {ligne.NumClient} - {ligne.NomClient} ne contient aucune quantité.");
+                return Failure(
+                    $"Le point {ligne.NumClient} - {ligne.NomClient} ne contient aucune quantité.",
+                    code: "VALIDATION_ERROR");
             }
 
             var articles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -113,22 +135,40 @@ public sealed class SynchronisationService
             {
                 if (string.IsNullOrWhiteSpace(quantite.CodeArticle))
                 {
-                    return Failure($"Un article du point {ligne.NumClient} - {ligne.NomClient} n'a pas de code article.");
+                    return Failure(
+                        $"Un article du point {ligne.NumClient} - {ligne.NomClient} n'a pas de code article.",
+                        code: "VALIDATION_ERROR");
                 }
 
                 if (!articles.Add(quantite.CodeArticle))
                 {
-                    return Failure($"L'article {quantite.CodeArticle} est présent plusieurs fois sur le point {ligne.NumClient} - {ligne.NomClient}.");
+                    return Failure(
+                        $"L'article {quantite.CodeArticle} est présent plusieurs fois sur le point {ligne.NumClient} - {ligne.NomClient}.",
+                        code: "VALIDATION_ERROR");
                 }
 
                 if (quantite.QuantiteLivree < 0 || quantite.QuantiteRecuperee < 0)
                 {
-                    return Failure($"Quantité négative interdite pour {ligne.NumClient} - {ligne.NomClient}.");
+                    return Failure(
+                        $"Quantité négative interdite pour {ligne.NumClient} - {ligne.NomClient}.",
+                        code: "VALIDATION_ERROR");
                 }
             }
         }
 
         return Success("Validation locale réussie.");
+    }
+
+    private static bool IsAlreadySentCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return false;
+        }
+
+        return string.Equals(code, "TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(code, "SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(code, "CONFLICT", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool ContainsAlreadySentMessage(string? message)
@@ -150,15 +190,21 @@ public sealed class SynchronisationService
         return new OperationResult
         {
             Success = true,
+            Code = "SUCCESS",
             Message = message
         };
     }
 
-    private static OperationResult Failure(string message)
+    private static OperationResult Failure(
+        string message,
+        bool alreadySynchronized = false,
+        string code = "")
     {
         return new OperationResult
         {
             Success = false,
+            AlreadySynchronized = alreadySynchronized,
+            Code = code,
             Message = message
         };
     }

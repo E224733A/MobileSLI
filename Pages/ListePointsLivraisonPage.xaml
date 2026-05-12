@@ -12,91 +12,36 @@
         </VerticalStackLayout>
 
         <HorizontalStackLayout Grid.Row="1" Spacing="6" Margin="0,10,0,10">
-            <Button
-                Text="Tous"
-                Command="{Binding SetFilterCommand}"
-                CommandParameter="TOUS"
-                Style="{StaticResource SecondaryButton}"
-                HeightRequest="34"
-                WidthRequest="70" />
-
-            <Button
-                Text="À faire"
-                Command="{Binding SetFilterCommand}"
-                CommandParameter="A_FAIRE"
-                Style="{StaticResource SecondaryButton}"
-                HeightRequest="34"
-                WidthRequest="86" />
-
-            <Button
-                Text="Fait"
-                Command="{Binding SetFilterCommand}"
-                CommandParameter="FAIT"
-                Style="{StaticResource SecondaryButton}"
-                HeightRequest="34"
-                WidthRequest="70" />
-
-            <Button
-                Text="Fermés"
-                Command="{Binding SetFilterCommand}"
-                CommandParameter="FERME"
-                IsVisible="{Binding HasClosedClients}"
-                Style="{StaticResource SecondaryButton}"
-                HeightRequest="34"
-                WidthRequest="86" />
+            <Button Text="Tous" Command="{Binding SetFilterCommand}" CommandParameter="TOUS" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="70" />
+            <Button Text="À faire" Command="{Binding SetFilterCommand}" CommandParameter="A_FAIRE" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="86" />
+            <Button Text="Fait" Command="{Binding SetFilterCommand}" CommandParameter="FAIT" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="70" />
+            <Button Text="Fermés" Command="{Binding SetFilterCommand}" CommandParameter="FERME" IsVisible="{Binding HasClosedClients}" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="86" />
         </HorizontalStackLayout>
 
         <CollectionView Grid.Row="2" ItemsSource="{Binding Lignes}" SelectionMode="None">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Frame Style="{StaticResource Card}">
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="5">
-                            <Label
-                                Grid.Row="0"
-                                Grid.Column="0"
-                                Text="{Binding ClientText}"
-                                TextColor="{StaticResource TextMain}"
-                                FontAttributes="Bold"
-                                FontSize="15" />
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5">
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding ClientText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="15" />
 
-                            <Frame
-                                Grid.Row="0"
-                                Grid.Column="1"
-                                BackgroundColor="{StaticResource InfoBackground}"
-                                BorderColor="{StaticResource InfoBorder}"
-                                CornerRadius="10"
-                                HasShadow="False"
-                                Padding="6,2"
-                                Margin="0">
-                                <Label
-                                    Text="{Binding StatutText}"
-                                    TextColor="{StaticResource InfoText}"
-                                    FontSize="10"
-                                    FontAttributes="Bold" />
+                            <Frame Grid.Row="0" Grid.Column="1" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="10" HasShadow="False" Padding="6,2" Margin="0">
+                                <Label Text="{Binding StatutText}" TextColor="{StaticResource InfoText}" FontSize="10" FontAttributes="Bold" />
                             </Frame>
 
-                            <Label
-                                Grid.Row="1"
-                                Grid.Column="0"
-                                Grid.ColumnSpan="2"
-                                Text="{Binding OrdreText}"
-                                Style="{StaticResource MutedText}" />
+                            <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding OrdreText}" Style="{StaticResource MutedText}" />
+                            <Label Grid.Row="2" Grid.Column="0" Text="{Binding DetailText}" Style="{StaticResource MutedText}" />
 
-                            <Label
-                                Grid.Row="2"
-                                Grid.Column="0"
-                                Text="{Binding DetailText}"
-                                Style="{StaticResource MutedText}" />
+                            <Button Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
 
-                            <Button
-                                Grid.Row="2"
-                                Grid.Column="1"
-                                Text="Ouvrir"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}"
-                                CommandParameter="{Binding .}"
-                                Style="{StaticResource PrimaryButton}"
-                                HeightRequest="36"
-                                WidthRequest="82" />
+                            <Frame Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasInformationLivreur}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="12" HasShadow="False" Padding="8" Margin="0,4,0,0">
+                                <VerticalStackLayout Spacing="3">
+                                    <Label IsVisible="{Binding HasInstruction}" Text="Instruction" TextColor="{StaticResource InfoText}" FontSize="11" FontAttributes="Bold" />
+                                    <Label IsVisible="{Binding HasInstruction}" Text="{Binding InstructionText}" TextColor="{StaticResource InfoText}" FontSize="12" />
+                                    <Label IsVisible="{Binding HasCommentaireExceptionnel}" Text="Commentaire" TextColor="{StaticResource InfoText}" FontSize="11" FontAttributes="Bold" Margin="0,4,0,0" />
+                                    <Label IsVisible="{Binding HasCommentaireExceptionnel}" Text="{Binding CommentaireExceptionnelText}" TextColor="{StaticResource InfoText}" FontSize="12" />
+                                </VerticalStackLayout>
+                            </Frame>
                         </Grid>
                     </Frame>
                 </DataTemplate>
@@ -104,15 +49,8 @@
         </CollectionView>
 
         <VerticalStackLayout Grid.Row="3" Spacing="8" Margin="0,14,0,0">
-            <Button
-                Text="Déchargement / accès dépôt"
-                Command="{Binding GoDechargementCommand}"
-                Style="{StaticResource PrimaryButton}" />
-
-            <Button
-                Text="Récapitulatif"
-                Command="{Binding GoRecapCommand}"
-                Style="{StaticResource SecondaryButton}" />
+            <Button Text="Déchargement / accès dépôt" Command="{Binding GoDechargementCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Récapitulatif" Command="{Binding GoRecapCommand}" Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
     </Grid>
 </ContentPage>

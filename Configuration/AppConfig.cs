@@ -14,6 +14,14 @@ public static class AppConfig
     public const string ApiBaseUrl = "http://127.0.0.1:5000";
 
     /*
+     * Version officielle du contrat JSON mobile/API.
+     *
+     * Cette constante évite de garder des "1.1" en dur dans les DTO,
+     * dans le stockage SQLite ou dans le POST de synchronisation.
+     */
+    public const string SchemaVersion = "1.2";
+
+    /*
      * Exemples pour plus tard :
      *
      * Téléphone sans adb reverse, accès direct au PC ou à la VM :
@@ -23,6 +31,6 @@ public static class AppConfig
      * public const string ApiBaseUrl = "http://10.0.2.2:5000";
      *
      * API installée sur une VM avec nom DNS interne :
-     * public const string ApiBaseUrl = "http://api-mobile-sli.local:5000";
+     * public const string ApiBaseUrl = "https://api-mobile-sli.local";
      */
 }

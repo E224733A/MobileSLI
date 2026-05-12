@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MobileSLI.Models;
@@ -30,7 +31,9 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public ObservableCollection<QuantiteSaisieViewModel> Quantites { get; }
 
     public string ClientText => _ligne is null ? "Client" : $"{_ligne.NumClient} — {_ligne.NomClient}";
+
     public string PointText => _ligne?.DescriptionPDL ?? string.Empty;
+
     public string AdresseText => _ligne?.AdresseLigne1 ?? string.Empty;
 
     public string ZoneText => _ligne is null
@@ -44,12 +47,27 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public string FermetureText => _ligne?.FermetureText ?? string.Empty;
 
     public string OrdreText => _ligne is null ? string.Empty : $"Arrêt {_ligne.OrdreArret}";
-    public string InstructionsText => _ligne?.Instructions ?? "Aucune instruction particulière.";
+
+    public bool HasInstructions => !string.IsNullOrWhiteSpace(_ligne?.Instructions);
+
+    public string InstructionsText => _ligne?.Instructions ?? string.Empty;
+
+    public bool HasCommentaireExceptionnel => !string.IsNullOrWhiteSpace(_ligne?.CommentaireExceptionnel);
+
+    public string CommentaireExceptionnelText => _ligne?.CommentaireExceptionnel ?? string.Empty;
+
+    public bool HasInformationsLivreur => HasInstructions || HasCommentaireExceptionnel;
 
     public string SelectedStatut
     {
         get => _selectedStatut;
-        set => SetProperty(ref _selectedStatut, value);
+        set
+        {
+            if (SetProperty(ref _selectedStatut, value))
+            {
+                RefreshStatutButtonColors();
+            }
+        }
     }
 
     public string CommentaireLivreur
@@ -63,6 +81,18 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         get => _infoText;
         set => SetProperty(ref _infoText, value);
     }
+
+    public Color FaitButtonBackgroundColor => GetStatutButtonBackgroundColor(StatutPassageConstants.Fait);
+    public Color NonFaitButtonBackgroundColor => GetStatutButtonBackgroundColor(StatutPassageConstants.NonFait);
+    public Color AnomalieButtonBackgroundColor => GetStatutButtonBackgroundColor(StatutPassageConstants.Anomalie);
+
+    public Color FaitButtonTextColor => GetStatutButtonTextColor(StatutPassageConstants.Fait);
+    public Color NonFaitButtonTextColor => GetStatutButtonTextColor(StatutPassageConstants.NonFait);
+    public Color AnomalieButtonTextColor => GetStatutButtonTextColor(StatutPassageConstants.Anomalie);
+
+    public Color FaitButtonBorderColor => GetStatutButtonBorderColor(StatutPassageConstants.Fait);
+    public Color NonFaitButtonBorderColor => GetStatutButtonBorderColor(StatutPassageConstants.NonFait);
+    public Color AnomalieButtonBorderColor => GetStatutButtonBorderColor(StatutPassageConstants.Anomalie);
 
     public ICommand SetStatutCommand { get; }
     public ICommand ValidateCommand { get; }
@@ -100,7 +130,11 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(IsFermetureVisible));
         OnPropertyChanged(nameof(FermetureText));
         OnPropertyChanged(nameof(OrdreText));
+        OnPropertyChanged(nameof(HasInstructions));
         OnPropertyChanged(nameof(InstructionsText));
+        OnPropertyChanged(nameof(HasCommentaireExceptionnel));
+        OnPropertyChanged(nameof(CommentaireExceptionnelText));
+        OnPropertyChanged(nameof(HasInformationsLivreur));
     }
 
     private void SetStatut(string? statut)
@@ -154,5 +188,46 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
 
         await Shell.Current.GoToAsync("..");
+    }
+
+    private bool IsSelectedStatut(string statut)
+    {
+        return string.Equals(SelectedStatut, statut, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Color GetStatutButtonBackgroundColor(string statut)
+    {
+        return IsSelectedStatut(statut)
+            ? Color.FromArgb("#DBEAFE")
+            : Color.FromArgb("#1E293B");
+    }
+
+    private Color GetStatutButtonTextColor(string statut)
+    {
+        return IsSelectedStatut(statut)
+            ? Color.FromArgb("#1D4ED8")
+            : Color.FromArgb("#E2E8F0");
+    }
+
+    private Color GetStatutButtonBorderColor(string statut)
+    {
+        return IsSelectedStatut(statut)
+            ? Color.FromArgb("#93C5FD")
+            : Color.FromArgb("#334155");
+    }
+
+    private void RefreshStatutButtonColors()
+    {
+        OnPropertyChanged(nameof(FaitButtonBackgroundColor));
+        OnPropertyChanged(nameof(NonFaitButtonBackgroundColor));
+        OnPropertyChanged(nameof(AnomalieButtonBackgroundColor));
+
+        OnPropertyChanged(nameof(FaitButtonTextColor));
+        OnPropertyChanged(nameof(NonFaitButtonTextColor));
+        OnPropertyChanged(nameof(AnomalieButtonTextColor));
+
+        OnPropertyChanged(nameof(FaitButtonBorderColor));
+        OnPropertyChanged(nameof(NonFaitButtonBorderColor));
+        OnPropertyChanged(nameof(AnomalieButtonBorderColor));
     }
 }

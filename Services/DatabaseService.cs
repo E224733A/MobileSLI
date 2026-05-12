@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Maui.Storage;
+using MobileSLI.Configuration;
 using MobileSLI.Models;
 using SQLite;
 
@@ -31,7 +32,57 @@ public sealed class DatabaseService
         await _database.CreateTableAsync<LocalTourneeLigne>();
         await _database.CreateTableAsync<LocalTourneeLigneQuantite>();
 
+        await EnsureSchemaV12Async(_database);
+
         return _database;
+    }
+
+    private static async Task EnsureSchemaV12Async(SQLiteAsyncConnection db)
+    {
+        await TryAddColumnAsync(db, "LocalTournee", "SchemaVersion TEXT DEFAULT '1.2'");
+
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "Horaire TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "NomAffiche TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "AdresseLigne2 TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "AdresseLigne3 TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "CodeTournee TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "LibelleTournee TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "JourTournee INTEGER");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "JourLibelle TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "SchemaLivraison TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "JourRetourLibelle TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "CodeTourneeRetour TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "LibelleTourneeRetour TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "ZoneDechargementAfficheeValeur TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "Precision TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "Cle TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "CommentaireExceptionnel TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "PrecisionLivreur TEXT");
+
+        await TryAddColumnAsync(db, "LocalTourneeLigneQuantite", "QuantiteLivreePrevue INTEGER");
+    }
+
+    private static async Task TryAddColumnAsync(
+        SQLiteAsyncConnection db,
+        string tableName,
+        string columnDefinition)
+    {
+        try
+        {
+            await db.ExecuteAsync($"ALTER TABLE {tableName} ADD COLUMN {columnDefinition}");
+        }
+        catch (SQLiteException exception) when (
+            exception.Message.Contains("duplicate column", StringComparison.OrdinalIgnoreCase)
+            || exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            // Colonne déjà présente : migration locale déjà appliquée.
+        }
+        catch (Exception exception) when (
+            exception.Message.Contains("duplicate column", StringComparison.OrdinalIgnoreCase)
+            || exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            // Compatibilité avec les exceptions différentes selon Android/SQLite.
+        }
     }
 
     public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
@@ -72,6 +123,9 @@ public sealed class DatabaseService
 
         var tournee = new LocalTournee
         {
+            SchemaVersion = string.IsNullOrWhiteSpace(dto.SchemaVersion)
+                ? AppConfig.SchemaVersion
+                : dto.SchemaVersion,
             DateTournee = dateTournee,
             CodeTournee = dto.CodeTournee,
             LibelleTournee = dto.LibelleTournee,
@@ -89,32 +143,63 @@ public sealed class DatabaseService
         {
             var client = ligneDto.Client ?? new ClientDto();
             var pointLivraison = ligneDto.PointLivraison ?? new PointLivraisonDto();
+            var tourneeInfo = ligneDto.Tournee ?? new TourneeInfoDto();
+            var retour = ligneDto.Retour ?? new RetourInfoDto();
             var infosLivreur = ligneDto.InfosLivreur ?? new InfosLivreurDto();
+
+            var commentaireExceptionnel = string.IsNullOrWhiteSpace(infosLivreur.CommentaireExceptionnel)
+                ? null
+                : infosLivreur.CommentaireExceptionnel.Trim();
 
             var ligne = new LocalTourneeLigne
             {
                 TourneeId = tournee.Id,
                 IdLigneSource = ligneDto.IdLigneSource,
                 OrdreArret = ligneDto.OrdreArret,
+                Horaire = ligneDto.Horaire,
+
                 NumClient = client.NumClient,
                 NomClient = client.NomClient,
+                NomAffiche = client.NomAffiche,
+
                 CodePDL = pointLivraison.CodePDL,
                 DescriptionPDL = pointLivraison.DescriptionPDL,
                 AdresseLigne1 = pointLivraison.AdresseLigne1,
+                AdresseLigne2 = pointLivraison.AdresseLigne2,
+                AdresseLigne3 = pointLivraison.AdresseLigne3,
                 Ville = pointLivraison.Ville,
                 CodePostal = pointLivraison.CodePostal,
+
+                CodeTournee = tourneeInfo.CodeTournee,
+                LibelleTournee = tourneeInfo.LibelleTournee,
+                JourTournee = tourneeInfo.JourTournee,
+                JourLibelle = tourneeInfo.JourLibelle,
+                SchemaLivraison = tourneeInfo.SchemaLivraison,
+
+                JourTourneeRetour = retour.JourTourneeRetour,
+                JourRetourLibelle = retour.JourRetourLibelle,
+                CodeTourneeRetour = retour.CodeTourneeRetour,
+                LibelleTourneeRetour = retour.LibelleTourneeRetour,
+
                 Zone = infosLivreur.Zone,
                 ZoneDechargement = infosLivreur.ZoneDechargement,
-                JourTourneeRetour = ligneDto.Retour?.JourTourneeRetour,
+                ZoneDechargementAfficheeValeur = infosLivreur.ZoneDechargementAffichee,
+                Precision = infosLivreur.Precision,
+                Cle = infosLivreur.Cle,
+
                 EstFerme = infosLivreur.EstFerme,
                 DateFermeture = infosLivreur.DateFermeture,
                 MotifFermeture = infosLivreur.MotifFermeture,
+
                 Instructions = infosLivreur.Instructions,
                 CommentaireFiche = infosLivreur.CommentaireFiche,
+                CommentaireExceptionnel = commentaireExceptionnel,
+
                 StatutPassage = StatutPassageConstants.AFaire,
                 EstValidee = false,
                 HeureValidation = null,
-                CommentaireLivreur = null
+                CommentaireLivreur = null,
+                PrecisionLivreur = null
             };
 
             await db.InsertAsync(ligne);
@@ -130,6 +215,7 @@ public sealed class DatabaseService
                         LigneId = ligne.Id,
                         CodeArticle = quantite.CodeArticle,
                         Libelle = quantite.Libelle ?? quantite.CodeArticle,
+                        QuantiteLivreePrevue = quantite.QuantiteLivreePrevue,
                         QuantiteLivree = Math.Max(0, quantite.QuantiteLivree),
                         QuantiteRecuperee = Math.Max(0, quantite.QuantiteRecuperee)
                     });
@@ -144,6 +230,7 @@ public sealed class DatabaseService
                         LigneId = ligne.Id,
                         CodeArticle = article.CodeArticle,
                         Libelle = article.Libelle,
+                        QuantiteLivreePrevue = null,
                         QuantiteLivree = 0,
                         QuantiteRecuperee = 0
                     });
@@ -166,6 +253,20 @@ public sealed class DatabaseService
         return await db.Table<LocalTournee>()
             .OrderByDescending(t => t.DateChargement)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<LocalTournee?> GetActiveTourneeAsync()
+    {
+        var db = await GetDatabaseAsync();
+
+        var tournees = await db.Table<LocalTournee>()
+            .OrderByDescending(t => t.DateChargement)
+            .ToListAsync();
+
+        return tournees.FirstOrDefault(tournee =>
+            !tournee.EstVerrouillee
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)
@@ -232,11 +333,14 @@ public sealed class DatabaseService
 
         var request = new SynchronisationTourneeRequest
         {
-            SchemaVersion = "1.1",
+            SchemaVersion = string.IsNullOrWhiteSpace(tournee.SchemaVersion)
+                ? AppConfig.SchemaVersion
+                : tournee.SchemaVersion,
             IdSynchronisation = tournee.IdSynchronisation,
             DateTournee = tournee.DateTournee.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             CodeTournee = tournee.CodeTournee,
             LibelleTournee = tournee.LibelleTournee,
+            StatutSynchronisation = "ENVOYEE",
             Livreur = new SynchronisationLivreurRequest
             {
                 CodeLivreur = tournee.CodeLivreur,
@@ -263,22 +367,64 @@ public sealed class DatabaseService
             {
                 IdLigneSource = ligne.IdLigneSource,
                 OrdreArret = ligne.OrdreArret,
+                Horaire = ligne.Horaire,
                 Client = new SynchronisationClientRequest
                 {
                     NumClient = ligne.NumClient,
                     NomClient = ligne.NomClient,
-                    NomAffiche = string.IsNullOrWhiteSpace(ligne.NomClient)
-                        ? ligne.NumClient
-                        : $"{ligne.NumClient} - {ligne.NomClient}"
+                    NomAffiche = string.IsNullOrWhiteSpace(ligne.NomAffiche)
+                        ? string.IsNullOrWhiteSpace(ligne.NomClient)
+                            ? ligne.NumClient
+                            : $"{ligne.NumClient} - {ligne.NomClient}"
+                        : ligne.NomAffiche
                 },
                 PointLivraison = new SynchronisationPointLivraisonRequest
                 {
                     CodePDL = ligne.CodePDL ?? string.Empty,
-                    DescriptionPDL = ligne.DescriptionPDL ?? string.Empty
+                    DescriptionPDL = ligne.DescriptionPDL ?? string.Empty,
+                    AdresseLigne1 = ligne.AdresseLigne1,
+                    AdresseLigne2 = ligne.AdresseLigne2,
+                    AdresseLigne3 = ligne.AdresseLigne3,
+                    Ville = ligne.Ville,
+                    CodePostal = ligne.CodePostal
+                },
+                Tournee = new SynchronisationTourneeInfoRequest
+                {
+                    CodeTournee = string.IsNullOrWhiteSpace(ligne.CodeTournee)
+                        ? tournee.CodeTournee
+                        : ligne.CodeTournee,
+                    LibelleTournee = string.IsNullOrWhiteSpace(ligne.LibelleTournee)
+                        ? tournee.LibelleTournee
+                        : ligne.LibelleTournee,
+                    JourTournee = ligne.JourTournee,
+                    JourLibelle = ligne.JourLibelle,
+                    SchemaLivraison = ligne.SchemaLivraison
+                },
+                Retour = new SynchronisationRetourInfoRequest
+                {
+                    JourTourneeRetour = ligne.JourTourneeRetour,
+                    JourRetourLibelle = ligne.JourRetourLibelle,
+                    CodeTourneeRetour = ligne.CodeTourneeRetour,
+                    LibelleTourneeRetour = ligne.LibelleTourneeRetour
+                },
+                InfosLivreur = new SynchronisationInfosLivreurRequest
+                {
+                    Instructions = ligne.Instructions,
+                    CommentaireExceptionnel = ligne.CommentaireExceptionnel,
+                    ZoneDechargement = ligne.ZoneDechargement,
+                    ZoneDechargementAffichee = ligne.ZoneDechargementAffichee,
+                    Zone = ligne.Zone,
+                    Precision = ligne.Precision,
+                    Cle = ligne.Cle,
+                    EstFerme = ligne.EstFerme,
+                    DateFermeture = ligne.DateFermeture,
+                    MotifFermeture = ligne.MotifFermeture
                 },
                 Saisie = new SynchronisationSaisieRequest
                 {
-                    PrecisionLivreur = null,
+                    PrecisionLivreur = string.IsNullOrWhiteSpace(ligne.PrecisionLivreur)
+                        ? null
+                        : ligne.PrecisionLivreur.Trim(),
                     StatutPassage = ligne.StatutPassage,
                     CommentaireLivreur = string.IsNullOrWhiteSpace(ligne.CommentaireLivreur)
                         ? null
@@ -291,6 +437,7 @@ public sealed class DatabaseService
                     {
                         CodeArticle = q.CodeArticle,
                         Libelle = q.Libelle,
+                        QuantiteLivreePrevue = q.QuantiteLivreePrevue,
                         QuantiteLivree = q.QuantiteLivree,
                         QuantiteRecuperee = q.QuantiteRecuperee
                     }).ToList()

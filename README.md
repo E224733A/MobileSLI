@@ -4,23 +4,33 @@
 
 L’application mobile **MobileSLI** a pour objectif de remplacer progressivement la fiche papier utilisée par les livreurs pour les tournées quotidiennes.
 
-Elle doit conserver la logique métier actuelle de l’entreprise, tout en apportant une saisie plus fiable, une meilleure traçabilité et une réduction des ressaisies manuelles.
+Elle doit conserver la logique métier actuelle de l’entreprise, tout en apportant :
+
+- une saisie plus fiable ;
+- une meilleure traçabilité ;
+- une réduction des ressaisies manuelles ;
+- un fonctionnement utilisable hors connexion pendant la tournée ;
+- une synchronisation contrôlée vers l’API en fin de journée.
 
 L’application doit permettre au livreur de :
 
-- se connecter au dépôt ;
-- vérifier que l’API est accessible ;
+- vérifier que l’API est accessible au dépôt ;
 - s’identifier avec son code livreur ;
 - choisir la tournée du jour ;
-- charger les points de livraison ;
+- charger les points de livraison depuis l’API ;
+- sauvegarder la tournée localement dans SQLite ;
 - consulter les clients à livrer ;
 - consulter les informations de point de livraison ;
+- consulter les instructions permanentes ;
+- consulter les commentaires exceptionnels transmis par l’administration ou l’expédition ;
+- consulter les informations de retour et de déchargement ;
 - saisir les quantités livrées ;
 - saisir les quantités récupérées ;
+- modifier les quantités préremplies par l’expédition lorsque la réalité terrain est différente ;
 - valider les passages ;
 - signaler un passage non fait ;
 - signaler une anomalie ;
-- ajouter un commentaire lorsque c’est nécessaire ;
+- ajouter un commentaire lorsque c’est obligatoire ;
 - consulter une aide au déchargement des articles récupérés ;
 - vérifier un récapitulatif de fin de tournée ;
 - synchroniser les données vers l’API en fin de journée.
@@ -58,7 +68,25 @@ Elle doit fonctionner dans deux contextes :
 
 Le fonctionnement retenu est donc un fonctionnement **hors connexion après chargement**.
 
-L’application doit être capable de charger la tournée le matin, de fonctionner localement pendant la journée, puis de synchroniser les données le soir.
+Le cycle complet est le suivant :
+
+```text
+Matin au dépôt
+↓
+Chargement de la tournée depuis l’API
+↓
+Stockage local SQLite
+↓
+Utilisation hors connexion pendant la tournée
+↓
+Retour au dépôt
+↓
+Récapitulatif
+↓
+Synchronisation finale vers l’API
+↓
+Verrouillage local après succès
+```
 
 ---
 
@@ -79,7 +107,13 @@ Il ouvre l’application mobile, puis :
 7. récupère les données depuis l’API ;
 8. sauvegarde la tournée localement dans SQLite.
 
-Route principale utilisée pour charger une tournée :
+Route de liste des tournées disponibles :
+
+```http
+GET /api/tournees/disponibles?dateTournee=YYYY-MM-DD&codeLivreur=YY
+```
+
+Route principale utilisée pour charger une tournée complète :
 
 ```http
 GET /api/tournees/jour?dateTournee=YYYY-MM-DD&codeTournee=XXXX&codeLivreur=YY
@@ -88,7 +122,7 @@ GET /api/tournees/jour?dateTournee=YYYY-MM-DD&codeTournee=XXXX&codeLivreur=YY
 Exemple :
 
 ```http
-GET /api/tournees/jour?dateTournee=2026-04-27&codeTournee=1001&codeLivreur=3
+GET /api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2
 ```
 
 Une fois les données enregistrées localement, le livreur peut quitter le dépôt et travailler sans connexion réseau.
@@ -103,9 +137,13 @@ Les actions locales comprennent :
 
 - consultation des points de livraison ;
 - consultation des informations client ;
-- consultation des instructions ;
+- consultation des instructions permanentes ;
+- consultation des commentaires exceptionnels ;
+- consultation des informations de retour ;
+- consultation de la zone de déchargement ;
 - saisie des quantités livrées ;
 - saisie des quantités récupérées ;
+- modification des quantités livrées préremplies par l’expédition ;
 - choix du statut de passage ;
 - ajout d’un commentaire en cas de passage non fait ;
 - ajout d’un commentaire en cas d’anomalie ;
@@ -157,8 +195,6 @@ Si l’API répond que la tournée a déjà été synchronisée, l’application
 
 ### 4.1 Plateforme cible
 
-L’application est prévue pour Android.
-
 | Élément | Choix retenu |
 |---|---|
 | Framework | .NET MAUI |
@@ -175,19 +211,15 @@ L’application est prévue pour Android.
 
 ### 4.2 Version Android
 
-Pour le projet actuel, la cible métier reste :
-
 | Élément | Valeur |
 |---|---|
 | Version minimale entreprise recommandée | Android 12 |
 | API minimale recommandée | API level 31 |
-| SDK Android recommandé pour compiler | API 35 ou API 36 selon environnement .NET |
+| SDK Android recommandé pour compiler | API 35 ou API 36 selon l’environnement .NET |
 | Téléphone de test actuel | Android récent / Android 16 |
-| Spécificité Android 16 | Attention à la compatibilité des bibliothèques natives SQLite avec les pages mémoire 16 Ko |
+| Spécificité Android 16 | Vérifier la compatibilité SQLite avec les pages mémoire 16 Ko |
 
-Le téléphone personnel utilisé pour les tests peut être plus récent que les futurs téléphones professionnels.
-
-Cela ne change pas la cible métier principale :
+La cible métier principale reste :
 
 ```text
 Android 12 / API 31 minimum pour les téléphones professionnels
@@ -195,7 +227,7 @@ Android 12 / API 31 minimum pour les téléphones professionnels
 
 Le SDK de compilation peut être plus récent que la version minimale supportée.
 
-Exemple :
+Configuration actuelle possible :
 
 ```xml
 <TargetFramework>net10.0-android</TargetFramework>
@@ -204,10 +236,7 @@ Exemple :
 <AndroidCompileSdkVersion>36</AndroidCompileSdkVersion>
 ```
 
-Remarque :
-
-`SupportedOSPlatformVersion` indique la version minimale supportée côté application .NET. 
-La cible métier peut rester Android 12 même si la valeur technique minimale est plus basse pour faciliter les tests.
+`SupportedOSPlatformVersion` indique la version minimale supportée côté application .NET. La cible métier peut rester Android 12 même si la valeur technique minimale est plus basse pour faciliter les tests.
 
 ---
 
@@ -219,7 +248,8 @@ Outils recommandés :
 
 - Visual Studio 2026 ou version compatible avec .NET MAUI ;
 - SDK .NET 10 ;
-- workloads Android et MAUI ;
+- workload .NET MAUI ;
+- workload Android ;
 - Android SDK Platform Tools ;
 - JDK compatible ;
 - téléphone Android avec débogage USB ;
@@ -239,64 +269,426 @@ En français :
 Développement d’interface utilisateur d’application multiplateforme .NET
 ```
 
-### 5.3 Vérifications utiles
+### 5.3 Chemins utilisés dans les commandes
 
-Commandes utiles :
+Adapter les chemins si nécessaire.
+
+Projet API :
 
 ```powershell
-dotnet --info
-dotnet workload list
-adb devices -l
-adb reverse --list
+C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core
 ```
 
-Pour compiler :
+Projet mobile :
 
 ```powershell
-dotnet build -f net10.0-android
+C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI
 ```
 
-Pour lancer sur téléphone physique :
+ADB :
 
 ```powershell
-dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
+C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe
 ```
 
 ---
 
-## 6. Tests sur téléphone physique
+## 6. Commandes complètes de test sur téléphone physique
 
-Pour tester l’application sur un vrai téléphone Android, la configuration attendue est :
+Cette section décrit le protocole complet pour tester l’application mobile sur un téléphone Android physique avec `adb reverse`.
 
-- téléphone Android ;
-- mode développeur activé ;
-- débogage USB activé ;
-- connexion USB fonctionnelle avec le PC ;
-- téléphone reconnu par ADB ;
-- API lancée sur le PC de développement ou sur une VM ;
-- application configurée avec la bonne adresse API.
+Dans ce mode :
 
-### 6.1 Vérifier que le téléphone est reconnu
+- l’API tourne sur le PC ;
+- le téléphone est branché en USB ;
+- `adb reverse` redirige le port `5000` du téléphone vers le port `5000` du PC ;
+- l’application mobile doit utiliser l’adresse API `http://127.0.0.1:5000`.
 
-Commande :
+### 6.1 Ouvrir PowerShell
+
+Ouvrir PowerShell en utilisateur normal.
+
+Si une commande réseau ou firewall échoue plus tard, ouvrir PowerShell en administrateur uniquement pour cette commande.
+
+---
+
+### 6.2 Vérifier .NET
 
 ```powershell
-adb devices -l
+dotnet --info
+```
+
+```powershell
+dotnet workload list
+```
+
+Vérifier que les workloads MAUI / Android sont présents.
+
+---
+
+### 6.3 Vérifier ADB
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+```
+
+```powershell
+.\adb.exe version
+```
+
+```powershell
+.\adb.exe kill-server
+```
+
+```powershell
+.\adb.exe start-server
+```
+
+```powershell
+.\adb.exe devices -l
 ```
 
 Résultat attendu :
 
 ```text
-device
+List of devices attached
+RZGYB1XV04B device product:a56xnaeea model:SM_A566B device:a56x transport_id:...
 ```
 
-Exemple :
+Si le téléphone apparaît en `unauthorized` :
+
+1. déverrouiller le téléphone ;
+2. accepter la demande de débogage USB ;
+3. relancer :
+
+```powershell
+.\adb.exe devices -l
+```
+
+Si aucun téléphone n’apparaît :
+
+1. vérifier le câble USB ;
+2. mettre le mode USB en transfert de fichiers ;
+3. vérifier que le débogage USB est activé ;
+4. relancer :
+
+```powershell
+.\adb.exe kill-server
+.\adb.exe start-server
+.\adb.exe devices -l
+```
+
+---
+
+### 6.4 Lancer l’API avec la bonne adresse pour le test USB
+
+Ouvrir un deuxième PowerShell.
+
+Aller dans le dossier de l’API :
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core"
+```
+
+Nettoyer et restaurer si nécessaire :
+
+```powershell
+dotnet restore
+```
+
+Lancer l’API sur `127.0.0.1:5000` :
+
+```powershell
+dotnet run --urls "http://127.0.0.1:5000"
+```
+
+Laisser cette fenêtre ouverte.
+
+Adresse attendue côté PC :
 
 ```text
-RZGYB1XV04B device product:a56xnaeea model:SM_A566B device:a56x
+http://127.0.0.1:5000
 ```
 
-Si le téléphone apparaît en `unauthorized`, il faut accepter la demande de débogage USB sur le téléphone.
+Adresse attendue côté application mobile avec `adb reverse` :
+
+```text
+http://127.0.0.1:5000
+```
+
+Explication : grâce à `adb reverse`, le `127.0.0.1` du téléphone est redirigé vers le `127.0.0.1` du PC.
+
+---
+
+### 6.5 Vérifier que l’API répond depuis le PC
+
+Ouvrir un troisième PowerShell.
+
+Tester la route de santé :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/health"
+```
+
+Tester la connexion ABSSolute si la route existe :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/health/abssolute"
+```
+
+Tester la connexion base mobile si la route existe :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/health/mobile"
+```
+
+Tester les livreurs :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/livreurs"
+```
+
+Tester les tournées disponibles :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/tournees/disponibles?dateTournee=2026-05-07&codeLivreur=2"
+```
+
+Tester le chargement d’une tournée complète :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2"
+```
+
+Si une route renvoie une erreur métier, vérifier que la date, le code tournée et le code livreur existent réellement dans les données de test.
+
+---
+
+### 6.6 Configurer `adb reverse`
+
+Revenir dans le PowerShell où ADB est ouvert :
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+```
+
+Supprimer les anciens reverse :
+
+```powershell
+.\adb.exe reverse --remove-all
+```
+
+Créer la redirection :
+
+```powershell
+.\adb.exe reverse tcp:5000 tcp:5000
+```
+
+Vérifier la redirection :
+
+```powershell
+.\adb.exe reverse --list
+```
+
+Résultat attendu :
+
+```text
+RZGYB1XV04B tcp:5000 tcp:5000
+```
+
+---
+
+### 6.7 Vérifier l’accès API depuis le téléphone
+
+Toujours depuis ADB :
+
+```powershell
+.\adb.exe shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:5000/api/health"
+```
+
+Le navigateur du téléphone doit s’ouvrir sur la réponse de l’API.
+
+Si le navigateur ne répond pas :
+
+1. vérifier que l’API tourne toujours ;
+2. vérifier `adb devices -l` ;
+3. relancer :
+
+```powershell
+.\adb.exe reverse --remove-all
+.\adb.exe reverse tcp:5000 tcp:5000
+.\adb.exe reverse --list
+```
+
+Puis retester :
+
+```powershell
+.\adb.exe shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:5000/api/health"
+```
+
+---
+
+### 6.8 Vérifier l’adresse API dans l’application mobile
+
+Dans le projet mobile, le fichier à vérifier est :
+
+```text
+Configuration/AppConfig.cs
+```
+
+Aller dans le dossier du projet mobile :
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+```
+
+Afficher la configuration :
+
+```powershell
+Get-Content ".\Configuration\AppConfig.cs"
+```
+
+La valeur attendue pour le test sur téléphone physique avec `adb reverse` est :
+
+```csharp
+public const string ApiBaseUrl = "http://127.0.0.1:5000";
+```
+
+La version JSON attendue est :
+
+```csharp
+public const string SchemaVersion = "1.2";
+```
+
+Si l’adresse n’est pas bonne, modifier `Configuration/AppConfig.cs`.
+
+---
+
+### 6.9 Compiler l’application mobile
+
+Dans le dossier du projet mobile :
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+```
+
+Restaurer :
+
+```powershell
+dotnet restore
+```
+
+Compiler :
+
+```powershell
+dotnet build -f net10.0-android
+```
+
+Si la compilation échoue, corriger les erreurs avant d’essayer de lancer sur téléphone.
+
+---
+
+### 6.10 Nettoyer l’application installée sur le téléphone si nécessaire
+
+Cette étape est utile après une modification SQLite importante.
+
+Attention : cela supprime les données locales de l’application sur le téléphone.
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+```
+
+```powershell
+.\adb.exe uninstall fr.sli.mobiletournee
+```
+
+Si le résultat indique que le package n’existe pas, ce n’est pas bloquant.
+
+---
+
+### 6.11 Lancer l’application sur téléphone physique
+
+Revenir dans le projet mobile :
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+```
+
+Vérifier que le téléphone est toujours reconnu :
+
+```powershell
+& "C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe" devices -l
+```
+
+Vérifier que le reverse est toujours actif :
+
+```powershell
+& "C:\Program Files (x86)\Android\android-sdk\platform-tools\adb.exe" reverse --list
+```
+
+Lancer l’application :
+
+```powershell
+dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
+```
+
+L’application doit s’installer et s’ouvrir sur le téléphone.
+
+---
+
+### 6.12 Lire les logs Android pendant le test
+
+Ouvrir un PowerShell supplémentaire :
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+```
+
+Nettoyer les anciens logs :
+
+```powershell
+.\adb.exe logcat -c
+```
+
+Lire les logs utiles :
+
+```powershell
+.\adb.exe logcat | Select-String -Pattern "MobileSLI|monodroid|DOTNET|SQLite|AndroidRuntime|System.err"
+```
+
+Pour arrêter les logs :
+
+```text
+Ctrl + C
+```
+
+---
+
+### 6.13 Test fonctionnel complet sur le téléphone
+
+Dans l’application mobile :
+
+1. ouvrir l’écran d’accueil ;
+2. vérifier que l’adresse API affichée est `http://127.0.0.1:5000` ;
+3. appuyer sur le bouton de test de connexion ;
+4. vérifier que l’application affiche un état positif ;
+5. continuer vers l’identification ;
+6. sélectionner ou saisir un code livreur réel, par exemple `2` ;
+7. charger les tournées disponibles ;
+8. choisir une tournée, par exemple `4006` si elle existe pour la date testée ;
+9. confirmer le chargement ;
+10. vérifier que les points de livraison s’affichent ;
+11. ouvrir un point ;
+12. vérifier les instructions et le commentaire exceptionnel s’ils existent ;
+13. vérifier les quantités préremplies ;
+14. modifier une quantité livrée ;
+15. saisir une quantité récupérée ;
+16. valider le passage ;
+17. revenir à la liste ;
+18. vérifier l’aide au déchargement ;
+19. vérifier le récapitulatif ;
+20. synchroniser ;
+21. vérifier que la tournée est verrouillée après succès.
 
 ---
 
@@ -306,19 +698,9 @@ L’application communique uniquement avec l’API ASP.NET Core.
 
 Elle ne communique jamais directement avec SQL Server.
 
-### 7.1 Problème rencontré en développement
+### 7.1 Mode actuel recommandé en développement
 
-Dans l’environnement de test actuel :
-
-- le PC arrive à communiquer avec le téléphone ;
-- le téléphone n’arrive pas à joindre directement le PC par son IP locale.
-
-Constat :
-
-```text
-PC → téléphone : OK
-téléphone → PC : KO
-```
+Dans l’environnement de test actuel, le téléphone n’arrive pas toujours à joindre directement le PC par son IP locale.
 
 La solution temporaire retenue pour le développement est donc :
 
@@ -326,13 +708,13 @@ La solution temporaire retenue pour le développement est donc :
 adb reverse tcp:5000 tcp:5000
 ```
 
-Puis dans le téléphone ou l’application :
+Puis dans l’application :
 
 ```text
 http://127.0.0.1:5000
 ```
 
-Dans ce mode, `127.0.0.1` côté téléphone est redirigé vers le port 5000 du PC grâce à ADB.
+Dans ce mode, `127.0.0.1` côté téléphone est redirigé vers le port `5000` du PC grâce à ADB.
 
 ### 7.2 Pourquoi ne pas utiliser l’IP du PC dans ce cas ?
 
@@ -348,12 +730,12 @@ Le téléphone avait par exemple :
 192.168.1.26
 ```
 
-Même si les deux adresses semblent appartenir au même réseau `192.168.1.0/24`, les tests ont montré que la communication directe ne fonctionne pas. Car le reseaux stralink sur le téléphone n'est pas le même reseau que la connexion filaire du PC. 
+Même si les deux adresses semblent appartenir au même réseau `192.168.1.0/24`, les tests ont montré que la communication directe ne fonctionne pas. Le réseau Starlink utilisé par le téléphone n’est pas forcément le même réseau réel que la connexion filaire du PC.
 
 Informations observées :
 
 | Équipement | Adresse IP | Passerelle | MAC passerelle observée |
-|---|---:|---:|---|
+|---|---|---|---|
 | PC développement / API | 192.168.1.66/24 | 192.168.1.1 | 00-e0-4c-6e-d8-c1 |
 | Téléphone Android | 192.168.1.26/24 | 192.168.1.1 | 74:24:9f:d3:fa:7b |
 
@@ -381,44 +763,51 @@ Pouvez-vous vérifier si le Wi-Fi du téléphone et le réseau Ethernet du PC so
 
 ### 7.3 Modes d’adresse API selon le contexte
 
-| Contexte | Adresse à utiliser dans l’application |
-|---|---|
-| Téléphone physique avec adb reverse | `http://127.0.0.1:5000` |
-| Téléphone physique sans adb reverse | `http://IP_DU_PC:5000` |
-| Émulateur Android | `http://10.0.2.2:5000` |
-| Installation durable en entreprise | `https://nom-dns-interne` ou IP fixe |
-| Production recommandée | HTTPS avec certificat reconnu |
+| Contexte | Adresse à utiliser dans l’application | Commande API recommandée |
+|---|---|---|
+| Téléphone physique avec `adb reverse` | `http://127.0.0.1:5000` | `dotnet run --urls "http://127.0.0.1:5000"` |
+| Téléphone physique sans `adb reverse` | `http://IP_DU_PC:5000` | `dotnet run --urls "http://0.0.0.0:5000"` |
+| Émulateur Android | `http://10.0.2.2:5000` | `dotnet run --urls "http://127.0.0.1:5000"` |
+| Installation durable en entreprise | `https://nom-dns-interne` ou IP fixe | IIS / HTTPS |
+| Production recommandée | HTTPS avec certificat reconnu | IIS / HTTPS |
 
-### 7.4 Configuration centralisée recommandée
+### 7.4 Mode téléphone physique sans `adb reverse`
 
-Pour éviter de modifier l’URL API dans plusieurs fichiers, l’application doit avoir un fichier unique :
+Ce mode est utile uniquement si le téléphone et le PC sont vraiment sur le même réseau.
 
-```text
-Configuration/AppConfig.cs
+Lancer l’API sur toutes les interfaces réseau :
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core"
 ```
 
-Exemple pour le développement actuel :
+```powershell
+dotnet run --urls "http://0.0.0.0:5000"
+```
+
+Trouver l’IP du PC :
+
+```powershell
+ipconfig
+```
+
+Tester depuis le PC :
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/health"
+```
+
+```powershell
+curl.exe "http://IP_DU_PC:5000/api/health"
+```
+
+Dans `Configuration/AppConfig.cs`, utiliser :
 
 ```csharp
-namespace MobileSLI.Configuration;
-
-public static class AppConfig
-{
-    public const string ApiBaseUrl = "http://127.0.0.1:5000";
-}
+public const string ApiBaseUrl = "http://IP_DU_PC:5000";
 ```
 
-Exemple pour un accès réseau direct :
-
-```csharp
-public const string ApiBaseUrl = "http://192.168.1.66:5000";
-```
-
-Exemple pour l’émulateur :
-
-```csharp
-public const string ApiBaseUrl = "http://10.0.2.2:5000";
-```
+Si le téléphone ne peut pas accéder à l’IP du PC, revenir au mode `adb reverse`.
 
 ### 7.5 Production ou installation durable
 
@@ -455,24 +844,38 @@ Les données préremplies peuvent contenir :
 - date de tournée ;
 - code tournée ;
 - libellé tournée ;
+- statut de synchronisation initial ;
 - code livreur ;
 - nom livreur ;
+- nombre de points envoyés ;
+- liste des articles saisissables ;
+- identifiant source de ligne ;
+- ordre d’arrêt ;
+- horaire ;
+- client ;
 - numéro client ;
 - nom client ;
+- nom affiché du client ;
+- point de livraison ;
 - code point de livraison ;
 - description du point de livraison ;
 - adresse ;
 - ville ;
 - code postal ;
-- ordre d’arrêt ;
-- jour de tournée ;
-- tournée retour si disponible ;
-- description du retour si disponible ;
-- instructions ;
-- commentaire de fiche ;
+- informations de tournée ;
+- informations de retour ;
+- jour de tournée retour ;
+- code tournée retour ;
+- libellé tournée retour ;
+- instructions permanentes ;
+- commentaire exceptionnel ;
+- zone ;
 - zone de déchargement ;
-- articles saisissables ;
-- quantités ou informations prévues si disponibles.
+- zone de déchargement affichée ;
+- clé ;
+- information de fermeture ;
+- motif de fermeture si disponible ;
+- quantités préremplies par l’expédition si disponibles.
 
 Ces données servent à éviter que le livreur ressaisisse des informations déjà connues.
 
@@ -483,6 +886,7 @@ Les données saisies dans l’application sont :
 - code livreur sélectionné ;
 - tournée choisie ;
 - statut du passage ;
+- précision libre du livreur ;
 - quantité livrée par article ;
 - quantité récupérée par article ;
 - commentaire livreur ;
@@ -496,66 +900,42 @@ Les quantités récupérées doivent être séparées des quantités livrées.
 
 Elles ne doivent jamais être représentées par une valeur négative.
 
----
+### 8.3 Quantités préremplies par l’expédition
 
-## 9. Écrans de l’application mobile
+Les préremplissages concernent uniquement la colonne `Livré`.
 
-La maquette mobile prévoit les écrans suivants.
+La colonne `Récupéré` reste saisie par le livreur pendant la tournée.
 
----
+La quantité prévue doit rester distincte de la quantité réelle saisie par le livreur.
 
-### 00 — Accueil
-
-Objectif : vérifier que le téléphone peut communiquer avec l’API au dépôt.
-
-L’écran affiche :
-
-- le titre de l’application ;
-- un bouton de test de connexion ;
-- l’état de connexion ;
-- un avertissement si la connexion est impossible ;
-- un bouton pour continuer vers l’identification.
-
-États possibles :
-
-- connecté ;
-- non connecté ;
-- erreur API ;
-- réseau indisponible.
-
-Le test de connexion sert uniquement à informer le livreur.
-
-Il ne doit pas forcément bloquer l’accès si une tournée est déjà chargée localement.
-
-Comportement attendu :
+Règle importante :
 
 ```text
-Si API accessible :
-    afficher un état positif
-    permettre le chargement d’une tournée
-
-Si API inaccessible mais tournée locale existante :
-    permettre de continuer en mode hors connexion
-
-Si API inaccessible et aucune tournée locale :
-    afficher un message d’erreur clair
+quantiteLivreePrevue = null → l’expédition n’a rien renseigné
+quantiteLivreePrevue = 0    → l’expédition a volontairement prévu zéro
+quantiteLivreePrevue > 0    → l’expédition a prévu une quantité
 ```
+
+Le livreur peut modifier `quantiteLivree`, car la réalité terrain peut être différente de la valeur prévue.
 
 ---
 
-### 01 — Identification livreur
+## 9. Routes API utilisées par le mobile
 
-Objectif : identifier le livreur à partir de son code.
+### 9.1 Vérification de l’API
 
-L’écran affiche :
+```http
+GET /api/health
+```
 
-- un champ de saisie du code livreur ;
-- éventuellement une liste des livreurs ;
-- un bouton de validation ;
-- le nom du livreur si le code est reconnu ;
-- un message d’erreur si le code est absent ou inconnu.
+Routes complémentaires utiles :
 
-Route API associée :
+```http
+GET /api/health/abssolute
+GET /api/health/mobile
+```
+
+### 9.2 Liste des livreurs
 
 ```http
 GET /api/livreurs
@@ -576,6 +956,92 @@ Réponse attendue :
 ]
 ```
 
+### 9.3 Liste des tournées disponibles
+
+```http
+GET /api/tournees/disponibles?dateTournee=2026-05-07&codeLivreur=2
+```
+
+Réponse v1.2 recommandée :
+
+```json
+{
+  "schemaVersion": "1.2",
+  "dateTournee": "2026-05-07",
+  "dateModifiable": false,
+  "livreur": {
+    "codeLivreur": "2",
+    "nomLivreur": "DAVID LEBAS"
+  },
+  "tournees": [
+    {
+      "codeTournee": "4006",
+      "libelleTournee": "TOURNEE EXEMPLE",
+      "jourTournee": 4,
+      "jourLibelle": "Jeudi",
+      "nombrePoints": 18
+    }
+  ]
+}
+```
+
+### 9.4 Chargement d’une tournée complète
+
+```http
+GET /api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2
+```
+
+### 9.5 Envoi final d’une tournée
+
+```http
+POST /api/synchronisations
+```
+
+---
+
+## 10. Écrans de l’application mobile
+
+### 00 — Accueil
+
+Objectif : vérifier que le téléphone peut communiquer avec l’API au dépôt.
+
+L’écran affiche :
+
+- le titre de l’application ;
+- l’adresse API utilisée ;
+- un bouton de test de connexion ;
+- l’état de connexion ;
+- un avertissement si la connexion est impossible ;
+- un bouton pour continuer.
+
+Le test de connexion sert uniquement à informer le livreur.
+
+Il ne doit pas bloquer l’accès si une tournée est déjà chargée localement.
+
+Comportement attendu :
+
+```text
+Si API accessible :
+    afficher un état positif
+    permettre le chargement d’une tournée
+
+Si API inaccessible mais tournée locale non synchronisée existante :
+    permettre de continuer en mode hors connexion
+
+Si API inaccessible et aucune tournée locale :
+    afficher un message d’erreur clair
+```
+
+### 01 — Identification livreur
+
+Objectif : identifier le livreur à partir de son code.
+
+Route API associée :
+
+```http
+GET /api/livreurs
+```
+
 Règles :
 
 - le code livreur est obligatoire ;
@@ -585,8 +1051,6 @@ Règles :
 - le code livreur ne doit pas être imposé en dur ;
 - l’application ne doit pas être limitée au livreur `2`.
 
----
-
 ### 02 — Choix de la tournée
 
 Objectif : afficher les tournées disponibles pour le livreur et la date du jour.
@@ -595,8 +1059,7 @@ L’écran affiche :
 
 - le livreur identifié ;
 - la date du jour ;
-- une barre de recherche ou de filtre ;
-- la liste des tournées disponibles ;
+- une liste de tournées disponibles ;
 - le nombre de tournées trouvées ;
 - un bouton pour continuer avec la tournée sélectionnée.
 
@@ -604,73 +1067,17 @@ La date du jour est affichée mais non modifiable.
 
 Une tournée doit être sélectionnée avant de continuer.
 
-Point important :
-
-La route confirmée actuellement pour l’API charge une tournée complète à partir de `dateTournee`, `codeTournee` et `codeLivreur`.
-
-Exemple :
-
-```http
-GET /api/tournees/jour?dateTournee=2026-04-27&codeTournee=1001&codeLivreur=3
-```
-
-Pour afficher une vraie liste de tournées dans cet écran, deux possibilités existent :
-
-#### — Ajouter une route API dédiée
-
-Exemple cible :
-
-```http
-GET /api/tournees/disponibles?dateTournee=2026-05-04&codeLivreur=2
-```
-
-Réponse attendue :
-
-```json
-[
-  {
-    "codeTournee": "1001",
-    "libelleTournee": "CHATAIGNERAIE LES HERBIERS",
-    "jourTournee": 1,
-    "jourLibelle": "Lundi",
-    "nombrePoints": 7
-  }
-]
-```
-
 ### 03 — Confirmation du choix de tournée
 
 Objectif : confirmer la tournée avant son chargement local.
 
-L’écran affiche :
-
-- le livreur ;
-- la date ;
-- le code tournée ;
-- le libellé tournée ;
-- le nombre de points de livraison prévus ;
-- un avertissement indiquant qu’une fois chargée, la tournée est enregistrée sur le téléphone ;
-- une information indiquant que le livreur pourra travailler sans connexion.
-
-Actions possibles :
-
-- charger la tournée ;
-- revenir au choix de tournée.
-
-La confirmation doit appeler l’API uniquement si les informations nécessaires sont connues :
-
-```text
-dateTournee
-codeTournee
-codeLivreur
-```
-Exemple :
+La confirmation appelle :
 
 ```http
-GET /api/tournees/jour?dateTournee=2026-04-27&codeTournee=1001&codeLivreur=3
+GET /api/tournees/jour?dateTournee=YYYY-MM-DD&codeTournee=XXXX&codeLivreur=YY
 ```
 
----
+Après réception, l’application sauvegarde la tournée dans SQLite.
 
 ### 04 — Liste des points de livraison
 
@@ -684,6 +1091,8 @@ L’écran affiche :
 - l’adresse ou une information utile ;
 - le statut du passage ;
 - un badge indiquant l’état du point ;
+- les instructions permanentes si elles existent ;
+- le commentaire exceptionnel si celui-ci existe ;
 - des filtres d’affichage.
 
 Filtres prévus :
@@ -693,13 +1102,9 @@ Filtres prévus :
 - fait ;
 - non fait ;
 - anomalie ;
-- fermé si l’information existe dans les données.
-
-Chaque point de livraison doit être ouvrable pour accéder à la saisie détaillée.
+- fermé si l’information existe.
 
 Les données affichées doivent provenir de SQLite après chargement de la tournée.
-
----
 
 ### 04 bis — Détail point / saisie
 
@@ -712,12 +1117,14 @@ L’écran affiche :
 - le client ;
 - le point de livraison ;
 - la zone ;
-- les instructions ;
-- le commentaire de fiche ;
+- les instructions permanentes ;
+- le commentaire exceptionnel ;
 - les quantités par article ;
+- la valeur prévue par l’expédition si elle existe ;
 - une colonne `Livré` ;
 - une colonne `Récupéré` ;
 - le statut du passage ;
+- la précision livreur ;
 - le commentaire livreur ;
 - le bouton de validation.
 
@@ -741,8 +1148,6 @@ Règles :
 - les champs de quantité doivent utiliser un clavier numérique ;
 - les boutons `+` et `-` ne sont pas retenus pour la première version.
 
----
-
 ### 05 — Déchargement du camion par client
 
 Objectif : aider le livreur à décharger correctement ce qu’il a récupéré.
@@ -750,8 +1155,6 @@ Objectif : aider le livreur à décharger correctement ce qu’il a récupéré.
 Cet écran ne remplace pas la synchronisation.
 
 Il sert uniquement d’aide opérationnelle au dépôt.
-
-L’écran affiche les articles récupérés, regroupés par client.
 
 Tri retenu :
 
@@ -767,18 +1170,6 @@ Chaque carte client affiche :
 - articles récupérés ;
 - quantités récupérées ;
 - zone de déchargement si disponible.
-
-Exemples d’informations affichées :
-
-- rolls récupérés ;
-- tapis récupérés ;
-- sacs récupérés ;
-- vêtements récupérés si ajout futur ;
-- zone ou emplacement de déchargement.
-
-L’écran doit permettre au livreur de vérifier rapidement ce qu’il doit sortir du camion.
-
----
 
 ### 06 — Récapitulatif avant envoi
 
@@ -801,15 +1192,11 @@ L’écran affiche :
 
 Avant l’envoi, l’application doit vérifier :
 
-- qu’il reste ou non des points à faire ;
+- qu’il ne reste pas de point à faire dans l’envoi final ;
 - que les anomalies ont un commentaire ;
 - que les passages non faits ont un commentaire ;
 - que les quantités sont valides ;
 - que les heures de validation existent pour les points validés.
-
-L’application peut autoriser l’envoi même s’il reste des points non faits, mais uniquement si les règles de commentaire sont respectées.
-
----
 
 ### 07 — Résultat synchronisation
 
@@ -828,8 +1215,6 @@ Après succès :
 - les données ne sont plus modifiables ;
 - un renvoi ne doit pas être proposé.
 
----
-
 ### 07 bis — Cas d’erreur
 
 Objectif : gérer les erreurs de synchronisation de manière compréhensible.
@@ -841,6 +1226,7 @@ Cas possibles :
 - erreur de validation ;
 - tournée déjà synchronisée ;
 - doublon d’identifiant de synchronisation ;
+- double envoi métier de la même tournée ;
 - erreur serveur.
 
 En cas d’erreur réseau ou API indisponible :
@@ -857,9 +1243,7 @@ En cas de tournée déjà synchronisée :
 
 ---
 
-## 10. Architecture technique mobile
-
-L’application mobile doit être organisée avec une architecture simple, lisible et maintenable.
+## 11. Architecture technique mobile
 
 Structure recommandée :
 
@@ -868,16 +1252,13 @@ Pages/
 ViewModels/
 Models/
 Services/
-Repositories/
 Resources/
 Configuration/
 ```
 
-### 10.1 Pages
+### 11.1 Pages
 
-Les pages correspondent aux écrans XAML affichés à l’utilisateur.
-
-Pages prévues :
+Pages principales :
 
 - `AccueilPage`
 - `IdentificationLivreurPage`
@@ -890,11 +1271,9 @@ Pages prévues :
 - `SyncResultPage`
 - `SyncErrorPage`
 
-### 10.2 ViewModels
+### 11.2 ViewModels
 
-Les ViewModels contiennent la logique d’affichage et les actions utilisateur.
-
-ViewModels prévus :
+ViewModels principaux :
 
 - `AccueilViewModel`
 - `IdentificationLivreurViewModel`
@@ -922,39 +1301,56 @@ Ils doivent gérer :
 - le calcul du récapitulatif ;
 - le verrouillage après synchronisation.
 
-### 10.3 Models
+### 11.3 Models
 
-Les models représentent les données manipulées par l’application.
-
-Exemples :
+Exemples de DTO reçus depuis l’API :
 
 - `LivreurDto`
-- `TourneeJourDto`
+- `TourneesDisponiblesResponseDto`
 - `TourneeResumeDto`
-- `TourneeLigneDto`
+- `TourneeJourDto`
+- `ChargementDto`
 - `ArticleSaisissableDto`
+- `TourneeLigneDto`
+- `ClientDto`
+- `PointLivraisonDto`
+- `TourneeInfoDto`
+- `RetourInfoDto`
+- `InfosLivreurDto`
+- `SaisieMobileDto`
+- `QuantiteSaisieMobileDto`
+
+Exemples de DTO envoyés à l’API :
+
 - `SynchronisationTourneeRequest`
+- `SynchronisationLivreurRequest`
+- `SynchronisationMobileRequest`
 - `SynchronisationLigneRequest`
-- `QuantiteArticleRequest`
-- `MobileInfoDto`
+- `SynchronisationClientRequest`
+- `SynchronisationPointLivraisonRequest`
+- `SynchronisationTourneeInfoRequest`
+- `SynchronisationRetourInfoRequest`
+- `SynchronisationInfosLivreurRequest`
+- `SynchronisationSaisieRequest`
+- `SynchronisationQuantiteRequest`
+
+Entités SQLite :
+
 - `LocalTournee`
 - `LocalTourneeLigne`
 - `LocalTourneeLigneQuantite`
 
-Il faut distinguer :
-
-- les DTO reçus depuis l’API ;
-- les DTO envoyés à l’API ;
-- les entités locales SQLite ;
-- les objets utilisés uniquement pour l’affichage.
-
 La structure doit rester évolutive pour permettre l’ajout futur de nouveaux articles sans modifier toute l’application.
 
-### 10.4 Services
+### 11.4 Services
 
 Services principaux :
 
-- `ApiService`
+- `ApiClient`
+- `HealthApiService`
+- `LivreursApiService`
+- `TourneesApiService`
+- `SynchronisationsApiService`
 - `DatabaseService`
 - `SettingsService`
 - `DemoDataService`
@@ -962,97 +1358,9 @@ Services principaux :
 - `SynchronisationService`
 - `AppStateService`
 
-#### ApiService
-
-Le service `ApiService` gère la communication avec l’API ASP.NET Core.
-
-Il appelle notamment :
-
-```http
-GET /api/health
-GET /api/livreurs
-GET /api/tournees/jour
-POST /api/synchronisations
-```
-
-Il doit gérer :
-
-- l’adresse de base de l’API ;
-- le chargement des livreurs ;
-- le chargement d’une tournée ;
-- l’envoi d’une synchronisation ;
-- les erreurs réseau ;
-- les erreurs retournées par l’API ;
-- la sérialisation JSON ;
-- la désérialisation JSON ;
-- les messages compréhensibles pour le livreur.
-
-#### DatabaseService
-
-Le service `DatabaseService` gère le stockage local SQLite.
-
-Il permet de :
-
-- mémoriser le livreur identifié ;
-- sauvegarder une tournée chargée ;
-- relire une tournée sans connexion ;
-- enregistrer les saisies client par client ;
-- enregistrer les quantités par article ;
-- enregistrer les statuts de passage ;
-- enregistrer les commentaires ;
-- enregistrer l’heure de validation ;
-- générer le JSON de synchronisation ;
-- verrouiller la tournée après envoi réussi.
-
-#### SettingsService
-
-Le service `SettingsService` garde les paramètres locaux :
-
-- adresse de l’API ;
-- nom de l’appareil ;
-- version de l’application ;
-- dernier code livreur utilisé si l’entreprise l’autorise ;
-- paramètres nécessaires aux tests.
-
-L’adresse de l’API doit pouvoir être modifiée facilement entre :
-
-- émulateur ;
-- téléphone physique avec `adb reverse`;
-- téléphone physique en accès réseau direct ;
-- VM ;
-- environnement final de l’entreprise.
-
-#### DemoDataService
-
-Le service `DemoDataService` permet de charger une tournée de démonstration.
-
-Il sert uniquement au développement pour tester l’interface et la navigation sans dépendre immédiatement de l’API.
-
-Il ne doit pas remplacer les tests réels avec l’API.
-
-En production, le mode démonstration doit être désactivé ou inaccessible pour les livreurs.
-
-#### AppStateService
-
-Le service `AppStateService` garde l’état courant de navigation et de sélection.
-
-Exemples :
-
-- livreur sélectionné ;
-- tournée sélectionnée ;
-- identifiant de tournée locale ;
-- ligne sélectionnée ;
-- dernier résultat de synchronisation.
-
-Il ne doit pas remplacer SQLite.
-
-Son rôle est de conserver un état temporaire en mémoire pendant l’utilisation de l’application.
-
 ---
 
-## 11. États locaux d’une tournée
-
-L’application doit gérer clairement l’état local de la tournée.
+## 12. États locaux d’une tournée
 
 États proposés :
 
@@ -1080,30 +1388,37 @@ Après l’état `SYNCHRONISEE`, la tournée est verrouillée localement.
 
 ---
 
-## 12. Format de chargement de la tournée
+## 13. Format de chargement de la tournée
 
 Route recommandée :
 
 ```http
-GET /api/tournees/jour?dateTournee=2026-05-04&codeTournee=2001&codeLivreur=2
+GET /api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2
 ```
 
 La date est calculée automatiquement par l’application à partir de la date du jour.
 
 Elle est affichée dans l’interface mais non modifiable par le livreur.
 
-### Exemple de réponse
+### 13.1 Structure générale
 
 ```json
 {
-  "schemaVersion": "1.1",
-  "dateTournee": "2026-05-04",
+  "schemaVersion": "1.2",
+  "dateTournee": "2026-05-07",
   "dateModifiable": false,
-  "codeTournee": "2001",
-  "libelleTournee": "MDR VENDEE",
+  "jourTournee": 4,
+  "jourLibelle": "Jeudi",
+  "codeTournee": "4006",
+  "libelleTournee": "TOURNEE EXEMPLE",
+  "statutSynchronisation": "NON_ENVOYEE",
   "livreur": {
     "codeLivreur": "2",
     "nomLivreur": "DAVID LEBAS"
+  },
+  "chargement": {
+    "dateGenerationApi": "2026-05-07T07:30:00+02:00",
+    "nombrePointsEnvoyes": 1
   },
   "articlesSaisissables": [
     {
@@ -1119,26 +1434,189 @@ Elle est affichée dans l’interface mais non modifiable par le livreur.
       "libelle": "Sacs"
     }
   ],
+  "lignes": []
+}
+```
+
+### 13.2 Structure d’une ligne
+
+```json
+{
+  "idLigneSource": "2026-05-07|4006|4|1058|1|1",
+  "ordreArret": 1,
+  "horaire": "1",
+  "client": {
+    "numClient": "1058",
+    "nomClient": "EHPAD L EQUAIZIERE",
+    "nomAffiche": "EHPAD EQUAIZIERE GARNACHE"
+  },
+  "pointLivraison": {
+    "codePDL": "1",
+    "descriptionPDL": "EHPAD EQUAIZIERE GARNACHE",
+    "adresseLigne1": "7 RUE JAN ET JOEL MARTEL",
+    "adresseLigne2": null,
+    "adresseLigne3": "-",
+    "ville": "LA GARNACHE",
+    "codePostal": "85710"
+  },
+  "tournee": {
+    "codeTournee": "4006",
+    "libelleTournee": "TOURNEE EXEMPLE",
+    "jourTournee": 4,
+    "jourLibelle": "Jeudi",
+    "schemaLivraison": "1W1"
+  },
+  "retour": {
+    "jourTourneeRetour": 4,
+    "jourRetourLibelle": "Jeudi",
+    "codeTourneeRetour": "4006",
+    "libelleTourneeRetour": "TOURNEE EXEMPLE"
+  },
+  "infosLivreur": {
+    "instructions": null,
+    "commentaireExceptionnel": "Prévoir passage avant 10h ce jour-là.",
+    "zoneDechargement": "EHPAD",
+    "zoneDechargementAffichee": "EHPAD",
+    "zone": "EHPAD",
+    "precision": null,
+    "cle": null,
+    "estFerme": false,
+    "dateFermeture": null,
+    "motifFermeture": null
+  },
+  "saisie": {
+    "precisionLivreur": null,
+    "statutPassage": "A_FAIRE",
+    "commentaireLivreur": null,
+    "heureValidation": null,
+    "estValidee": false,
+    "quantites": [
+      {
+        "codeArticle": "ROLLS",
+        "libelle": "Rolls",
+        "quantiteLivreePrevue": 2,
+        "quantiteLivree": 2,
+        "quantiteRecuperee": 0
+      },
+      {
+        "codeArticle": "TAPIS",
+        "libelle": "Tapis",
+        "quantiteLivreePrevue": null,
+        "quantiteLivree": 0,
+        "quantiteRecuperee": 0
+      },
+      {
+        "codeArticle": "SACS",
+        "libelle": "Sacs",
+        "quantiteLivreePrevue": 0,
+        "quantiteLivree": 0,
+        "quantiteRecuperee": 0
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 14. Format de synchronisation de fin de journée
+
+Route recommandée :
+
+```http
+POST /api/synchronisations
+```
+
+### 14.1 Exemple de JSON envoyé
+
+```json
+{
+  "schemaVersion": "1.2",
+  "idSynchronisation": "4e17a871-5fc5-4f49-8d01-4d791a6d9941",
+  "dateTournee": "2026-05-07",
+  "codeTournee": "4006",
+  "libelleTournee": "TOURNEE EXEMPLE",
+  "statutSynchronisation": "ENVOYEE",
+  "livreur": {
+    "codeLivreur": "2",
+    "nomLivreur": "DAVID LEBAS"
+  },
+  "mobile": {
+    "nomAppareil": "Samsung A15",
+    "versionApplication": "1.0.0",
+    "dateChargementMobile": "2026-05-07T07:30:00+02:00",
+    "dateEnvoiMobile": "2026-05-07T16:45:00+02:00"
+  },
+  "commentaireGlobal": null,
   "lignes": [
     {
-      "idLigneSource": "2026-05-04|2001|1|1058|PDL01|1",
+      "idLigneSource": "2026-05-07|4006|4|1058|1|1",
       "ordreArret": 1,
-      "numClient": "1058",
-      "nomClient": "HOTEL EXEMPLE",
-      "codePDL": "PDL01",
-      "descriptionPDL": "Entrée principale",
-      "zoneDechargement": "Zone 1",
-      "instructions": "Livraison par l'arrière",
-      "commentaireFiche": null,
+      "horaire": "1",
+      "client": {
+        "numClient": "1058",
+        "nomClient": "EHPAD L EQUAIZIERE",
+        "nomAffiche": "EHPAD EQUAIZIERE GARNACHE"
+      },
+      "pointLivraison": {
+        "codePDL": "1",
+        "descriptionPDL": "EHPAD EQUAIZIERE GARNACHE",
+        "adresseLigne1": "7 RUE JAN ET JOEL MARTEL",
+        "adresseLigne2": null,
+        "adresseLigne3": "-",
+        "ville": "LA GARNACHE",
+        "codePostal": "85710"
+      },
+      "tournee": {
+        "codeTournee": "4006",
+        "libelleTournee": "TOURNEE EXEMPLE",
+        "jourTournee": 4,
+        "jourLibelle": "Jeudi",
+        "schemaLivraison": "1W1"
+      },
+      "retour": {
+        "jourTourneeRetour": 4,
+        "jourRetourLibelle": "Jeudi",
+        "codeTourneeRetour": "4006",
+        "libelleTourneeRetour": "TOURNEE EXEMPLE"
+      },
+      "infosLivreur": {
+        "instructions": null,
+        "commentaireExceptionnel": "Prévoir passage avant 10h ce jour-là.",
+        "zoneDechargement": "EHPAD",
+        "zoneDechargementAffichee": "EHPAD",
+        "zone": "EHPAD",
+        "precision": null,
+        "cle": null,
+        "estFerme": false,
+        "dateFermeture": null,
+        "motifFermeture": null
+      },
       "saisie": {
-        "statutPassage": "A_FAIRE",
-        "estValidee": false,
-        "heureValidation": null,
+        "precisionLivreur": "2 rolls repris au local arrière",
+        "statutPassage": "FAIT",
         "commentaireLivreur": null,
+        "heureValidation": "2026-05-07T09:12:00+02:00",
+        "estValidee": true,
         "quantites": [
           {
             "codeArticle": "ROLLS",
-            "libelleArticle": "Rolls",
+            "libelle": "Rolls",
+            "quantiteLivreePrevue": 2,
+            "quantiteLivree": 3,
+            "quantiteRecuperee": 2
+          },
+          {
+            "codeArticle": "TAPIS",
+            "libelle": "Tapis",
+            "quantiteLivreePrevue": null,
+            "quantiteLivree": 1,
+            "quantiteRecuperee": 0
+          },
+          {
+            "codeArticle": "SACS",
+            "libelle": "Sacs",
+            "quantiteLivreePrevue": 0,
             "quantiteLivree": 0,
             "quantiteRecuperee": 0
           }
@@ -1149,112 +1627,101 @@ Elle est affichée dans l’interface mais non modifiable par le livreur.
 }
 ```
 
+Cette structure conserve :
+
+- la quantité livrée prévue par l’expédition ;
+- la quantité livrée réelle saisie ou confirmée par le livreur ;
+- la quantité récupérée réelle saisie par le livreur.
+
+Elle reste évolutive : si l’entreprise ajoute plus tard des vêtements, draps, serviettes ou d’autres articles, l’API pourra ajouter un nouvel objet dans `quantites[]` sans modifier toute l’application.
+
 ---
 
-## 13. Format de synchronisation de fin de journée
+## 15. Réponses attendues de l’API
 
-Route recommandée :
-
-```http
-POST /api/synchronisations
-```
-
-### Exemple de JSON envoyé
+### 15.1 Succès
 
 ```json
 {
-  "schemaVersion": "1.1",
-  "idSynchronisation": "7d3b3d5a-8dc4-4b2c-9f20-6b2170f1b321",
-  "dateTournee": "2026-05-04",
-  "codeTournee": "2001",
-  "libelleTournee": "MDR VENDEE",
-  "livreur": {
-    "codeLivreur": "2",
-    "nomLivreur": "DAVID LEBAS"
-  },
-  "mobile": {
-    "nomAppareil": "Samsung A12",
-    "versionApplication": "1.0.0",
-    "dateChargement": "2026-05-04T07:15:00",
-    "dateEnvoi": "2026-05-04T17:45:00"
-  },
-  "commentaireGlobal": null,
-  "lignes": [
+  "code": "SUCCESS",
+  "message": "Synchronisation enregistrée avec succès.",
+  "idSynchronisation": "4e17a871-5fc5-4f49-8d01-4d791a6d9941",
+  "dateReceptionApi": "2026-05-07T17:45:12+02:00",
+  "dateTournee": "2026-05-07",
+  "codeTournee": "4006",
+  "codeLivreur": "2",
+  "nombreLignesRecues": 1,
+  "nombreQuantitesRecues": 3
+}
+```
+
+### 15.2 Erreur de validation
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "La synchronisation contient des données invalides.",
+  "erreurs": [
     {
-      "idLigneSource": "2026-05-04|2001|1|1058|PDL01|1",
-      "ordreArret": 1,
-      "numClient": "1058",
-      "nomClient": "HOTEL EXEMPLE",
-      "codePDL": "PDL01",
-      "descriptionPDL": "Entrée principale",
-      "statutPassage": "FAIT",
-      "estValidee": true,
-      "heureValidation": "2026-05-04T15:42:00",
-      "commentaireLivreur": null,
-      "quantites": [
-        {
-          "codeArticle": "ROLLS",
-          "libelleArticle": "Rolls",
-          "quantiteLivree": 2,
-          "quantiteRecuperee": 1
-        },
-        {
-          "codeArticle": "TAPIS",
-          "libelleArticle": "Tapis",
-          "quantiteLivree": 4,
-          "quantiteRecuperee": 3
-        },
-        {
-          "codeArticle": "SACS",
-          "libelleArticle": "Sacs",
-          "quantiteLivree": 1,
-          "quantiteRecuperee": 0
-        }
-      ]
+      "champ": "lignes[0].saisie.commentaireLivreur",
+      "message": "Le commentaire livreur est obligatoire pour le statut ANOMALIE ou NON_FAIT."
     }
   ]
 }
 ```
 
-Cette structure est volontairement évolutive.
+### 15.3 Double envoi
 
-Si l’entreprise ajoute plus tard d’autres articles, par exemple :
+```json
+{
+  "code": "TOURNEE_ALREADY_SENT",
+  "message": "Cette tournée a déjà été envoyée pour ce livreur et cette date.",
+  "dateTournee": "2026-05-07",
+  "codeTournee": "4006",
+  "codeLivreur": "2"
+}
+```
 
-- vêtements ;
-- draps ;
-- serviettes ;
-- couvertures ;
-- autres produits ;
+### 15.4 Doublon technique
 
-l’API pourra ajouter un nouvel objet dans le tableau `quantites` sans modifier entièrement le contrat JSON.
+```json
+{
+  "code": "SYNCHRONISATION_ALREADY_EXISTS",
+  "message": "Cette synchronisation a déjà été reçue."
+}
+```
+
+### 15.5 Erreur serveur
+
+```json
+{
+  "code": "SERVER_ERROR",
+  "message": "Une erreur technique est survenue pendant le traitement de la synchronisation."
+}
+```
 
 ---
 
-## 14. Règles métier intégrées côté mobile
+## 16. Règles métier intégrées côté mobile
 
-### 14.1 Identification
-
-Règles :
+### 16.1 Identification
 
 - le livreur doit obligatoirement saisir ou sélectionner son code ;
 - le code livreur doit être reconnu avant le chargement d’une tournée ;
 - le nom du livreur est affiché après identification ;
 - les données sont associées au livreur identifié.
 
-### 14.2 Tournée
-
-Règles :
+### 16.2 Tournée
 
 - la date du jour est affichée mais non modifiable ;
 - le choix d’une tournée est obligatoire ;
 - les données sont associées à la tournée choisie ;
 - une tournée chargée est sauvegardée localement ;
+- une tournée locale non synchronisée doit être reprise automatiquement au redémarrage ;
 - une tournée synchronisée est verrouillée ;
 - une tournée déjà envoyée ne doit pas être renvoyée.
 
-### 14.3 Quantités
-
-Règles :
+### 16.3 Quantités
 
 - les quantités doivent être des entiers ;
 - les quantités doivent être positives ou nulles ;
@@ -1264,7 +1731,7 @@ Règles :
 - les champs de quantité doivent utiliser un clavier numérique ;
 - les boutons `+` et `-` ne sont pas retenus pour la première version.
 
-### 14.4 Statuts
+### 16.4 Statuts
 
 Statuts autorisés :
 
@@ -1285,9 +1752,7 @@ Règles :
 - un passage validé doit avoir une heure de validation ;
 - l’heure de validation est générée automatiquement.
 
-### 14.5 Synchronisation
-
-Règles :
+### 16.5 Synchronisation
 
 - la synchronisation se fait uniquement depuis le récapitulatif ;
 - l’application doit afficher un avertissement avant l’envoi ;
@@ -1298,9 +1763,32 @@ Règles :
 - les corrections après synchronisation sont réservées à l’administration ou à un responsable habilité ;
 - les corrections après synchronisation doivent être tracées.
 
+### 16.6 Validation avant envoi
+
+Avant d’appeler `POST /api/synchronisations`, l’application doit vérifier :
+
+- `schemaVersion = "1.2"` ;
+- `idSynchronisation` renseigné ;
+- `dateTournee` renseignée ;
+- `codeTournee` renseigné ;
+- `livreur.codeLivreur` renseigné ;
+- objet `mobile` renseigné ;
+- `lignes[]` non vide ;
+- `idLigneSource` renseigné pour chaque ligne ;
+- `idLigneSource` unique dans la requête ;
+- objet `saisie` renseigné pour chaque ligne ;
+- `saisie.quantites[]` non vide pour chaque ligne ;
+- `codeArticle` unique dans une même ligne ;
+- quantités positives ou nulles ;
+- `A_FAIRE` absent de l’envoi final ;
+- `NON_FAIT` avec commentaire obligatoire ;
+- `ANOMALIE` avec commentaire obligatoire ;
+- `estValidee = true` pour chaque ligne envoyée ;
+- `heureValidation` renseignée pour chaque ligne validée.
+
 ---
 
-## 15. Règles d’ergonomie issues de la maquette
+## 17. Règles d’ergonomie
 
 L’interface doit rester simple, lisible et adaptée à une utilisation rapide par des livreurs.
 
@@ -1314,7 +1802,9 @@ Principes retenus :
 - filtres simples sur la liste des points ;
 - récapitulatif clair avant envoi ;
 - messages d’erreur compréhensibles sans vocabulaire technique ;
-- aucune manipulation complexe pendant la tournée.
+- aucune manipulation complexe pendant la tournée ;
+- blocage du bouton retour Android sur les pages critiques ;
+- pas de bouton libre de réinitialisation de la tournée en production.
 
 Les écrans doivent être utilisables :
 
@@ -1326,26 +1816,28 @@ Les écrans doivent être utilisables :
 
 ---
 
-## 16. Points importants à respecter pour la première version
+## 18. Points importants à respecter pour la première version
 
-Pour la première version, il faut prioriser :
+Priorités :
 
 - identification livreur ;
 - choix de la tournée ;
 - chargement depuis l’API ;
 - sauvegarde SQLite ;
+- reprise d’une tournée locale non synchronisée ;
 - consultation hors connexion ;
+- affichage des instructions et commentaires exceptionnels ;
+- affichage des quantités préremplies ;
 - saisie livré / récupéré ;
 - validation des statuts ;
 - commentaire obligatoire si nécessaire ;
 - récapitulatif ;
 - synchronisation API ;
 - verrouillage après succès ;
-- gestion claire des erreurs.
+- gestion claire des erreurs ;
+- blocage du bouton retour Android.
 
-Les fonctionnalités secondaires ne sont pas prioritaires pour la première version.
-
-Exemples de fonctionnalités non prioritaires :
+Fonctionnalités non prioritaires :
 
 - statistiques avancées ;
 - recherche complexe ;
@@ -1358,9 +1850,11 @@ Le plus important est d’obtenir une application fiable, simple et cohérente a
 
 ---
 
-## 17. Fonctionnement actuel en mode démonstration
+## 19. Mode démonstration
 
-La version de démonstration sert à valider :
+Le mode démonstration sert uniquement au développement.
+
+Il peut aider à valider :
 
 - la navigation ;
 - les écrans ;
@@ -1369,30 +1863,20 @@ La version de démonstration sert à valider :
 - la saisie locale simulée ;
 - la structure générale de l’application.
 
-Elle peut contenir :
-
-- un livreur codé en dur ;
-- une tournée fictive ;
-- des clients fictifs ;
-- des quantités fictives ;
-- une synchronisation simulée.
-
-Ce mode est utile au début du développement, mais il ne doit pas être confondu avec le fonctionnement final.
+Il ne doit pas remplacer les tests réels avec l’API.
 
 À terme :
 
 ```text
 DemoDataService = uniquement pour développement
-ApiService + DatabaseService = fonctionnement réel
+ApiClient + DatabaseService = fonctionnement réel
 ```
 
-En production, le mode démonstration doit être désactivé.
+En production, le mode démonstration doit être désactivé ou inaccessible pour les livreurs.
 
 ---
 
-## 18. Passage progressif du mode démo aux données réelles
-
-Le passage aux données réelles doit être fait progressivement.
+## 20. Passage progressif du mode démo aux données réelles
 
 Ordre recommandé :
 
@@ -1402,12 +1886,11 @@ Objectif :
 
 - l’application compile ;
 - l’application se lance ;
-- la navigation fonctionne ;
-- les écrans de démo ne plantent pas.
+- la navigation fonctionne.
 
 ### Étape 2 — Centraliser la configuration API
 
-Créer ou vérifier :
+Fichier :
 
 ```text
 Configuration/AppConfig.cs
@@ -1415,14 +1898,16 @@ Configuration/AppConfig.cs
 
 Objectif :
 
-- ne changer l’adresse API qu’à un seul endroit.
+- ne changer l’adresse API qu’à un seul endroit ;
+- garder `schemaVersion = "1.2"` à un seul endroit.
 
-### Étape 3 — Stabiliser `ApiService`
+### Étape 3 — Stabiliser les services API
 
 Objectif :
 
 - tester `/api/health` ;
 - charger `/api/livreurs` ;
+- charger `/api/tournees/disponibles` ;
 - charger `/api/tournees/jour` ;
 - ne pas mélanger DTO API et données de démonstration.
 
@@ -1438,7 +1923,7 @@ Objectif :
 
 Objectif :
 
-- sélectionner ou saisir un code tournée ;
+- sélectionner un code tournée ;
 - appeler `/api/tournees/jour` ;
 - afficher les vraies informations de tournée.
 
@@ -1471,14 +1956,68 @@ Objectif :
 
 Objectif :
 
-- générer le JSON final ;
+- générer le JSON final v1.2 ;
 - envoyer à l’API ;
 - gérer les réponses ;
 - verrouiller la tournée après succès.
 
 ---
 
-## 19. Conclusion
+## 21. Commandes rapides à retenir
+
+### Lancer l’API pour test téléphone avec ADB reverse
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core"
+dotnet run --urls "http://127.0.0.1:5000"
+```
+
+### Vérifier l’API depuis le PC
+
+```powershell
+curl.exe "http://127.0.0.1:5000/api/health"
+curl.exe "http://127.0.0.1:5000/api/livreurs"
+curl.exe "http://127.0.0.1:5000/api/tournees/disponibles?dateTournee=2026-05-07&codeLivreur=2"
+curl.exe "http://127.0.0.1:5000/api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2"
+```
+
+### Vérifier le téléphone et activer ADB reverse
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+.\adb.exe kill-server
+.\adb.exe start-server
+.\adb.exe devices -l
+.\adb.exe reverse --remove-all
+.\adb.exe reverse tcp:5000 tcp:5000
+.\adb.exe reverse --list
+```
+
+### Tester l’API depuis le téléphone
+
+```powershell
+.\adb.exe shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:5000/api/health"
+```
+
+### Compiler et lancer l’application mobile
+
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+dotnet restore
+dotnet build -f net10.0-android
+dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
+```
+
+### Nettoyer l’installation mobile si la base SQLite locale pose problème
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+.\adb.exe uninstall fr.sli.mobiletournee
+```
+
+---
+
+## 22. Conclusion
 
 L’application mobile doit rester simple pour le livreur, mais robuste techniquement.
 
@@ -1498,6 +2037,8 @@ Saisie hors connexion
 Récapitulatif
 ↓
 Synchronisation
+↓
+Verrouillage
 ```
 
 Le mode démonstration est utile pour démarrer, mais il doit être progressivement remplacé par :

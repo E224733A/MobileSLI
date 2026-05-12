@@ -28,7 +28,7 @@
                             ItemsSource="{Binding Livreurs}"
                             SelectedItem="{Binding SelectedLivreur, Mode=TwoWay}"
                             SelectionMode="Single"
-                            HeightRequest="280">
+                            HeightRequest="380">
 
                             <CollectionView.EmptyView>
                                 <VerticalStackLayout Padding="12" Spacing="4">
@@ -80,39 +80,6 @@
                     </VerticalStackLayout>
                 </Frame>
 
-                <Frame Style="{StaticResource Card}">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Ou saisir un code livreur" Style="{StaticResource MutedText}" />
-                        <Entry
-                            Text="{Binding CodeLivreur}"
-                            Placeholder="Ex : 2"
-                            Keyboard="Numeric"
-                            Style="{StaticResource Input}" />
-                        <Button
-                            Text="Valider le code"
-                            Command="{Binding ValidateCommand}"
-                            Style="{StaticResource PrimaryButton}" />
-                    </VerticalStackLayout>
-                </Frame>
-
-                <Frame
-                    Style="{StaticResource Card}"
-                    BackgroundColor="{StaticResource SuccessBackground}"
-                    BorderColor="{StaticResource SuccessBorder}"
-                    IsVisible="{Binding IsLivreurRecognized}">
-                    <VerticalStackLayout Spacing="4">
-                        <Label
-                            Text="Livreur sélectionné"
-                            TextColor="{StaticResource SuccessText}"
-                            FontSize="12" />
-                        <Label
-                            Text="{Binding NomLivreur}"
-                            TextColor="{StaticResource SuccessText}"
-                            FontSize="20"
-                            FontAttributes="Bold" />
-                    </VerticalStackLayout>
-                </Frame>
-
                 <Frame
                     Style="{StaticResource Card}"
                     BackgroundColor="{StaticResource InfoBackground}"
@@ -123,7 +90,7 @@
                             TextColor="{StaticResource InfoText}"
                             FontSize="12" />
                         <Label
-                            Text="Les livreurs sont chargés depuis l'API réelle."
+                            Text="Les livreurs sont chargés depuis l'API réelle. Sélectionnez un livreur dans la liste pour continuer."
                             TextColor="{StaticResource InfoText}"
                             FontSize="13" />
                         <Label

@@ -18,4 +18,10 @@ public partial class SyncErrorPage : ContentPage
         base.OnAppearing();
         ViewModel.Refresh();
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        // Le retour après erreur doit rester contrôlé par l'application.
+        return true;
+    }
 }

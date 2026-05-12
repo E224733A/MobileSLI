@@ -18,4 +18,10 @@ public partial class DechargementPage : ContentPage
         base.OnAppearing();
         await ViewModel.LoadAsync();
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        // Page critique : on force la navigation par les boutons visibles.
+        return true;
+    }
 }

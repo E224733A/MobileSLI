@@ -1,3 +1,4 @@
+using MobileSLI.Configuration;
 using SQLite;
 
 namespace MobileSLI.Models;
@@ -6,6 +7,8 @@ public sealed class LocalTournee
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
+
+    public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
 
     [Indexed]
     public DateTime DateTournee { get; set; }
@@ -36,33 +39,76 @@ public sealed class LocalTourneeLigne
     public string IdLigneSource { get; set; } = string.Empty;
 
     public int OrdreArret { get; set; }
+    public string? Horaire { get; set; }
+
     public string NumClient { get; set; } = string.Empty;
     public string NomClient { get; set; } = string.Empty;
+    public string? NomAffiche { get; set; }
+
     public string? CodePDL { get; set; }
     public string? DescriptionPDL { get; set; }
     public string? AdresseLigne1 { get; set; }
+    public string? AdresseLigne2 { get; set; }
+    public string? AdresseLigne3 { get; set; }
     public string? Ville { get; set; }
     public string? CodePostal { get; set; }
+
+    public string? CodeTournee { get; set; }
+    public string? LibelleTournee { get; set; }
+    public int? JourTournee { get; set; }
+    public string? JourLibelle { get; set; }
+    public string? SchemaLivraison { get; set; }
+
+    public int? JourTourneeRetour { get; set; }
+    public string? JourRetourLibelle { get; set; }
+    public string? CodeTourneeRetour { get; set; }
+    public string? LibelleTourneeRetour { get; set; }
+
     public string? Zone { get; set; }
     public string? ZoneDechargement { get; set; }
-    public int? JourTourneeRetour { get; set; }
+
+    /*
+     * Valeur finale renvoyée par l'API lorsqu'elle applique déjà la règle métier.
+     * La propriété calculée ZoneDechargementAffichee l'utilise en priorité.
+     */
+    public string? ZoneDechargementAfficheeValeur { get; set; }
+
+    public string? Precision { get; set; }
+    public string? Cle { get; set; }
 
     public bool EstFerme { get; set; }
     public DateTime? DateFermeture { get; set; }
     public string? MotifFermeture { get; set; }
 
     public string? Instructions { get; set; }
+
+    /*
+     * Ancien champ conservé pour compatibilité.
+     */
     public string? CommentaireFiche { get; set; }
+
+    /*
+     * Commentaire ponctuel venant de l'administration ou de l'expédition.
+     * Ce n'est pas le commentaire saisi par le livreur.
+     */
+    public string? CommentaireExceptionnel { get; set; }
+
     public string StatutPassage { get; set; } = StatutPassageConstants.AFaire;
     public bool EstValidee { get; set; }
     public DateTime? HeureValidation { get; set; }
     public string? CommentaireLivreur { get; set; }
+    public string? PrecisionLivreur { get; set; }
 
     [Ignore]
     public string? ZoneDechargementAffichee
     {
         get
         {
+            if (!string.IsNullOrWhiteSpace(ZoneDechargementAfficheeValeur))
+            {
+                return ZoneDechargementAfficheeValeur.Trim();
+            }
+
             if (string.IsNullOrWhiteSpace(ZoneDechargement))
             {
                 return JourTourneeRetour?.ToString();
@@ -119,6 +165,13 @@ public sealed class LocalTourneeLigneQuantite
 
     public string CodeArticle { get; set; } = string.Empty;
     public string Libelle { get; set; } = string.Empty;
+
+    /*
+     * Pré-remplissage expédition pour la colonne Livré.
+     * null = non renseigné ; 0 = zéro volontaire ; > 0 = quantité prévue.
+     */
+    public int? QuantiteLivreePrevue { get; set; }
+
     public int QuantiteLivree { get; set; }
     public int QuantiteRecuperee { get; set; }
 }

@@ -18,7 +18,16 @@ public sealed class TourneesApiService
      * Appel léger :
      * GET /api/tournees/disponibles?dateTournee=YYYY-MM-DD&codeLivreur=XX
      *
-     * Réponse attendue :
+     * Réponse finale v1.2 :
+     * {
+     *   "schemaVersion": "1.2",
+     *   "dateTournee": "2026-05-07",
+     *   "dateModifiable": false,
+     *   "livreur": { ... },
+     *   "tournees": [ ... ]
+     * }
+     *
+     * Compatibilité conservée temporairement avec l'ancien format :
      * [
      *   { "codeTournee": "3001", "libelleTournee": "MDR VENDEE" }
      * ]
@@ -41,15 +50,40 @@ public sealed class TourneesApiService
                 ["codeLivreur"] = codeLivreur.Trim()
             });
 
-        var tournees = await _apiClient.GetAsync<List<TourneeResumeDto>>(
-            route,
-            cancellationToken);
+        var response = await _apiClient.GetRawAsync(route, cancellationToken);
 
-        return (tournees ?? [])
+        if (!response.IsSuccess)
+        {
+            throw new ApiClientException(
+                $"Erreur API HTTP {response.StatusCode} sur {route}",
+                response.StatusCode,
+                route,
+                response.Body);
+        }
+
+        var envelope = _apiClient.Deserialize<TourneesDisponiblesResponseDto>(response.Body);
+
+        IReadOnlyList<TourneeResumeDto>? tournees = null;
+        var effectiveDate = dateTournee.Date;
+
+        if (envelope is not null)
+        {
+            tournees = envelope.Tournees;
+            effectiveDate = envelope.DateTournee == default
+                ? dateTournee.Date
+                : envelope.DateTournee.Date;
+        }
+
+        if (tournees is null)
+        {
+            tournees = _apiClient.Deserialize<List<TourneeResumeDto>>(response.Body) ?? [];
+        }
+
+        return tournees
             .Where(tournee => !string.IsNullOrWhiteSpace(tournee.CodeTournee))
             .Select(tournee =>
             {
-                tournee.DateTournee = dateTournee.Date;
+                tournee.DateTournee = effectiveDate;
                 return tournee;
             })
             .OrderBy(tournee => TryParseInt(tournee.CodeTournee))

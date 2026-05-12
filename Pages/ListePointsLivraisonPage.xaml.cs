@@ -18,4 +18,11 @@ public partial class ListePointsLivraisonPage : ContentPage
         base.OnAppearing();
         await ViewModel.LoadAsync();
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        // Page critique : on bloque le retour Android.
+        // La navigation doit passer par les boutons visibles de l'application.
+        return true;
+    }
 }

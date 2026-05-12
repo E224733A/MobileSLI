@@ -132,6 +132,16 @@ public sealed class LigneListItemViewModel : ObservableObject
                 Ligne.Ville
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
+    public bool HasInstruction => !string.IsNullOrWhiteSpace(Ligne.Instructions);
+
+    public bool HasCommentaireExceptionnel => !string.IsNullOrWhiteSpace(Ligne.CommentaireExceptionnel);
+
+    public bool HasInformationLivreur => HasInstruction || HasCommentaireExceptionnel;
+
+    public string InstructionText => Ligne.Instructions ?? string.Empty;
+
+    public string CommentaireExceptionnelText => Ligne.CommentaireExceptionnel ?? string.Empty;
+
     public string StatutText
     {
         get
@@ -249,6 +259,15 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     public string CodeArticle => Entity.CodeArticle;
 
     public string Libelle => Entity.Libelle;
+
+    public int? QuantiteLivreePrevue => Entity.QuantiteLivreePrevue;
+
+    public bool HasQuantiteLivreePrevue => Entity.QuantiteLivreePrevue.HasValue;
+
+    public string QuantitePrevueText =>
+        Entity.QuantiteLivreePrevue.HasValue
+            ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
+            : "Prévu : non renseigné";
 
     public string QuantiteLivreeText
     {

@@ -12,6 +12,8 @@ public sealed class AccueilViewModel : BaseViewModel
     private readonly HealthApiService _healthApiService;
     private readonly SettingsService _settingsService;
     private readonly ConnectivityService _connectivityService;
+    private readonly DatabaseService _databaseService;
+    private readonly AppStateService _appStateService;
 
     private string _apiBaseUrl;
     private string _connectionTitle = "Connexion non testée";
@@ -21,11 +23,15 @@ public sealed class AccueilViewModel : BaseViewModel
     public AccueilViewModel(
         HealthApiService healthApiService,
         SettingsService settingsService,
-        ConnectivityService connectivityService)
+        ConnectivityService connectivityService,
+        DatabaseService databaseService,
+        AppStateService appStateService)
     {
         _healthApiService = healthApiService;
         _settingsService = settingsService;
         _connectivityService = connectivityService;
+        _databaseService = databaseService;
+        _appStateService = appStateService;
         _apiBaseUrl = _settingsService.ApiBaseUrl;
 
         TestConnectionCommand = new Command(
@@ -134,11 +140,20 @@ public sealed class AccueilViewModel : BaseViewModel
             SetBusy(true);
             ErrorMessage = string.Empty;
 
+            var activeTournee = await _databaseService.GetActiveTourneeAsync();
+            if (activeTournee is not null)
+            {
+                _appStateService.CurrentTourneeId = activeTournee.Id;
+
+                await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+                return;
+            }
+
             await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage));
         }
         catch (Exception exception)
         {
-            ErrorMessage = $"Impossible d'ouvrir l'écran d'identification : {exception.Message}";
+            ErrorMessage = $"Impossible d'ouvrir l'écran suivant : {exception.Message}";
             ConnectionTitle = "Navigation impossible";
             ConnectionMessage = ErrorMessage;
 

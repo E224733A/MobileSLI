@@ -21,20 +21,24 @@ public sealed class DechargementViewModel : BaseViewModel
     }
 
     public ObservableCollection<DechargementItemViewModel> Items { get; }
+
     public string CountText => $"{Items.Count} clients avec récupération";
 
     public ICommand GoRecapCommand { get; }
+
     public ICommand BackCommand { get; }
 
     public async Task LoadAsync()
     {
         Items.Clear();
+
         var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
 
         foreach (var ligne in lignes.OrderBy(l => l.NomClient).ThenBy(l => l.OrdreArret))
         {
             var quantites = await _databaseService.GetQuantitesAsync(ligne.Id);
             var recuperees = quantites.Where(q => q.QuantiteRecuperee > 0).ToList();
+
             if (recuperees.Count == 0)
             {
                 continue;
@@ -45,8 +49,8 @@ public sealed class DechargementViewModel : BaseViewModel
                 ClientText = $"{ligne.NumClient} - {ligne.NomClient}",
                 PointText = ligne.DescriptionPDL ?? string.Empty,
                 ZoneText = string.IsNullOrWhiteSpace(ligne.ZoneDechargementAffichee)
-                    ? "Zone non renseignée"
-                    : ligne.ZoneDechargementAffichee,
+                    ? "Zone : non renseignée"
+                    : $"Zone : {ligne.ZoneDechargementAffichee}",
                 ArticlesText = string.Join(" · ", recuperees.Select(q => $"{q.QuantiteRecuperee} {q.Libelle}"))
             });
         }
