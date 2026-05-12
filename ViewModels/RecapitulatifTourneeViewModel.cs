@@ -4,6 +4,7 @@ using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
 
@@ -12,6 +13,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     private readonly AppStateService _appStateService;
     private readonly DatabaseService _databaseService;
     private readonly SynchronisationService _synchronisationService;
+    private readonly HealthApiService _healthApiService;
 
     private LocalTournee? _tournee;
     private int _totalClients;
@@ -19,15 +21,29 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     private int _nonFaits;
     private int _anomalies;
     private string _commentaireGlobal = string.Empty;
+    private string _connectionMessage = string.Empty;
 
-    public RecapitulatifTourneeViewModel(AppStateService appStateService, DatabaseService databaseService, SynchronisationService synchronisationService)
+    public RecapitulatifTourneeViewModel(
+        AppStateService appStateService,
+        DatabaseService databaseService,
+        SynchronisationService synchronisationService,
+        HealthApiService healthApiService)
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
         _synchronisationService = synchronisationService;
+        _healthApiService = healthApiService;
 
         Articles = new ObservableCollection<RecapArticleViewModel>();
-        SendCommand = new Command(async () => await SendAsync(), () => !IsBusy);
+
+        TestConnectionCommand = new Command(
+            async () => await TestConnectionAsync(showAlert: true),
+            () => !IsBusy);
+
+        SendCommand = new Command(
+            async () => await SendAsync(),
+            () => !IsBusy);
+
         BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
     }
 
@@ -36,10 +52,30 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     public string ResumeText => _tournee is null ? "Résumé" : $"{_tournee.CodeTournee} — {_tournee.LibelleTournee}";
     public string DateText => _tournee is null ? string.Empty : _tournee.DateTournee.ToString("dd/MM/yyyy");
     public string LivreurText => _tournee?.NomLivreur ?? string.Empty;
-    public int TotalClients { get => _totalClients; set => SetProperty(ref _totalClients, value); }
-    public int Valides { get => _valides; set => SetProperty(ref _valides, value); }
-    public int NonFaits { get => _nonFaits; set => SetProperty(ref _nonFaits, value); }
-    public int Anomalies { get => _anomalies; set => SetProperty(ref _anomalies, value); }
+
+    public int TotalClients
+    {
+        get => _totalClients;
+        set => SetProperty(ref _totalClients, value);
+    }
+
+    public int Valides
+    {
+        get => _valides;
+        set => SetProperty(ref _valides, value);
+    }
+
+    public int NonFaits
+    {
+        get => _nonFaits;
+        set => SetProperty(ref _nonFaits, value);
+    }
+
+    public int Anomalies
+    {
+        get => _anomalies;
+        set => SetProperty(ref _anomalies, value);
+    }
 
     public string CommentaireGlobal
     {
@@ -47,11 +83,29 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         set => SetProperty(ref _commentaireGlobal, value);
     }
 
+    public string ConnectionMessage
+    {
+        get => _connectionMessage;
+        set
+        {
+            if (SetProperty(ref _connectionMessage, value))
+            {
+                OnPropertyChanged(nameof(HasConnectionMessage));
+            }
+        }
+    }
+
+    public bool HasConnectionMessage => !string.IsNullOrWhiteSpace(ConnectionMessage);
+
+    public ICommand TestConnectionCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand BackCommand { get; }
 
     public async Task LoadAsync()
     {
+        ErrorMessage = string.Empty;
+        LoadingMessage = "Préparation du récapitulatif...";
+
         _tournee = await _databaseService.GetTourneeAsync(_appStateService.CurrentTourneeId);
         if (_tournee is null)
         {
@@ -95,10 +149,86 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         OnPropertyChanged(nameof(LivreurText));
     }
 
+    private async Task<bool> TestConnectionAsync(bool showAlert)
+    {
+        if (IsBusy)
+        {
+            return false;
+        }
+
+        try
+        {
+            LoadingMessage = "Test de la connexion au dépôt...";
+            SetBusy(true);
+            ErrorMessage = string.Empty;
+
+            var result = await _healthApiService.TestConnectionAsync();
+
+            if (result.Success)
+            {
+                ConnectionMessage = "Connexion au dépôt OK. L’API est accessible.";
+
+                if (showAlert)
+                {
+                    await Shell.Current.CurrentPage.DisplayAlertAsync(
+                        "Connexion dépôt",
+                        "Connexion au dépôt OK. L’API est accessible.",
+                        "OK");
+                }
+
+                return true;
+            }
+
+            ConnectionMessage = string.Empty;
+            ErrorMessage = "Connexion au dépôt impossible. Veuillez vous connecter au Wi-Fi du dépôt avant d’envoyer la tournée.";
+
+            if (showAlert)
+            {
+                await Shell.Current.CurrentPage.DisplayAlertAsync(
+                    "Connexion au dépôt requise",
+                    "Impossible de joindre l’API. Veuillez vous connecter au Wi-Fi du dépôt avant d’envoyer la tournée.",
+                    "OK");
+            }
+
+            return false;
+        }
+        catch
+        {
+            ConnectionMessage = string.Empty;
+            ErrorMessage = "Connexion au dépôt impossible. Veuillez vous connecter au Wi-Fi du dépôt avant d’envoyer la tournée.";
+
+            if (showAlert)
+            {
+                await Shell.Current.CurrentPage.DisplayAlertAsync(
+                    "Connexion au dépôt requise",
+                    "Impossible de joindre l’API. Veuillez vous connecter au Wi-Fi du dépôt avant d’envoyer la tournée.",
+                    "OK");
+            }
+
+            return false;
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
     private async Task SendAsync()
     {
         if (IsBusy)
         {
+            return;
+        }
+
+        var apiDisponible = await TestConnectionAsync(showAlert: false);
+
+        if (!apiDisponible)
+        {
+            await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Connexion au dépôt requise",
+                "Impossible de joindre l’API. Veuillez vous connecter au Wi-Fi du dépôt avant d’envoyer la tournée. Les données restent enregistrées sur le téléphone.",
+                "OK");
+
             return;
         }
 
@@ -115,9 +245,16 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
-            await _databaseService.UpdateCommentaireGlobalAsync(_appStateService.CurrentTourneeId, CommentaireGlobal);
-            var result = await _synchronisationService.SynchroniserAsync(_appStateService.CurrentTourneeId);
+            LoadingMessage = "Envoi de la tournée...";
+            SetBusy(true);
+
+            await _databaseService.UpdateCommentaireGlobalAsync(
+                _appStateService.CurrentTourneeId,
+                CommentaireGlobal);
+
+            var result = await _synchronisationService.SynchroniserAsync(
+                _appStateService.CurrentTourneeId);
+
             _appStateService.LastSyncResult = result;
 
             if (result.Success)
@@ -131,8 +268,22 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
-            ((Command)SendCommand).ChangeCanExecute();
+            SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool value)
+    {
+        IsBusy = value;
+
+        if (TestConnectionCommand is Command testCommand)
+        {
+            testCommand.ChangeCanExecute();
+        }
+
+        if (SendCommand is Command sendCommand)
+        {
+            sendCommand.ChangeCanExecute();
         }
     }
 }

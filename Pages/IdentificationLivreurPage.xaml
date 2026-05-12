@@ -19,11 +19,6 @@
                             Command="{Binding LoadLivreursCommand}"
                             Style="{StaticResource SecondaryButton}" />
 
-                        <ActivityIndicator
-                            IsRunning="{Binding IsLoading}"
-                            IsVisible="{Binding IsLoading}"
-                            Color="{StaticResource Primary}" />
-
                         <CollectionView
                             ItemsSource="{Binding Livreurs}"
                             SelectedItem="{Binding SelectedLivreur, Mode=TwoWay}"
@@ -109,5 +104,40 @@
             Command="{Binding ContinueCommand}"
             Style="{StaticResource PrimaryButton}"
             Margin="0,14,0,0" />
+
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsLoading}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsLoading}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="Chargement des livreurs..."
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+
     </Grid>
 </ContentPage>

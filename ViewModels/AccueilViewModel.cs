@@ -19,6 +19,7 @@ public sealed class AccueilViewModel : BaseViewModel
     private string _connectionTitle = "Connexion non testée";
     private string _connectionMessage = "Testez la connexion au Wi-Fi du dépôt avant de continuer.";
     private bool _isConnected;
+    private bool _hasCheckedActiveTourneeOnStartup;
 
     public AccueilViewModel(
         HealthApiService healthApiService,
@@ -74,6 +75,51 @@ public sealed class AccueilViewModel : BaseViewModel
     public ICommand ContinueCommand { get; }
 
     public ICommand SaveApiUrlCommand { get; }
+
+    public async Task CheckActiveTourneeOnStartupAsync()
+    {
+        if (_hasCheckedActiveTourneeOnStartup || IsBusy)
+        {
+            return;
+        }
+
+        _hasCheckedActiveTourneeOnStartup = true;
+
+        try
+        {
+            var activeTournee = await _databaseService.GetActiveTourneeAsync();
+
+            if (activeTournee is null)
+            {
+                return;
+            }
+
+            ConnectionTitle = "Tournée locale détectée";
+            ConnectionMessage =
+                $"Une tournée non synchronisée est présente sur le téléphone : {activeTournee.CodeTournee} — {activeTournee.LibelleTournee}.";
+
+            var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Reprendre votre tournée ?",
+                "Une tournée non synchronisée est déjà présente. Voulez-vous la reprendre ?",
+                "Reprendre",
+                "Retour");
+
+            if (!reprendre)
+            {
+                return;
+            }
+
+            _appStateService.CurrentTourneeId = activeTournee.Id;
+
+            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = $"Impossible de vérifier la tournée locale : {exception.Message}";
+            ConnectionTitle = "Vérification locale impossible";
+            ConnectionMessage = ErrorMessage;
+        }
+    }
 
     private void SaveApiUrl()
     {
@@ -143,6 +189,17 @@ public sealed class AccueilViewModel : BaseViewModel
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
             if (activeTournee is not null)
             {
+                var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
+                    "Reprendre votre tournée ?",
+                    "Une tournée non synchronisée est déjà présente. Voulez-vous la reprendre ?",
+                    "Reprendre",
+                    "Retour");
+
+                if (!reprendre)
+                {
+                    return;
+                }
+
                 _appStateService.CurrentTourneeId = activeTournee.Id;
 
                 await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));

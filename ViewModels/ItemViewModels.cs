@@ -250,8 +250,14 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     public QuantiteSaisieViewModel(LocalTourneeLigneQuantite entity)
     {
         Entity = entity;
-        _quantiteLivreeText = entity.QuantiteLivree.ToString();
-        _quantiteRecupereeText = entity.QuantiteRecuperee.ToString();
+
+        _quantiteLivreeText = entity.QuantiteLivree > 0
+            ? entity.QuantiteLivree.ToString()
+            : string.Empty;
+
+        _quantiteRecupereeText = entity.QuantiteRecuperee > 0
+            ? entity.QuantiteRecuperee.ToString()
+            : string.Empty;
     }
 
     public LocalTourneeLigneQuantite Entity { get; }
@@ -285,17 +291,21 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         error = string.Empty;
 
-        if (!int.TryParse(
-                string.IsNullOrWhiteSpace(QuantiteLivreeText) ? "0" : QuantiteLivreeText.Trim(),
-                out var quantiteLivree))
+        var livreText = string.IsNullOrWhiteSpace(QuantiteLivreeText)
+            ? "0"
+            : QuantiteLivreeText.Trim();
+
+        var recupereText = string.IsNullOrWhiteSpace(QuantiteRecupereeText)
+            ? "0"
+            : QuantiteRecupereeText.Trim();
+
+        if (!int.TryParse(livreText, out var quantiteLivree))
         {
             error = $"Quantité livrée invalide pour {Libelle}.";
             return false;
         }
 
-        if (!int.TryParse(
-                string.IsNullOrWhiteSpace(QuantiteRecupereeText) ? "0" : QuantiteRecupereeText.Trim(),
-                out var quantiteRecuperee))
+        if (!int.TryParse(recupereText, out var quantiteRecuperee))
         {
             error = $"Quantité récupérée invalide pour {Libelle}.";
             return false;

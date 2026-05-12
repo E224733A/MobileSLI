@@ -10,6 +10,34 @@
                 <Label Text="Récapitulatif" Style="{StaticResource PageTitle}" />
                 <Label Text="Dernier contrôle avant synchronisation." Style="{StaticResource PageSubtitle}" />
 
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource DangerBackground}"
+                    BorderColor="{StaticResource DangerBorder}"
+                    IsVisible="{Binding HasErrorMessage}">
+                    <VerticalStackLayout Spacing="5">
+                        <Label
+                            Text="Connexion dépôt requise"
+                            TextColor="{StaticResource DangerText}"
+                            FontAttributes="Bold" />
+                        <Label
+                            Text="{Binding ErrorMessage}"
+                            TextColor="{StaticResource DangerText}"
+                            FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}"
+                    IsVisible="{Binding HasConnectionMessage}">
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Connexion dépôt" TextColor="{StaticResource InfoText}" FontAttributes="Bold" />
+                        <Label Text="{Binding ConnectionMessage}" TextColor="{StaticResource InfoText}" FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Frame Style="{StaticResource Card}">
                     <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                         <Label Grid.Row="0" Grid.Column="0" Text="Résumé" Style="{StaticResource MutedText}" />
@@ -84,18 +112,59 @@
                         <Label Text="Après synchronisation, la tournée sera verrouillée et non modifiable." TextColor="{StaticResource WarningText}" FontSize="13" />
                     </VerticalStackLayout>
                 </Frame>
-
-                <Label
-                    Text="{Binding ErrorMessage}"
-                    TextColor="{StaticResource DangerText}"
-                    FontSize="13"
-                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
         <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
-            <Button Text="Valider la tournée" Command="{Binding SendCommand}" Style="{StaticResource PrimaryButton}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+            <Button
+                Text="Tester la connexion au dépôt"
+                Command="{Binding TestConnectionCommand}"
+                Style="{StaticResource SecondaryButton}" />
+
+            <Button
+                Text="Envoyer la tournée"
+                Command="{Binding SendCommand}"
+                Style="{StaticResource PrimaryButton}" />
+
+            <Button
+                Text="Retour"
+                Command="{Binding BackCommand}"
+                Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
+
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsBusy}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsBusy}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="{Binding LoadingMessage}"
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+
     </Grid>
 </ContentPage>

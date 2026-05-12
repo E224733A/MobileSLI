@@ -5,6 +5,7 @@ public abstract class BaseViewModel : ObservableObject
     private bool _isBusy;
     private string _title = string.Empty;
     private string _errorMessage = string.Empty;
+    private string _loadingMessage = "Chargement en cours...";
 
     public bool IsBusy
     {
@@ -31,4 +32,10 @@ public abstract class BaseViewModel : ObservableObject
     }
 
     public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    public string LoadingMessage
+    {
+        get => _loadingMessage;
+        set => SetProperty(ref _loadingMessage, value);
+    }
 }

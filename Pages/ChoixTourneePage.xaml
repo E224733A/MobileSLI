@@ -49,11 +49,6 @@
                     <Label Grid.Column="1" Text="{Binding CountText}" TextColor="{StaticResource Primary}" FontSize="12" />
                 </Grid>
 
-                <ActivityIndicator
-                    IsRunning="{Binding IsBusy}"
-                    IsVisible="{Binding IsBusy}"
-                    Color="{StaticResource Primary}" />
-
                 <CollectionView ItemsSource="{Binding Tournees}" SelectionMode="None">
                     <CollectionView.EmptyView>
                         <VerticalStackLayout Padding="12" Spacing="4">
@@ -146,5 +141,40 @@
             <Button Text="Continuer avec cette tournée" Command="{Binding ContinueCommand}" Style="{StaticResource PrimaryButton}" />
             <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
+
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsBusy}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsBusy}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="{Binding LoadingMessage}"
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+
     </Grid>
 </ContentPage>
