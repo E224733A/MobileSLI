@@ -102,6 +102,26 @@ public sealed class DatabaseService
             throw new InvalidOperationException("Le livreur est absent de la réponse API.");
         }
 
+        /*
+         * Règle production :
+         * ne jamais supprimer ou remplacer automatiquement une tournée locale non synchronisée.
+         *
+         * Si une tournée active existe, l'écran de confirmation doit déjà proposer :
+         * - Reprendre
+         * - Retour
+         *
+         * Cette vérification reste ici en sécurité pour éviter toute perte de saisie
+         * si SaveTourneeAsync est appelée depuis un autre écran.
+         */
+        var activeTournee = await GetActiveTourneeAsync();
+        if (activeTournee is not null)
+        {
+            throw new InvalidOperationException(
+                $"Une tournée non synchronisée est déjà présente sur ce téléphone : " +
+                $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. " +
+                "Reprenez cette tournée avant d'en charger une nouvelle.");
+        }
+
         var db = await GetDatabaseAsync();
         var dateTournee = dto.DateTournee.Date;
 
@@ -118,7 +138,9 @@ public sealed class DatabaseService
 
         if (existing is not null)
         {
-            await DeleteTourneeDataAsync(existing.Id);
+            throw new InvalidOperationException(
+                $"Une version locale non verrouillée de la tournée {existing.CodeTournee} du " +
+                $"{existing.DateTournee:dd/MM/yyyy} existe déjà. Elle ne peut pas être remplacée automatiquement.");
         }
 
         var tournee = new LocalTournee
@@ -267,6 +289,65 @@ public sealed class DatabaseService
             !tournee.EstVerrouillee
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /*
+     * Nettoyage local sécurisé.
+     *
+     * Règles :
+     * - supprime uniquement les tournées verrouillées ;
+     * - supprime uniquement les tournées SYNCHRONISEE ou DEJA_SYNCHRONISEE ;
+     * - conserve toujours CHARGEE, EN_COURS, PRETE_A_SYNCHRONISER et ERREUR_SYNCHRONISATION ;
+     * - utilise DateEnvoi si disponible, sinon DateChargement ;
+     * - rétention par défaut : 7 jours.
+     */
+    public async Task<int> PurgeOldSynchronizedTourneesAsync(int retentionDays = 7)
+    {
+        var db = await GetDatabaseAsync();
+
+        if (retentionDays < 1)
+        {
+            retentionDays = 7;
+        }
+
+        var cutoff = DateTime.Now.AddDays(-retentionDays);
+
+        var tournees = await db.Table<LocalTournee>()
+            .Where(t => t.EstVerrouillee)
+            .ToListAsync();
+
+        var candidates = tournees
+            .Where(t => IsPurgeableSynchronizedTournee(t, cutoff))
+            .OrderBy(t => t.DateEnvoi ?? t.DateChargement)
+            .ToList();
+
+        foreach (var tournee in candidates)
+        {
+            await DeleteTourneeDataAsync(tournee.Id);
+        }
+
+        return candidates.Count;
+    }
+
+    private static bool IsPurgeableSynchronizedTournee(LocalTournee tournee, DateTime cutoff)
+    {
+        if (!tournee.EstVerrouillee)
+        {
+            return false;
+        }
+
+        var isSynchronizedStatus =
+            string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase);
+
+        if (!isSynchronizedStatus)
+        {
+            return false;
+        }
+
+        var referenceDate = tournee.DateEnvoi ?? tournee.DateChargement;
+
+        return referenceDate < cutoff;
     }
 
     public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)

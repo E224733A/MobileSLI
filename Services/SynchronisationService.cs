@@ -47,17 +47,61 @@ public sealed class SynchronisationService
         }
 
         var request = await _databaseService.BuildSynchronisationRequestAsync(idTourneeLocale);
-        var result = await _synchronisationsApiService.PostSynchronisationAsync(request);
+
+        OperationResult result;
+
+        try
+        {
+            result = await _synchronisationsApiService.PostSynchronisationAsync(request);
+        }
+        catch (HttpRequestException exception)
+        {
+            await _databaseService.MarkErreurSynchronisationAsync(idTourneeLocale);
+
+            return new OperationResult
+            {
+                Success = false,
+                Code = "NETWORK_ERROR",
+                Message = "Connexion perdue pendant l’envoi. Les données restent enregistrées sur le téléphone.",
+                TechnicalDetail = exception.Message
+            };
+        }
+        catch (TaskCanceledException exception)
+        {
+            await _databaseService.MarkErreurSynchronisationAsync(idTourneeLocale);
+
+            return new OperationResult
+            {
+                Success = false,
+                Code = "TIMEOUT",
+                Message = "L’envoi a pris trop de temps ou la connexion a été interrompue. Les données restent enregistrées sur le téléphone.",
+                TechnicalDetail = exception.Message
+            };
+        }
+        catch (Exception exception)
+        {
+            await _databaseService.MarkErreurSynchronisationAsync(idTourneeLocale);
+
+            return new OperationResult
+            {
+                Success = false,
+                Code = "SYNC_UNKNOWN_ERROR",
+                Message = "Impossible de confirmer l’envoi de la tournée. Les données restent enregistrées sur le téléphone.",
+                TechnicalDetail = exception.Message
+            };
+        }
 
         if (result.Success)
         {
             await _databaseService.MarkSynchroniseeAsync(idTourneeLocale);
+            await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
             return result;
         }
 
         if (result.AlreadySynchronized || IsAlreadySentCode(result.Code) || ContainsAlreadySentMessage(result.Message))
         {
             await _databaseService.MarkDejaSynchroniseeAsync(idTourneeLocale);
+            await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
             return result;
         }
 

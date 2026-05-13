@@ -67,10 +67,43 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
-            RefreshCommandStates();
+            LoadingMessage = "Vérification des données locales...";
+            SetBusy(true);
 
             ErrorMessage = string.Empty;
+            LoadMessage = string.Empty;
+
+            /*
+             * Règle production avant chargement :
+             * s'il existe une tournée non synchronisée, on ne charge rien de nouveau.
+             * On propose uniquement Reprendre / Retour.
+             */
+            await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+
+            var activeTournee = await _databaseService.GetActiveTourneeAsync();
+            if (activeTournee is not null)
+            {
+                var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
+                    "Reprendre votre tournée ?",
+                    $"Une tournée non synchronisée est déjà présente : " +
+                    $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. Voulez-vous la reprendre ?",
+                    "Reprendre",
+                    "Retour");
+
+                if (reprendre)
+                {
+                    _appStateService.CurrentTourneeId = activeTournee.Id;
+                    _appStateService.SelectedLigneId = 0;
+
+                    await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+                    return;
+                }
+
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            LoadingMessage = "Chargement de la tournée depuis l'API...";
             LoadMessage = "Chargement depuis l'API…";
 
             var selectedTournee = _appStateService.SelectedTournee;
@@ -104,9 +137,14 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         }
         finally
         {
-            IsBusy = false;
-            RefreshCommandStates();
+            SetBusy(false);
         }
+    }
+
+    private void SetBusy(bool value)
+    {
+        IsBusy = value;
+        RefreshCommandStates();
     }
 
     private void RefreshCommandStates()

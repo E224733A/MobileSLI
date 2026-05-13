@@ -87,16 +87,28 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
+            LoadingMessage = "Vérification des données locales...";
+            SetBusy(true);
+
+            var deletedCount = await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
 
             if (activeTournee is null)
             {
+                if (deletedCount > 0)
+                {
+                    ConnectionTitle = "Nettoyage local effectué";
+                    ConnectionMessage = $"{deletedCount} ancienne(s) tournée(s) synchronisée(s) ont été supprimée(s) du téléphone.";
+                }
+
                 return;
             }
 
             ConnectionTitle = "Tournée locale détectée";
             ConnectionMessage =
-                $"Une tournée non synchronisée est présente sur le téléphone : {activeTournee.CodeTournee} — {activeTournee.LibelleTournee}.";
+                $"Une tournée non synchronisée est présente sur le téléphone : " +
+                $"{activeTournee.CodeTournee} — {activeTournee.LibelleTournee} du {activeTournee.DateTournee:dd/MM/yyyy}.";
 
             var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
                 "Reprendre votre tournée ?",
@@ -119,6 +131,10 @@ public sealed class AccueilViewModel : BaseViewModel
             ConnectionTitle = "Vérification locale impossible";
             ConnectionMessage = ErrorMessage;
         }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private void SaveApiUrl()
@@ -140,6 +156,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
+            LoadingMessage = "Test de la connexion API...";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
@@ -183,15 +200,19 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
+            LoadingMessage = "Vérification des données locales...";
             SetBusy(true);
             ErrorMessage = string.Empty;
+
+            await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
 
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
             if (activeTournee is not null)
             {
                 var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
                     "Reprendre votre tournée ?",
-                    "Une tournée non synchronisée est déjà présente. Voulez-vous la reprendre ?",
+                    $"Une tournée non synchronisée est déjà présente : " +
+                    $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. Voulez-vous la reprendre ?",
                     "Reprendre",
                     "Retour");
 
