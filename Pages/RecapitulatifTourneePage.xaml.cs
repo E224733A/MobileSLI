@@ -18,11 +18,4 @@ public partial class RecapitulatifTourneePage : ContentPage
         base.OnAppearing();
         await ViewModel.LoadAsync();
     }
-
-    protected override bool OnBackButtonPressed()
-    {
-        // Le retour doit être contrôlé par les boutons de l'application
-        // afin d'éviter les sorties accidentelles avant synchronisation.
-        return true;
-    }
 }

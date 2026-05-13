@@ -26,3 +26,17 @@ public static class TourneeLocalStatus
     public const string ErreurSynchronisation = "ERREUR_SYNCHRONISATION";
     public const string DejaSynchronisee = "DEJA_SYNCHRONISEE";
 }
+
+public static class ArticleCodes
+{
+    public const string Rolls = "ROLLS";
+    public const string Tapis = "TAPIS";
+    public const string Sacs = "SACS";
+
+    /*
+     * Article de récupération uniquement.
+     * Le livreur ne livre pas de rolls vides au client.
+     * Côté mobile, QuantiteLivree doit toujours rester à 0.
+     */
+    public const string RollsVides = "ROLLS_VIDES";
+}

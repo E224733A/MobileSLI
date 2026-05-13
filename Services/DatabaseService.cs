@@ -102,17 +102,6 @@ public sealed class DatabaseService
             throw new InvalidOperationException("Le livreur est absent de la réponse API.");
         }
 
-        /*
-         * Règle production :
-         * ne jamais supprimer ou remplacer automatiquement une tournée locale non synchronisée.
-         *
-         * Si une tournée active existe, l'écran de confirmation doit déjà proposer :
-         * - Reprendre
-         * - Retour
-         *
-         * Cette vérification reste ici en sécurité pour éviter toute perte de saisie
-         * si SaveTourneeAsync est appelée depuis un autre écran.
-         */
         var activeTournee = await GetActiveTourneeAsync();
         if (activeTournee is not null)
         {
@@ -226,41 +215,71 @@ public sealed class DatabaseService
 
             await db.InsertAsync(ligne);
 
-            var quantitesInitiales = ligneDto.Saisie?.Quantites ?? [];
-
-            if (quantitesInitiales.Count > 0)
+            foreach (var quantite in BuildQuantitesForLocalStorage(ligneDto, dto.ArticlesSaisissables))
             {
-                foreach (var quantite in quantitesInitiales)
-                {
-                    await db.InsertAsync(new LocalTourneeLigneQuantite
-                    {
-                        LigneId = ligne.Id,
-                        CodeArticle = quantite.CodeArticle,
-                        Libelle = quantite.Libelle ?? quantite.CodeArticle,
-                        QuantiteLivreePrevue = quantite.QuantiteLivreePrevue,
-                        QuantiteLivree = Math.Max(0, quantite.QuantiteLivree),
-                        QuantiteRecuperee = Math.Max(0, quantite.QuantiteRecuperee)
-                    });
-                }
-            }
-            else
-            {
-                foreach (var article in dto.ArticlesSaisissables)
-                {
-                    await db.InsertAsync(new LocalTourneeLigneQuantite
-                    {
-                        LigneId = ligne.Id,
-                        CodeArticle = article.CodeArticle,
-                        Libelle = article.Libelle,
-                        QuantiteLivreePrevue = null,
-                        QuantiteLivree = 0,
-                        QuantiteRecuperee = 0
-                    });
-                }
+                await InsertQuantiteAsync(db, ligne.Id, quantite);
             }
         }
 
         return tournee.Id;
+    }
+
+    private static List<QuantiteSaisieMobileDto> BuildQuantitesForLocalStorage(
+        TourneeLigneDto ligneDto,
+        IEnumerable<ArticleSaisissableDto> articlesSaisissables)
+    {
+        var quantites = ligneDto.Saisie?.Quantites?.ToList() ?? new List<QuantiteSaisieMobileDto>();
+
+        if (quantites.Count == 0)
+        {
+            quantites = articlesSaisissables
+                .Select(article => new QuantiteSaisieMobileDto
+                {
+                    CodeArticle = article.CodeArticle,
+                    Libelle = article.Libelle,
+                    QuantiteLivreePrevue = null,
+                    QuantiteLivree = 0,
+                    QuantiteRecuperee = 0
+                })
+                .ToList();
+        }
+
+        if (!quantites.Any(q => IsRollsVides(q.CodeArticle)))
+        {
+            quantites.Add(new QuantiteSaisieMobileDto
+            {
+                CodeArticle = ArticleCodes.RollsVides,
+                Libelle = "Rolls vides",
+                QuantiteLivreePrevue = null,
+                QuantiteLivree = 0,
+                QuantiteRecuperee = 0
+            });
+        }
+
+        return quantites;
+    }
+
+    private static async Task InsertQuantiteAsync(
+        SQLiteAsyncConnection db,
+        int ligneId,
+        QuantiteSaisieMobileDto quantite)
+    {
+        var isRollsVides = IsRollsVides(quantite.CodeArticle);
+
+        await db.InsertAsync(new LocalTourneeLigneQuantite
+        {
+            LigneId = ligneId,
+            CodeArticle = quantite.CodeArticle,
+            Libelle = quantite.Libelle ?? quantite.CodeArticle,
+            QuantiteLivreePrevue = isRollsVides ? null : quantite.QuantiteLivreePrevue,
+            QuantiteLivree = isRollsVides ? 0 : Math.Max(0, quantite.QuantiteLivree),
+            QuantiteRecuperee = Math.Max(0, quantite.QuantiteRecuperee)
+        });
+    }
+
+    private static bool IsRollsVides(string? codeArticle)
+    {
+        return string.Equals(codeArticle, ArticleCodes.RollsVides, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<LocalTournee?> GetTourneeAsync(int tourneeId)
@@ -291,16 +310,6 @@ public sealed class DatabaseService
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase));
     }
 
-    /*
-     * Nettoyage local sécurisé.
-     *
-     * Règles :
-     * - supprime uniquement les tournées verrouillées ;
-     * - supprime uniquement les tournées SYNCHRONISEE ou DEJA_SYNCHRONISEE ;
-     * - conserve toujours CHARGEE, EN_COURS, PRETE_A_SYNCHRONISER et ERREUR_SYNCHRONISATION ;
-     * - utilise DateEnvoi si disponible, sinon DateChargement ;
-     * - rétention par défaut : 7 jours.
-     */
     public async Task<int> PurgeOldSynchronizedTourneesAsync(int retentionDays = 7)
     {
         var db = await GetDatabaseAsync();
@@ -390,6 +399,12 @@ public sealed class DatabaseService
 
         foreach (var quantite in quantites)
         {
+            if (IsRollsVides(quantite.CodeArticle))
+            {
+                quantite.QuantiteLivreePrevue = null;
+                quantite.QuantiteLivree = 0;
+            }
+
             if (quantite.QuantiteLivree < 0 || quantite.QuantiteRecuperee < 0)
             {
                 throw new InvalidOperationException("Les quantités négatives sont interdites.");
@@ -514,13 +529,18 @@ public sealed class DatabaseService
                         ? FormatDateTime(ligne.HeureValidation.Value)
                         : null,
                     EstValidee = ligne.EstValidee,
-                    Quantites = quantites.Select(q => new SynchronisationQuantiteRequest
+                    Quantites = quantites.Select(q =>
                     {
-                        CodeArticle = q.CodeArticle,
-                        Libelle = q.Libelle,
-                        QuantiteLivreePrevue = q.QuantiteLivreePrevue,
-                        QuantiteLivree = q.QuantiteLivree,
-                        QuantiteRecuperee = q.QuantiteRecuperee
+                        var isRollsVides = IsRollsVides(q.CodeArticle);
+
+                        return new SynchronisationQuantiteRequest
+                        {
+                            CodeArticle = q.CodeArticle,
+                            Libelle = q.Libelle,
+                            QuantiteLivreePrevue = isRollsVides ? null : q.QuantiteLivreePrevue,
+                            QuantiteLivree = isRollsVides ? 0 : q.QuantiteLivree,
+                            QuantiteRecuperee = q.QuantiteRecuperee
+                        };
                     }).ToList()
                 }
             });

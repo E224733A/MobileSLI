@@ -251,9 +251,11 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         Entity = entity;
 
-        _quantiteLivreeText = entity.QuantiteLivree > 0
-            ? entity.QuantiteLivree.ToString()
-            : string.Empty;
+        _quantiteLivreeText = IsRollsVides
+            ? string.Empty
+            : entity.QuantiteLivree > 0
+                ? entity.QuantiteLivree.ToString()
+                : string.Empty;
 
         _quantiteRecupereeText = entity.QuantiteRecuperee > 0
             ? entity.QuantiteRecuperee.ToString()
@@ -266,19 +268,45 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
 
     public string Libelle => Entity.Libelle;
 
-    public int? QuantiteLivreePrevue => Entity.QuantiteLivreePrevue;
+    public bool IsRollsVides =>
+        string.Equals(CodeArticle, ArticleCodes.RollsVides, StringComparison.OrdinalIgnoreCase);
 
-    public bool HasQuantiteLivreePrevue => Entity.QuantiteLivreePrevue.HasValue;
+    public bool IsLivreeEditable => !IsRollsVides;
 
-    public string QuantitePrevueText =>
-        Entity.QuantiteLivreePrevue.HasValue
-            ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
-            : "Prévu : non renseigné";
+    public int? QuantiteLivreePrevue => IsRollsVides
+        ? null
+        : Entity.QuantiteLivreePrevue;
+
+    public bool HasQuantiteLivreePrevue => !IsRollsVides && Entity.QuantiteLivreePrevue.HasValue;
+
+    public string QuantitePrevueText
+    {
+        get
+        {
+            if (IsRollsVides)
+            {
+                return "Récupéré uniquement";
+            }
+
+            return Entity.QuantiteLivreePrevue.HasValue
+                ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
+                : "Prévu : non renseigné";
+        }
+    }
 
     public string QuantiteLivreeText
     {
         get => _quantiteLivreeText;
-        set => SetProperty(ref _quantiteLivreeText, value);
+        set
+        {
+            if (IsRollsVides)
+            {
+                SetProperty(ref _quantiteLivreeText, string.Empty);
+                return;
+            }
+
+            SetProperty(ref _quantiteLivreeText, value);
+        }
     }
 
     public string QuantiteRecupereeText
@@ -291,9 +319,11 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         error = string.Empty;
 
-        var livreText = string.IsNullOrWhiteSpace(QuantiteLivreeText)
+        var livreText = IsRollsVides
             ? "0"
-            : QuantiteLivreeText.Trim();
+            : string.IsNullOrWhiteSpace(QuantiteLivreeText)
+                ? "0"
+                : QuantiteLivreeText.Trim();
 
         var recupereText = string.IsNullOrWhiteSpace(QuantiteRecupereeText)
             ? "0"
@@ -317,7 +347,14 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
             return false;
         }
 
-        Entity.QuantiteLivree = quantiteLivree;
+        Entity.QuantiteLivreePrevue = IsRollsVides
+            ? null
+            : Entity.QuantiteLivreePrevue;
+
+        Entity.QuantiteLivree = IsRollsVides
+            ? 0
+            : quantiteLivree;
+
         Entity.QuantiteRecuperee = quantiteRecuperee;
 
         return true;

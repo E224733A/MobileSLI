@@ -18,4 +18,25 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(SyncResultPage), typeof(SyncResultPage));
         Routing.RegisterRoute(nameof(SyncErrorPage), typeof(SyncErrorPage));
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        /*
+         * Blocage global du bouton retour Android.
+         *
+         * Objectif :
+         * - éviter les retours accidentels ;
+         * - empêcher la sortie involontaire d'une tournée chargée ;
+         * - forcer l'utilisateur à utiliser les boutons prévus dans l'application ;
+         * - éviter la duplication de code dans chaque page.
+         *
+         * Les boutons internes de l'application restent fonctionnels :
+         * - Retour
+         * - Continuer
+         * - Reprendre
+         * - Récapitulatif
+         * - Envoyer
+         */
+        return true;
+    }
 }
