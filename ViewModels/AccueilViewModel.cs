@@ -18,6 +18,7 @@ public sealed class AccueilViewModel : BaseViewModel
     private string _apiBaseUrl;
     private string _connectionTitle = "Connexion non testée";
     private string _connectionMessage = "Testez la connexion au Wi-Fi du dépôt avant de continuer.";
+    private string _diagnosticMessage = string.Empty;
     private bool _isConnected;
 
     public AccueilViewModel(
@@ -43,6 +44,10 @@ public sealed class AccueilViewModel : BaseViewModel
             () => !IsBusy);
 
         SaveApiUrlCommand = new Command(SaveApiUrl);
+
+        ExportDatabaseCommand = new Command(
+            async () => await ExportDatabaseAsync(),
+            () => !IsBusy && IsDiagnosticVisible);
     }
 
     public string ApiBaseUrl
@@ -63,10 +68,36 @@ public sealed class AccueilViewModel : BaseViewModel
         set => SetProperty(ref _connectionMessage, value);
     }
 
+    public string DiagnosticMessage
+    {
+        get => _diagnosticMessage;
+        set
+        {
+            if (SetProperty(ref _diagnosticMessage, value))
+            {
+                OnPropertyChanged(nameof(HasDiagnosticMessage));
+            }
+        }
+    }
+
+    public bool HasDiagnosticMessage => !string.IsNullOrWhiteSpace(DiagnosticMessage);
+
     public bool IsConnected
     {
         get => _isConnected;
         set => SetProperty(ref _isConnected, value);
+    }
+
+    public bool IsDiagnosticVisible
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
     }
 
     public ICommand TestConnectionCommand { get; }
@@ -74,6 +105,8 @@ public sealed class AccueilViewModel : BaseViewModel
     public ICommand ContinueCommand { get; }
 
     public ICommand SaveApiUrlCommand { get; }
+
+    public ICommand ExportDatabaseCommand { get; }
 
     public async Task CheckActiveTourneeOnStartupAsync()
     {
@@ -200,6 +233,57 @@ public sealed class AccueilViewModel : BaseViewModel
         }
     }
 
+    private async Task ExportDatabaseAsync()
+    {
+        if (IsBusy || !IsDiagnosticVisible)
+        {
+            return;
+        }
+
+        try
+        {
+            LoadingMessage = "Export de la base SQLite...";
+            SetBusy(true);
+            ErrorMessage = string.Empty;
+            DiagnosticMessage = string.Empty;
+
+            var exportPath = await _databaseService.ExportDatabaseToDownloadsAsync();
+
+            DiagnosticMessage = $"Base SQLite exportée : {exportPath}";
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Shell.Current is not null)
+                {
+                    await Shell.Current.DisplayAlertAsync(
+                        "Export terminé",
+                        $"La base SQLite a été copiée dans :\n{exportPath}",
+                        "OK");
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = $"Impossible d'exporter la base SQLite : {exception.Message}";
+            DiagnosticMessage = ErrorMessage;
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Shell.Current is not null)
+                {
+                    await Shell.Current.DisplayAlertAsync(
+                        "Export impossible",
+                        ErrorMessage,
+                        "OK");
+                }
+            });
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
     private async Task ContinueAsync()
     {
         if (IsBusy)
@@ -260,6 +344,11 @@ public sealed class AccueilViewModel : BaseViewModel
         if (ContinueCommand is Command continueCommand)
         {
             continueCommand.ChangeCanExecute();
+        }
+
+        if (ExportDatabaseCommand is Command exportCommand)
+        {
+            exportCommand.ChangeCanExecute();
         }
     }
 }

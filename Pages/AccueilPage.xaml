@@ -33,6 +33,15 @@
                         <Label Text="Il faut être connecté au Wi-Fi du dépôt pour charger ou synchroniser la tournée. Une tournée déjà chargée reste consultable hors connexion." TextColor="{StaticResource WarningText}" FontSize="13" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Frame>
+
+                <Frame Style="{StaticResource Card}" IsVisible="{Binding IsDiagnosticVisible}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Diagnostic test" Style="{StaticResource SectionTitle}" />
+                        <Label Text="Réservé aux tests : exporte la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
+                        <Button Text="Exporter base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" />
+                        <Label Text="{Binding DiagnosticMessage}" IsVisible="{Binding HasDiagnosticMessage}" TextColor="{StaticResource TextMuted}" FontSize="12" />
+                    </VerticalStackLayout>
+                </Frame>
             </VerticalStackLayout>
         </ScrollView>
 

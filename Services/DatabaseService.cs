@@ -4,10 +4,17 @@ using MobileSLI.Configuration;
 using MobileSLI.Models;
 using SQLite;
 
+#if ANDROID
+using Android.Content;
+using Android.Provider;
+#endif
+
 namespace MobileSLI.Services;
 
 public sealed class DatabaseService
 {
+    private const string DatabaseFileName = "mobile_sli.db3";
+
     private SQLiteAsyncConnection? _database;
     private readonly SettingsService _settings;
 
@@ -15,6 +22,8 @@ public sealed class DatabaseService
     {
         _settings = settings;
     }
+
+    private static string DatabasePath => Path.Combine(FileSystem.AppDataDirectory, DatabaseFileName);
 
     private async Task<SQLiteAsyncConnection> GetDatabaseAsync()
     {
@@ -25,8 +34,7 @@ public sealed class DatabaseService
 
         SQLitePCL.Batteries_V2.Init();
 
-        var databasePath = Path.Combine(FileSystem.AppDataDirectory, "mobile_sli.db3");
-        _database = new SQLiteAsyncConnection(databasePath);
+        _database = new SQLiteAsyncConnection(DatabasePath);
 
         await _database.CreateTableAsync<LocalTournee>();
         await _database.CreateTableAsync<LocalTourneeLigne>();
@@ -84,6 +92,112 @@ public sealed class DatabaseService
             // Compatibilité avec les exceptions différentes selon Android/SQLite.
         }
     }
+
+    public async Task<string> ExportDatabaseToDownloadsAsync()
+    {
+        var db = await GetDatabaseAsync();
+
+        try
+        {
+            /*
+             * Le checkpoint essaye de recopier les écritures WAL dans le fichier
+             * principal avant export. Sur certains téléphones Android, SQLite peut
+             * renvoyer une exception au libellé trompeur "not an error".
+             * Pour un export de diagnostic, ce checkpoint ne doit jamais bloquer
+             * l'utilisateur : on ferme ensuite la connexion pour stabiliser la base
+             * avant la copie.
+             */
+            await db.ExecuteAsync("PRAGMA wal_checkpoint(TRUNCATE)");
+        }
+        catch
+        {
+            // Diagnostic uniquement : l'export doit rester possible même si le checkpoint échoue.
+        }
+        finally
+        {
+            await db.CloseAsync();
+            _database = null;
+        }
+
+        if (!File.Exists(DatabasePath))
+        {
+            throw new FileNotFoundException("La base SQLite locale est introuvable.", DatabasePath);
+        }
+
+        var exportFileName = $"mobile_sli_{DateTime.Now:yyyyMMdd_HHmmss}.db3";
+
+#if ANDROID
+        return await ExportDatabaseToAndroidDownloadsAsync(DatabasePath, exportFileName);
+#else
+        var downloadsDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Downloads");
+
+        Directory.CreateDirectory(downloadsDirectory);
+
+        var destinationPath = Path.Combine(downloadsDirectory, exportFileName);
+        File.Copy(DatabasePath, destinationPath, overwrite: true);
+
+        return destinationPath;
+#endif
+    }
+
+#if ANDROID
+    private static Task<string> ExportDatabaseToAndroidDownloadsAsync(
+        string sourcePath,
+        string exportFileName)
+    {
+        var context = Android.App.Application.Context
+            ?? throw new InvalidOperationException("Contexte Android indisponible.");
+
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+        {
+            var values = new ContentValues();
+            values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, exportFileName);
+            values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "application/x-sqlite3");
+            values.Put(Android.Provider.MediaStore.IMediaColumns.RelativePath, Android.OS.Environment.DirectoryDownloads);
+            values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 1);
+
+            var resolver = context.ContentResolver
+                ?? throw new InvalidOperationException("ContentResolver Android indisponible.");
+
+            var destinationUri = resolver.Insert(Android.Provider.MediaStore.Downloads.ExternalContentUri, values)
+                ?? throw new InvalidOperationException("Impossible de créer le fichier d'export dans Téléchargements.");
+
+            try
+            {
+                using var input = File.OpenRead(sourcePath);
+                using var output = resolver.OpenOutputStream(destinationUri)
+                    ?? throw new InvalidOperationException("Impossible d'ouvrir le flux d'écriture Android.");
+
+                input.CopyTo(output);
+            }
+            catch
+            {
+                resolver.Delete(destinationUri, null, null);
+                throw;
+            }
+            finally
+            {
+                values.Clear();
+                values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 0);
+                resolver.Update(destinationUri, values, null, null);
+            }
+
+            return Task.FromResult($"Téléchargements/{exportFileName}");
+        }
+
+        var downloadsDirectory = Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDownloads)
+            ?? throw new InvalidOperationException("Dossier Téléchargements Android indisponible.");
+
+        Directory.CreateDirectory(downloadsDirectory.AbsolutePath);
+
+        var destinationPath = Path.Combine(downloadsDirectory.AbsolutePath, exportFileName);
+        File.Copy(sourcePath, destinationPath, overwrite: true);
+
+        return Task.FromResult(destinationPath);
+    }
+#endif
 
     public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
     {
