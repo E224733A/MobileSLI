@@ -19,7 +19,6 @@ public sealed class AccueilViewModel : BaseViewModel
     private string _connectionTitle = "Connexion non testée";
     private string _connectionMessage = "Testez la connexion au Wi-Fi du dépôt avant de continuer.";
     private bool _isConnected;
-    private bool _hasCheckedActiveTourneeOnStartup;
 
     public AccueilViewModel(
         HealthApiService healthApiService,
@@ -78,12 +77,22 @@ public sealed class AccueilViewModel : BaseViewModel
 
     public async Task CheckActiveTourneeOnStartupAsync()
     {
-        if (_hasCheckedActiveTourneeOnStartup || IsBusy)
+        /*
+         * La reprise automatique doit être proposée uniquement au démarrage
+         * réel de l'application, par exemple après fermeture depuis les
+         * applications récentes puis réouverture.
+         *
+         * Elle ne doit pas bloquer le bouton "Continuer vers l'identification".
+         * Le flag est porté par AppStateService, singleton pendant la session,
+         * pour éviter de réafficher la popup si AccueilPage ou son ViewModel
+         * sont recréés pendant que l'application reste ouverte.
+         */
+        if (_appStateService.HasCheckedActiveTourneeOnStartup || IsBusy)
         {
             return;
         }
 
-        _hasCheckedActiveTourneeOnStartup = true;
+        _appStateService.HasCheckedActiveTourneeOnStartup = true;
 
         try
         {
@@ -200,32 +209,19 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Vérification des données locales...";
+            LoadingMessage = "Préparation de l'identification...";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
+            /*
+             * Le nettoyage reste autorisé ici, car il ne supprime que les
+             * tournées déjà synchronisées/verrouillées et anciennes.
+             *
+             * En revanche, on ne propose plus la reprise d'une tournée active
+             * depuis le bouton "Continuer vers l'identification".
+             * La reprise est uniquement proposée au démarrage de l'application.
+             */
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
-
-            var activeTournee = await _databaseService.GetActiveTourneeAsync();
-            if (activeTournee is not null)
-            {
-                var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
-                    "Reprendre votre tournée ?",
-                    $"Une tournée non synchronisée est déjà présente : " +
-                    $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. Voulez-vous la reprendre ?",
-                    "Reprendre",
-                    "Retour");
-
-                if (!reprendre)
-                {
-                    return;
-                }
-
-                _appStateService.CurrentTourneeId = activeTournee.Id;
-
-                await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
-                return;
-            }
 
             await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage));
         }
