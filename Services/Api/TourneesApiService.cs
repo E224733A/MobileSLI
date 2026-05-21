@@ -53,7 +53,12 @@ public sealed class TourneesApiService
                 ["codeLivreur"] = codeLivreur.Trim()
             });
 
-        var response = await _apiClient.GetRawAsync(route, cancellationToken);
+        var response = await _apiClient.GetRawAsync(
+            route,
+            ApiTimeouts.ChargementTournee,
+            retryCount: 0,
+            retryDelay: TimeSpan.Zero,
+            cancellationToken);
 
         if (!response.IsSuccess)
         {
@@ -125,6 +130,9 @@ public sealed class TourneesApiService
      *
      * La date de tournée n'est plus envoyée par le mobile.
      * Elle est calculée côté API avec la date métier Europe/Paris.
+     *
+     * Timeout réseau : 60 secondes.
+     * Retry automatique : 1 seule nouvelle tentative après 1,5 seconde.
      */
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string codeTournee,
@@ -151,6 +159,9 @@ public sealed class TourneesApiService
 
         var tournee = await _apiClient.GetAsync<TourneeJourDto>(
             route,
+            ApiTimeouts.ChargementTournee,
+            ApiTimeouts.ChargementTourneeRetryCount,
+            ApiTimeouts.ChargementTourneeRetryDelay,
             cancellationToken);
 
         if (tournee is null)

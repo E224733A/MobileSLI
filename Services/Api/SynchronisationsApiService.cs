@@ -29,6 +29,7 @@ public sealed class SynchronisationsApiService
         var response = await _apiClient.PostAsJsonAsync(
             route,
             request,
+            ApiTimeouts.Synchronisation,
             cancellationToken);
 
         var apiResult = _apiClient.Deserialize<ApiSynchronisationResult>(response.Body);

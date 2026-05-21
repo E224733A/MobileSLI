@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -23,81 +24,120 @@ public sealed class ApiClient
 
         _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(8)
+            // Le timeout global de 8 secondes provoquait des coupures réseau trop rapides
+            // sur les chargements métier. Les délais sont maintenant pilotés appel par appel.
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan
         };
     }
 
     public string BaseUrl => NormalizeBaseUrl(_settingsService.ApiBaseUrl);
 
-    public async Task<T?> GetAsync<T>(
+    public Task<T?> GetAsync<T>(
         string route,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(
-            BuildUri(route),
+        return GetAsync<T>(
+            route,
+            ApiTimeouts.DefaultGet,
+            retryCount: 0,
+            retryDelay: TimeSpan.Zero,
+            cancellationToken);
+    }
+
+    public async Task<T?> GetAsync<T>(
+        string route,
+        TimeSpan timeout,
+        int retryCount,
+        TimeSpan retryDelay,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await GetRawAsync(
+            route,
+            timeout,
+            retryCount,
+            retryDelay,
             cancellationToken);
 
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccess)
         {
-            throw CreateException(response.StatusCode, route, body);
+            throw CreateException(response.StatusCode, route, response.Body);
         }
 
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(response.Body))
         {
             return default;
         }
 
         try
         {
-            return JsonSerializer.Deserialize<T>(body, JsonOptions);
+            return JsonSerializer.Deserialize<T>(response.Body, JsonOptions);
         }
         catch (JsonException exception)
         {
             throw new ApiClientException(
                 $"La réponse JSON de l'API est invalide : {exception.Message}",
-                (int)response.StatusCode,
+                response.StatusCode,
                 route,
-                body);
+                response.Body,
+                exception);
         }
     }
 
-    public async Task<ApiRawResponse> GetRawAsync(
+    public Task<ApiRawResponse> GetRawAsync(
         string route,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(
-            BuildUri(route),
-            cancellationToken);
-
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        return new ApiRawResponse(
-            response.IsSuccessStatusCode,
-            (int)response.StatusCode,
+        return GetRawAsync(
             route,
-            body);
+            ApiTimeouts.DefaultGet,
+            retryCount: 0,
+            retryDelay: TimeSpan.Zero,
+            cancellationToken);
     }
 
-    public async Task<ApiRawResponse> PostAsJsonAsync<TRequest>(
+    public Task<ApiRawResponse> GetRawAsync(
+        string route,
+        TimeSpan timeout,
+        int retryCount,
+        TimeSpan retryDelay,
+        CancellationToken cancellationToken = default)
+    {
+        return SendRawAsync(
+            route,
+            HttpMethod.Get,
+            contentFactory: null,
+            timeout,
+            retryCount,
+            retryDelay,
+            cancellationToken);
+    }
+
+    public Task<ApiRawResponse> PostAsJsonAsync<TRequest>(
         string route,
         TRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.PostAsJsonAsync(
-            BuildUri(route),
-            request,
-            JsonOptions,
-            cancellationToken);
-
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        return new ApiRawResponse(
-            response.IsSuccessStatusCode,
-            (int)response.StatusCode,
+        return PostAsJsonAsync(
             route,
-            body);
+            request,
+            ApiTimeouts.DefaultPost,
+            cancellationToken);
+    }
+
+    public Task<ApiRawResponse> PostAsJsonAsync<TRequest>(
+        string route,
+        TRequest request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        return SendRawAsync(
+            route,
+            HttpMethod.Post,
+            () => JsonContent.Create(request, options: JsonOptions),
+            timeout,
+            retryCount: 0,
+            retryDelay: TimeSpan.Zero,
+            cancellationToken);
     }
 
     public T? Deserialize<T>(string json)
@@ -138,6 +178,73 @@ public sealed class ApiClient
         return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
+    private async Task<ApiRawResponse> SendRawAsync(
+        string route,
+        HttpMethod method,
+        Func<HttpContent?>? contentFactory,
+        TimeSpan timeout,
+        int retryCount,
+        TimeSpan retryDelay,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastException = null;
+        var attempts = Math.Max(0, retryCount) + 1;
+
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(timeout);
+
+                using var request = new HttpRequestMessage(method, BuildUri(route));
+                request.Content = contentFactory?.Invoke();
+
+                using var response = await _httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseContentRead,
+                    timeoutCts.Token);
+
+                var body = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+
+                return new ApiRawResponse(
+                    response.IsSuccessStatusCode,
+                    (int)response.StatusCode,
+                    route,
+                    body);
+            }
+            catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastException = CreateTimeoutException(route, timeout, exception);
+            }
+            catch (HttpRequestException exception)
+            {
+                lastException = CreateNetworkException(route, exception);
+            }
+            catch (IOException exception)
+            {
+                lastException = CreateNetworkException(route, exception);
+            }
+
+            if (attempt < attempts)
+            {
+                await Task.Delay(retryDelay, cancellationToken);
+            }
+        }
+
+        if (lastException is ApiClientException apiClientException)
+        {
+            throw apiClientException;
+        }
+
+        throw new ApiClientException(
+            $"Connexion API impossible sur {route}.",
+            0,
+            route,
+            lastException?.Message ?? string.Empty,
+            lastException);
+    }
+
     private Uri BuildUri(string route)
     {
         var normalizedRoute = route.StartsWith("/", StringComparison.Ordinal)
@@ -166,13 +273,11 @@ public sealed class ApiClient
     }
 
     private static ApiClientException CreateException(
-        HttpStatusCode statusCode,
+        int statusCode,
         string route,
         string body)
     {
-        var status = (int)statusCode;
-
-        var message = statusCode switch
+        var message = ((HttpStatusCode)statusCode) switch
         {
             HttpStatusCode.NotFound
                 => $"Ressource introuvable : {route}",
@@ -187,10 +292,35 @@ public sealed class ApiClient
                 => $"Erreur technique côté API : {route}",
 
             _
-                => $"Erreur API HTTP {status} sur {route}"
+                => $"Erreur API HTTP {statusCode} sur {route}"
         };
 
-        return new ApiClientException(message, status, route, body);
+        return new ApiClientException(message, statusCode, route, body);
+    }
+
+    private static ApiClientException CreateTimeoutException(
+        string route,
+        TimeSpan timeout,
+        Exception exception)
+    {
+        return new ApiClientException(
+            $"Le serveur n'a pas répondu dans le délai prévu ({timeout.TotalSeconds:0} secondes) pour {route}. Vérifiez le Wi-Fi dépôt puis réessayez.",
+            0,
+            route,
+            exception.Message,
+            exception);
+    }
+
+    private static ApiClientException CreateNetworkException(
+        string route,
+        Exception exception)
+    {
+        return new ApiClientException(
+            $"Connexion réseau interrompue pendant l'appel API {route}. Vérifiez le Wi-Fi dépôt puis réessayez.",
+            0,
+            route,
+            exception.Message,
+            exception);
     }
 }
 
@@ -206,8 +336,9 @@ public sealed class ApiClientException : Exception
         string message,
         int statusCode,
         string route,
-        string responseBody)
-        : base(message)
+        string responseBody,
+        Exception? innerException = null)
+        : base(message, innerException)
     {
         StatusCode = statusCode;
         Route = route;

@@ -17,7 +17,7 @@ public sealed class HealthApiService
     {
         try
         {
-            var response = await _apiClient.GetRawAsync(
+            var response = await GetHealthRawAsync(
                 "/api/health",
                 cancellationToken);
 
@@ -49,7 +49,7 @@ public sealed class HealthApiService
     public async Task<ApiHealthResult> GetHealthAsync(
         CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetRawAsync(
+        var response = await GetHealthRawAsync(
             "/api/health",
             cancellationToken);
 
@@ -64,7 +64,7 @@ public sealed class HealthApiService
     public async Task<ApiHealthResult> GetAbssoluteHealthAsync(
         CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetRawAsync(
+        var response = await GetHealthRawAsync(
             "/api/health/abssolute",
             cancellationToken);
 
@@ -79,7 +79,7 @@ public sealed class HealthApiService
     public async Task<ApiHealthResult> GetMobileHealthAsync(
         CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetRawAsync(
+        var response = await GetHealthRawAsync(
             "/api/health/mobile",
             cancellationToken);
 
@@ -89,6 +89,18 @@ public sealed class HealthApiService
             StatusCode = response.StatusCode,
             RawBody = response.Body
         };
+    }
+
+    private Task<ApiRawResponse> GetHealthRawAsync(
+        string route,
+        CancellationToken cancellationToken)
+    {
+        return _apiClient.GetRawAsync(
+            route,
+            ApiTimeouts.HealthCheck,
+            retryCount: 0,
+            retryDelay: TimeSpan.Zero,
+            cancellationToken);
     }
 }
 
