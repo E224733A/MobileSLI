@@ -5,6 +5,9 @@ namespace MobileSLI.Services.Api;
 
 public sealed class SynchronisationsApiService
 {
+    private const string DateTourneeNonAutoriseeCode = "DATE_TOURNEE_NON_AUTORISEE";
+    private const string DateTourneeExpireeCode = "DATE_TOURNEE_EXPIREE";
+
     private readonly ApiClient _apiClient;
 
     public SynchronisationsApiService(ApiClient apiClient)
@@ -37,24 +40,36 @@ public sealed class SynchronisationsApiService
             {
                 Success = true,
                 Code = string.IsNullOrWhiteSpace(code) ? "SUCCESS" : code,
-                Message = apiResult?.Message ?? "Synchronisation envoyée avec succès.",
+                Message = GetMessage(apiResult) ?? "Synchronisation envoyée avec succès.",
                 LignesEnvoyees = request.Lignes.Count
             };
         }
 
         if (response.StatusCode == 409)
         {
+            if (IsDateTourneeNonAutorisee(code, response.Body))
+            {
+                return new OperationResult
+                {
+                    Success = false,
+                    AlreadySynchronized = false,
+                    Code = string.IsNullOrWhiteSpace(code) ? DateTourneeNonAutoriseeCode : code,
+                    Message = GetMessage(apiResult)
+                        ?? "La tournée ne correspond pas à la date autorisée par l'API. Rechargez les tournées du jour.",
+                    TechnicalDetail = response.Body
+                };
+            }
+
             var isAlreadySynchronized =
                 string.Equals(code, "SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(code, "TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(code, "CONFLICT", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(code, "TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase);
 
             return new OperationResult
             {
                 Success = false,
                 AlreadySynchronized = isAlreadySynchronized,
                 Code = code,
-                Message = apiResult?.Message
+                Message = GetMessage(apiResult)
                     ?? "Cette tournée a déjà été synchronisée ou existe déjà côté API.",
                 TechnicalDetail = response.Body
             };
@@ -62,6 +77,19 @@ public sealed class SynchronisationsApiService
 
         if (response.StatusCode == 400)
         {
+            if (IsDateTourneeNonAutorisee(code, response.Body))
+            {
+                return new OperationResult
+                {
+                    Success = false,
+                    AlreadySynchronized = false,
+                    Code = string.IsNullOrWhiteSpace(code) ? DateTourneeNonAutoriseeCode : code,
+                    Message = GetMessage(apiResult)
+                        ?? "La tournée ne correspond pas à la date autorisée par l'API. Rechargez les tournées du jour.",
+                    TechnicalDetail = response.Body
+                };
+            }
+
             var details = ExtractValidationDetails(apiResult, response.Body);
 
             return new OperationResult
@@ -79,7 +107,7 @@ public sealed class SynchronisationsApiService
         {
             Success = false,
             Code = string.IsNullOrWhiteSpace(code) ? $"HTTP_{response.StatusCode}" : code,
-            Message = apiResult?.Message
+            Message = GetMessage(apiResult)
                 ?? $"Erreur API HTTP {response.StatusCode}. {response.Body}",
             TechnicalDetail = response.Body
         };
@@ -107,6 +135,40 @@ public sealed class SynchronisationsApiService
         }
 
         return result?.Statut?.Trim() ?? string.Empty;
+    }
+
+
+    private static string? GetMessage(ApiSynchronisationResult? result)
+    {
+        if (!string.IsNullOrWhiteSpace(result?.Message))
+        {
+            return result.Message.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(result?.MessageRetour))
+        {
+            return result.MessageRetour.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(result?.Detail))
+        {
+            return result.Detail.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(result?.Title)
+            ? null
+            : result.Title.Trim();
+    }
+
+    private static bool IsDateTourneeNonAutorisee(string? code, string? body)
+    {
+        return string.Equals(code, DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(code, DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase)
+               || (!string.IsNullOrWhiteSpace(body)
+                   && (body.Contains(DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+                       || body.Contains(DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase)
+                       || body.Contains("dateTourneeAutorisee", StringComparison.OrdinalIgnoreCase)
+                       || body.Contains("dateTourneeRecue", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static string ExtractValidationDetails(
@@ -141,6 +203,15 @@ public sealed class SynchronisationsApiService
 
         [JsonPropertyName("message")]
         public string? Message { get; set; }
+
+        [JsonPropertyName("messageRetour")]
+        public string? MessageRetour { get; set; }
+
+        [JsonPropertyName("detail")]
+        public string? Detail { get; set; }
+
+        [JsonPropertyName("title")]
+        public string? Title { get; set; }
 
         [JsonPropertyName("errors")]
         public List<string>? Errors { get; set; }

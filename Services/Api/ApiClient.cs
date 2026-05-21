@@ -23,7 +23,7 @@ public sealed class ApiClient
 
         _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(30)
+            Timeout = TimeSpan.FromSeconds(8)
         };
     }
 

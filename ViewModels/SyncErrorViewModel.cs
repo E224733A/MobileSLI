@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls;
 using System.Windows.Input;
+using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
@@ -8,6 +9,10 @@ namespace MobileSLI.ViewModels;
 
 public sealed class SyncErrorViewModel : BaseViewModel
 {
+    private const string DateTourneeNonAutoriseeCode = "DATE_TOURNEE_NON_AUTORISEE";
+    private const string DateTourneeExpireeCode = "DATE_TOURNEE_EXPIREE";
+    private const string TourneeLocaleExpireeCode = "TOURNEE_LOCALE_EXPIREE";
+
     private readonly AppStateService _appStateService;
     private readonly SynchronisationService _synchronisationService;
     private readonly HealthApiService _healthApiService;
@@ -35,11 +40,27 @@ public sealed class SyncErrorViewModel : BaseViewModel
         ? "Aucun détail technique disponible."
         : _appStateService.LastSyncResult.TechnicalDetail;
 
-    public string ActionText => _appStateService.LastSyncResult?.AlreadySynchronized == true
-        ? "Ne pas renvoyer. Contacter le responsable logistique ou informatique si une correction est nécessaire."
-        : "Vérifiez la connexion Wi-Fi du dépôt, puis réessayez.";
+    public string ActionText
+    {
+        get
+        {
+            if (IsDateTourneeNonAutorisee() || IsTourneeLocaleExpiree())
+            {
+                return "Ne pas renvoyer cette tournée. Rechargez les tournées du jour depuis le dépôt.";
+            }
 
-    public bool CanRetry => _appStateService.LastSyncResult?.AlreadySynchronized != true;
+            if (_appStateService.LastSyncResult?.AlreadySynchronized == true)
+            {
+                return "Ne pas renvoyer. Contacter le responsable logistique ou informatique si une correction est nécessaire.";
+            }
+
+            return "Vérifiez la connexion Wi-Fi du dépôt, puis réessayez.";
+        }
+    }
+
+    public bool CanRetry => _appStateService.LastSyncResult?.AlreadySynchronized != true
+                            && !IsDateTourneeNonAutorisee()
+                            && !IsTourneeLocaleExpiree();
 
     public ICommand RetryCommand { get; }
 
@@ -62,14 +83,14 @@ public sealed class SyncErrorViewModel : BaseViewModel
 
     private async Task RetryAsync()
     {
-        if (IsBusy)
+        if (IsBusy || !CanRetry)
         {
             return;
         }
 
         try
         {
-            LoadingMessage = "Test de la connexion au dépôt...";
+            LoadingMessage = "Test de la connexion au dépôt";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
@@ -85,7 +106,7 @@ public sealed class SyncErrorViewModel : BaseViewModel
                 return;
             }
 
-            LoadingMessage = "Nouvel envoi de la tournée...";
+            LoadingMessage = "Nouvel envoi de la tournée";
 
             var result = await _synchronisationService.SynchroniserAsync(
                 _appStateService.CurrentTourneeId);
@@ -105,6 +126,49 @@ public sealed class SyncErrorViewModel : BaseViewModel
         {
             SetBusy(false);
         }
+    }
+
+    private bool IsDateTourneeNonAutorisee()
+    {
+        var result = _appStateService.LastSyncResult;
+        if (result is null)
+        {
+            return false;
+        }
+
+        return string.Equals(result.Code, DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(result.Code, DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase)
+               || ContainsDateTourneeNonAutorisee(result.Message)
+               || ContainsDateTourneeNonAutorisee(result.TechnicalDetail);
+    }
+
+    private bool IsTourneeLocaleExpiree()
+    {
+        var result = _appStateService.LastSyncResult;
+        if (result is null)
+        {
+            return false;
+        }
+
+        return string.Equals(result.Code, TourneeLocaleExpireeCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(result.Code, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase)
+               || ContainsTourneeLocaleExpiree(result.Message)
+               || ContainsTourneeLocaleExpiree(result.TechnicalDetail);
+    }
+
+    private static bool ContainsTourneeLocaleExpiree(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+               && (value.Contains(TourneeLocaleExpireeCode, StringComparison.OrdinalIgnoreCase)
+                   || value.Contains("tournée est expirée", StringComparison.OrdinalIgnoreCase)
+                   || value.Contains("tournee est expiree", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsDateTourneeNonAutorisee(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+               && (value.Contains(DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+                   || value.Contains(DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase));
     }
 
     private void SetBusy(bool value)

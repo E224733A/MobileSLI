@@ -5,6 +5,9 @@ namespace MobileSLI.Services;
 
 public sealed class SynchronisationService
 {
+    private const string DateTourneeNonAutoriseeCode = "DATE_TOURNEE_NON_AUTORISEE";
+    private const string DateTourneeExpireeCode = "DATE_TOURNEE_EXPIREE";
+
     private readonly DatabaseService _databaseService;
     private readonly SynchronisationsApiService _synchronisationsApiService;
 
@@ -29,11 +32,23 @@ public sealed class SynchronisationService
             return Failure("Tournée locale introuvable.");
         }
 
-        if (tournee.EstVerrouillee)
+        if (string.Equals(tournee.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase))
         {
             return Failure(
+                "Cette tournée est expirée sur le téléphone. Rechargez les tournées du jour depuis le dépôt.",
+                alreadySynchronized: false,
+                code: "TOURNEE_LOCALE_EXPIREE");
+        }
+
+        if (tournee.EstVerrouillee)
+        {
+            var alreadySynchronized =
+                string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase);
+
+            return Failure(
                 "Cette tournée est déjà verrouillée sur le téléphone.",
-                alreadySynchronized: true,
+                alreadySynchronized: alreadySynchronized,
                 code: tournee.StatutLocal);
         }
 
@@ -95,6 +110,12 @@ public sealed class SynchronisationService
         {
             await _databaseService.MarkSynchroniseeAsync(idTourneeLocale);
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+            return result;
+        }
+
+        if (IsDateTourneeNonAutorisee(result.Code, result.Message, result.TechnicalDetail))
+        {
+            await _databaseService.MarkErreurSynchronisationAsync(idTourneeLocale);
             return result;
         }
 
@@ -211,8 +232,7 @@ public sealed class SynchronisationService
         }
 
         return string.Equals(code, "TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase)
-               || string.Equals(code, "SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase)
-               || string.Equals(code, "CONFLICT", StringComparison.OrdinalIgnoreCase);
+               || string.Equals(code, "SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool ContainsAlreadySentMessage(string? message)
@@ -227,6 +247,24 @@ public sealed class SynchronisationService
                || message.Contains("already", StringComparison.OrdinalIgnoreCase)
                || message.Contains("TOURNEE_ALREADY_SENT", StringComparison.OrdinalIgnoreCase)
                || message.Contains("SYNCHRONISATION_ALREADY_EXISTS", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDateTourneeNonAutorisee(
+        string? code,
+        string? message,
+        string? technicalDetail)
+    {
+        return string.Equals(code, DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(code, DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase)
+               || ContainsDateTourneeNonAutorisee(technicalDetail)
+               || ContainsDateTourneeNonAutorisee(message);
+    }
+
+    private static bool ContainsDateTourneeNonAutorisee(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+               && (value.Contains(DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
+                   || value.Contains(DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase));
     }
 
     private static OperationResult Success(string message)

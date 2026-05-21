@@ -216,13 +216,15 @@ public sealed class DatabaseService
             throw new InvalidOperationException("Le livreur est absent de la réponse API.");
         }
 
-        var activeTournee = await GetActiveTourneeAsync();
+        await ExpireOldActiveTourneesAsync(dto.DateTournee);
+
+        var activeTournee = await GetActiveTourneeAsync(dto.DateTournee);
         if (activeTournee is not null)
         {
             throw new InvalidOperationException(
                 $"Une tournée non synchronisée est déjà présente sur ce téléphone : " +
                 $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. " +
-                "Reprenez cette tournée avant d'en charger une nouvelle.");
+                "Terminez ou envoyez cette tournée avant d'en charger une nouvelle.");
         }
 
         var db = await GetDatabaseAsync();
@@ -233,6 +235,14 @@ public sealed class DatabaseService
                         && t.CodeTournee == dto.CodeTournee
                         && t.CodeLivreur == dto.Livreur.CodeLivreur)
             .FirstOrDefaultAsync();
+
+        if (existing is not null
+            && string.Equals(existing.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"La tournée {existing.CodeTournee} du {existing.DateTournee:dd/MM/yyyy} est expirée sur ce téléphone. " +
+                "Rechargez les tournées du jour depuis l'API.");
+        }
 
         if (existing is not null && existing.EstVerrouillee)
         {
@@ -410,9 +420,10 @@ public sealed class DatabaseService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<LocalTournee?> GetActiveTourneeAsync()
+    public async Task<LocalTournee?> GetActiveTourneeAsync(DateTime? dateTourneeAutorisee = null)
     {
         var db = await GetDatabaseAsync();
+        var referenceDate = (dateTourneeAutorisee ?? DateTime.Today).Date;
 
         var tournees = await db.Table<LocalTournee>()
             .OrderByDescending(t => t.DateChargement)
@@ -420,8 +431,34 @@ public sealed class DatabaseService
 
         return tournees.FirstOrDefault(tournee =>
             !tournee.EstVerrouillee
+            && tournee.DateTournee.Date == referenceDate
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase));
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<int> ExpireOldActiveTourneesAsync(DateTime? dateTourneeAutorisee = null)
+    {
+        var db = await GetDatabaseAsync();
+        var referenceDate = (dateTourneeAutorisee ?? DateTime.Today).Date;
+
+        var tournees = await db.Table<LocalTournee>()
+            .Where(t =>
+                !t.EstVerrouillee
+                && t.DateTournee < referenceDate
+                && t.StatutLocal != TourneeLocalStatus.Synchronisee
+                && t.StatutLocal != TourneeLocalStatus.DejaSynchronisee
+                && t.StatutLocal != TourneeLocalStatus.Expiree)
+            .ToListAsync();
+
+        foreach (var tournee in tournees)
+        {
+            tournee.StatutLocal = TourneeLocalStatus.Expiree;
+            tournee.EstVerrouillee = true;
+            await db.UpdateAsync(tournee);
+        }
+
+        return tournees.Count;
     }
 
     public async Task<int> PurgeOldSynchronizedTourneesAsync(int retentionDays = 7)

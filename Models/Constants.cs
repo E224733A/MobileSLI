@@ -25,6 +25,7 @@ public static class TourneeLocalStatus
     public const string Synchronisee = "SYNCHRONISEE";
     public const string ErreurSynchronisation = "ERREUR_SYNCHRONISATION";
     public const string DejaSynchronisee = "DEJA_SYNCHRONISEE";
+    public const string Expiree = "EXPIREE";
 }
 
 public static class ArticleCodes

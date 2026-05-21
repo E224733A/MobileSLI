@@ -12,6 +12,8 @@ public sealed class TourneesApiService
         _apiClient = apiClient;
     }
 
+    public DateTime? LastDateTourneeApi { get; private set; }
+
     /*
      * Écran "Choix de tournée"
      *
@@ -79,6 +81,8 @@ public sealed class TourneesApiService
             tournees = _apiClient.Deserialize<List<TourneeResumeDto>>(response.Body) ?? [];
         }
 
+        LastDateTourneeApi = effectiveDate;
+
         return tournees
             .Where(tournee => !string.IsNullOrWhiteSpace(tournee.CodeTournee))
             .Select(tournee =>
@@ -140,6 +144,11 @@ public sealed class TourneesApiService
         }
 
         NormalizeTournee(tournee);
+
+        if (tournee.DateTournee != default)
+        {
+            LastDateTourneeApi = tournee.DateTournee.Date;
+        }
 
         return tournee;
     }

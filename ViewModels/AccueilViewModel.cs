@@ -115,10 +115,10 @@ public sealed class AccueilViewModel : BaseViewModel
          * réel de l'application, par exemple après fermeture depuis les
          * applications récentes puis réouverture.
          *
-         * Elle ne doit pas bloquer le bouton "Continuer vers l'identification".
-         * Le flag est porté par AppStateService, singleton pendant la session,
-         * pour éviter de réafficher la popup si AccueilPage ou son ViewModel
-         * sont recréés pendant que l'application reste ouverte.
+         * Une tournée locale ancienne ne doit jamais être proposée à la reprise.
+         * Elle est verrouillée localement avec le statut EXPIREE. Cela empêche
+         * toute modification accidentelle sans ajouter de route API ni bloquer
+         * les validations ligne par ligne pendant une tournée du jour.
          */
         if (_appStateService.HasCheckedActiveTourneeOnStartup || IsBusy)
         {
@@ -129,15 +129,26 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Vérification des données locales...";
+            LoadingMessage = "Vérification des données locales";
             SetBusy(true);
 
+            var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             var deletedCount = await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
 
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
 
             if (activeTournee is null)
             {
+                if (expiredCount > 0)
+                {
+                    ConnectionTitle = "Tournée expirée détectée";
+                    ConnectionMessage =
+                        $"{expiredCount} ancienne(s) tournée(s) non synchronisée(s) ont été verrouillée(s) en lecture seule. " +
+                        "Rechargez les tournées du jour depuis l'API.";
+
+                    return;
+                }
+
                 if (deletedCount > 0)
                 {
                     ConnectionTitle = "Nettoyage local effectué";
@@ -154,7 +165,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
             var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
                 "Reprendre votre tournée ?",
-                "Une tournée non synchronisée est déjà présente. Voulez-vous la reprendre ?",
+                "Une tournée du jour non synchronisée est déjà présente. Voulez-vous la reprendre ?",
                 "Reprendre",
                 "Retour");
 
@@ -198,7 +209,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Test de la connexion API...";
+            LoadingMessage = "Test de la connexion API";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
@@ -242,7 +253,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Export de la base SQLite...";
+            LoadingMessage = "Export de la base SQLite";
             SetBusy(true);
             ErrorMessage = string.Empty;
             DiagnosticMessage = string.Empty;
@@ -293,19 +304,25 @@ public sealed class AccueilViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Préparation de l'identification...";
+            LoadingMessage = "Préparation de l'identification";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
             /*
-             * Le nettoyage reste autorisé ici, car il ne supprime que les
-             * tournées déjà synchronisées/verrouillées et anciennes.
-             *
-             * En revanche, on ne propose plus la reprise d'une tournée active
-             * depuis le bouton "Continuer vers l'identification".
-             * La reprise est uniquement proposée au démarrage de l'application.
+             * Le nettoyage reste autorisé ici pour éviter qu'une tournée d'hier
+             * bloque le chargement du jour. On ne propose jamais de reprendre
+             * une tournée expirée depuis le bouton Continuer.
              */
+            var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+
+            if (expiredCount > 0)
+            {
+                ConnectionTitle = "Tournée expirée détectée";
+                ConnectionMessage =
+                    $"{expiredCount} ancienne(s) tournée(s) non synchronisée(s) ont été verrouillée(s) en lecture seule. " +
+                    "Rechargez les tournées du jour depuis l'API.";
+            }
 
             await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage));
         }

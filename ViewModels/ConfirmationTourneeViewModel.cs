@@ -35,7 +35,9 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         _appStateService.CurrentLivreur?.NomLivreur ?? "Livreur non identifié";
 
     public string DateText =>
-        (_appStateService.SelectedTournee?.DateTournee ?? DateTime.Today).ToString("dd/MM/yyyy");
+        (_appStateService.SelectedTournee?.DateTournee
+         ?? _appStateService.DateTourneeAutorisee
+         ?? DateTime.Today).ToString("dd/MM/yyyy");
 
     public string TourneeText =>
         _appStateService.SelectedTournee is null
@@ -73,19 +75,24 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             ErrorMessage = string.Empty;
             LoadMessage = string.Empty;
 
+            var selectedTournee = _appStateService.SelectedTournee;
+            var dateTourneeAutorisee = selectedTournee.DateTournee.Date;
+            _appStateService.DateTourneeAutorisee = dateTourneeAutorisee;
+
             /*
-             * Règle production avant chargement :
-             * s'il existe une tournée non synchronisée, on ne charge rien de nouveau.
-             * On propose uniquement Reprendre / Retour.
+             * Une tournée d'une date antérieure à la date métier renvoyée par l'API
+             * ne doit jamais être proposée à la reprise.
+             * Elle est verrouillée localement en statut EXPIREE.
              */
+            var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync(dateTourneeAutorisee);
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
 
-            var activeTournee = await _databaseService.GetActiveTourneeAsync();
+            var activeTournee = await _databaseService.GetActiveTourneeAsync(dateTourneeAutorisee);
             if (activeTournee is not null)
             {
                 var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
                     "Reprendre votre tournée ?",
-                    $"Une tournée non synchronisée est déjà présente : " +
+                    $"Une tournée non synchronisée du jour est déjà présente : " +
                     $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. Voulez-vous la reprendre ?",
                     "Reprendre",
                     "Retour");
@@ -103,15 +110,24 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
                 return;
             }
 
+            if (expiredCount > 0)
+            {
+                LoadMessage =
+                    $"{expiredCount} ancienne(s) tournée(s) ont été marquée(s) EXPIREE et ne peuvent plus être reprises.";
+            }
+
             LoadingMessage = "Chargement de la tournée depuis l'API...";
             LoadMessage = "Chargement depuis l'API…";
-
-            var selectedTournee = _appStateService.SelectedTournee;
 
             var dto = await _tourneesApiService.GetTourneeJourAsync(
                 selectedTournee.DateTournee,
                 selectedTournee.CodeTournee,
                 _appStateService.CurrentLivreur.CodeLivreur);
+
+            if (dto.DateTournee != default)
+            {
+                _appStateService.DateTourneeAutorisee = dto.DateTournee.Date;
+            }
 
             var tourneeId = await _databaseService.SaveTourneeAsync(dto);
 

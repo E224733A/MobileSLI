@@ -11,6 +11,13 @@ public sealed class AppStateService
     public OperationResult? LastSyncResult { get; set; }
 
     /*
+     * Date métier renvoyée par une route API existante.
+     * Elle évite de s'appuyer uniquement sur DateTime.Today côté téléphone
+     * dès que l'application a reçu une réponse de l'API.
+     */
+    public DateTime? DateTourneeAutorisee { get; set; }
+
+    /*
      * Empêche la popup de reprise d'être réaffichée plusieurs fois dans
      * la même session applicative si AccueilPage ou AccueilViewModel sont
      * recréés.

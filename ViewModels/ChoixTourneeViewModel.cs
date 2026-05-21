@@ -12,16 +12,19 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
     private readonly TourneesApiService _tourneesApiService;
+    private readonly DatabaseService _databaseService;
 
     private string _searchText = string.Empty;
     private TourneeListItemViewModel? _selectedTournee;
 
     public ChoixTourneeViewModel(
         AppStateService appStateService,
-        TourneesApiService tourneesApiService)
+        TourneesApiService tourneesApiService,
+        DatabaseService databaseService)
     {
         _appStateService = appStateService;
         _tourneesApiService = tourneesApiService;
+        _databaseService = databaseService;
 
         Tournees = new ObservableCollection<TourneeListItemViewModel>();
 
@@ -41,7 +44,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
 
     public ObservableCollection<TourneeListItemViewModel> Tournees { get; }
 
-    public string DateText => DateTime.Today.ToString("dd/MM/yyyy");
+    public string DateText => (_appStateService.DateTourneeAutorisee ?? DateTime.Today).ToString("dd/MM/yyyy");
 
     public string LivreurText =>
         _appStateService.CurrentLivreur?.NomLivreur ?? "Livreur non identifié";
@@ -115,9 +118,16 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
             SelectedTournee = null;
             Tournees.Clear();
 
+            var requestedDate = _appStateService.DateTourneeAutorisee ?? DateTime.Today;
+
             var tournees = await _tourneesApiService.GetTourneesDuJourAsync(
-                DateTime.Today,
+                requestedDate,
                 _appStateService.CurrentLivreur.CodeLivreur);
+
+            var apiDate = _tourneesApiService.LastDateTourneeApi ?? requestedDate.Date;
+            _appStateService.DateTourneeAutorisee = apiDate.Date;
+
+            await _databaseService.ExpireOldActiveTourneesAsync(apiDate.Date);
 
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
@@ -138,6 +148,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
                 ErrorMessage = "Aucune tournée disponible pour aujourd'hui.";
             }
 
+            OnPropertyChanged(nameof(DateText));
             OnPropertyChanged(nameof(CountText));
         }
         catch (Exception exception)
@@ -160,6 +171,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
 
         SelectedTournee = item;
         _appStateService.SelectedTournee = item.Dto;
+        _appStateService.DateTourneeAutorisee = item.Dto.DateTournee.Date;
         ErrorMessage = string.Empty;
     }
 
@@ -172,6 +184,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
         }
 
         _appStateService.SelectedTournee = SelectedTournee.Dto;
+        _appStateService.DateTourneeAutorisee = SelectedTournee.Dto.DateTournee.Date;
 
         await Shell.Current.GoToAsync(nameof(ConfirmationTourneePage));
     }
