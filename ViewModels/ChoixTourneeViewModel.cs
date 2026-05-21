@@ -118,13 +118,17 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
             SelectedTournee = null;
             Tournees.Clear();
 
-            var requestedDate = _appStateService.DateTourneeAutorisee ?? DateTime.Today;
-
+            /*
+             * Le mobile ne transmet plus dateTournee à l'API.
+             * La date métier est calculée côté API et récupérée dans la réponse.
+             */
             var tournees = await _tourneesApiService.GetTourneesDuJourAsync(
-                requestedDate,
                 _appStateService.CurrentLivreur.CodeLivreur);
 
-            var apiDate = _tourneesApiService.LastDateTourneeApi ?? requestedDate.Date;
+            var apiDate = _tourneesApiService.LastDateTourneeApi
+                          ?? _appStateService.DateTourneeAutorisee
+                          ?? DateTime.Today;
+
             _appStateService.DateTourneeAutorisee = apiDate.Date;
 
             await _databaseService.ExpireOldActiveTourneesAsync(apiDate.Date);

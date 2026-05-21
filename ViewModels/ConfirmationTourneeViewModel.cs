@@ -119,8 +119,11 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             LoadingMessage = "Chargement de la tournée depuis l'API...";
             LoadMessage = "Chargement depuis l'API…";
 
+            /*
+             * Le mobile ne transmet plus dateTournee à l'API.
+             * L'API calcule la date métier et renvoie la tournée complète.
+             */
             var dto = await _tourneesApiService.GetTourneeJourAsync(
-                selectedTournee.DateTournee,
                 selectedTournee.CodeTournee,
                 _appStateService.CurrentLivreur.CodeLivreur);
 

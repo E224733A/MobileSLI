@@ -17,13 +17,16 @@ public sealed class TourneesApiService
     /*
      * Écran "Choix de tournée"
      *
-     * Appel léger :
-     * GET /api/tournees/disponibles?dateTournee=YYYY-MM-DD&codeLivreur=XX
+     * Contrat API final :
+     * GET /api/tournees/disponibles?codeLivreur=XX
+     *
+     * La date de tournée n'est plus envoyée par le mobile.
+     * Elle est calculée côté API avec la date métier Europe/Paris.
      *
      * Réponse finale v1.2 :
      * {
      *   "schemaVersion": "1.2",
-     *   "dateTournee": "2026-05-07",
+     *   "dateTournee": "2026-05-21",
      *   "dateModifiable": false,
      *   "livreur": { ... },
      *   "tournees": [ ... ]
@@ -35,7 +38,6 @@ public sealed class TourneesApiService
      * ]
      */
     public async Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
-        DateTime dateTournee,
         string codeLivreur,
         CancellationToken cancellationToken = default)
     {
@@ -48,7 +50,6 @@ public sealed class TourneesApiService
             "/api/tournees/disponibles",
             new Dictionary<string, string?>
             {
-                ["dateTournee"] = _apiClient.FormatDate(dateTournee),
                 ["codeLivreur"] = codeLivreur.Trim()
             });
 
@@ -57,7 +58,7 @@ public sealed class TourneesApiService
         if (!response.IsSuccess)
         {
             throw new ApiClientException(
-                $"Erreur API HTTP {response.StatusCode} sur {route}",
+                $"Erreur API HTTP {response.StatusCode} sur {route}. Réponse API : {response.Body}",
                 response.StatusCode,
                 route,
                 response.Body);
@@ -66,13 +67,13 @@ public sealed class TourneesApiService
         var envelope = _apiClient.Deserialize<TourneesDisponiblesResponseDto>(response.Body);
 
         IReadOnlyList<TourneeResumeDto>? tournees = null;
-        var effectiveDate = dateTournee.Date;
+        var effectiveDate = DateTime.Today;
 
         if (envelope is not null)
         {
             tournees = envelope.Tournees;
             effectiveDate = envelope.DateTournee == default
-                ? dateTournee.Date
+                ? DateTime.Today
                 : envelope.DateTournee.Date;
         }
 
@@ -95,21 +96,37 @@ public sealed class TourneesApiService
             .ToList();
     }
 
+    /*
+     * Surcharge conservée pour compatibilité interne.
+     * Le paramètre dateTournee est volontairement ignoré, car l'API finale refuse
+     * toute date dans l'URL.
+     */
+    public Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
+        DateTime dateTournee,
+        string codeLivreur,
+        CancellationToken cancellationToken = default)
+    {
+        return GetTourneesDuJourAsync(codeLivreur, cancellationToken);
+    }
+
     public Task<IReadOnlyList<TourneeResumeDto>> ChargerTourneesDuJourAsync(
         DateTime dateTournee,
         string codeLivreur,
         CancellationToken cancellationToken = default)
     {
-        return GetTourneesDuJourAsync(dateTournee, codeLivreur, cancellationToken);
+        return GetTourneesDuJourAsync(codeLivreur, cancellationToken);
     }
 
     /*
      * Écran "Confirmation de tournée"
      *
-     * Une fois la tournée sélectionnée, on charge la tournée complète.
+     * Contrat API final :
+     * GET /api/tournees/jour?codeTournee=XXXX&codeLivreur=XX
+     *
+     * La date de tournée n'est plus envoyée par le mobile.
+     * Elle est calculée côté API avec la date métier Europe/Paris.
      */
     public async Task<TourneeJourDto> GetTourneeJourAsync(
-        DateTime dateTournee,
         string codeTournee,
         string codeLivreur,
         CancellationToken cancellationToken = default)
@@ -128,7 +145,6 @@ public sealed class TourneesApiService
             "/api/tournees/jour",
             new Dictionary<string, string?>
             {
-                ["dateTournee"] = _apiClient.FormatDate(dateTournee),
                 ["codeTournee"] = codeTournee.Trim(),
                 ["codeLivreur"] = codeLivreur.Trim()
             });
@@ -153,6 +169,24 @@ public sealed class TourneesApiService
         return tournee;
     }
 
+    /*
+     * Surcharge conservée pour compatibilité interne.
+     * Le paramètre dateTournee est volontairement ignoré.
+     */
+    public Task<TourneeJourDto> GetTourneeJourAsync(
+        DateTime dateTournee,
+        string codeTournee,
+        string codeLivreur,
+        CancellationToken cancellationToken = default)
+    {
+        return GetTourneeJourAsync(codeTournee, codeLivreur, cancellationToken);
+    }
+
+    /*
+     * Surcharge conservée pour compatibilité avec d'anciens appels internes.
+     * Le paramètre dateTournee est validé uniquement pour éviter un appel incohérent,
+     * mais il n'est jamais envoyé à l'API.
+     */
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string dateTournee,
         string codeTournee,
@@ -163,13 +197,12 @@ public sealed class TourneesApiService
                 dateTournee,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
-                out var parsedDate))
+                out _))
         {
             throw new ArgumentException("La date de tournée est invalide.", nameof(dateTournee));
         }
 
         return await GetTourneeJourAsync(
-            parsedDate,
             codeTournee,
             codeLivreur,
             cancellationToken);
@@ -182,7 +215,6 @@ public sealed class TourneesApiService
         CancellationToken cancellationToken = default)
     {
         return GetTourneeJourAsync(
-            dateTournee,
             codeTournee,
             codeLivreur,
             cancellationToken);
@@ -195,7 +227,6 @@ public sealed class TourneesApiService
         CancellationToken cancellationToken = default)
     {
         return GetTourneeJourAsync(
-            dateTournee,
             codeTournee,
             codeLivreur,
             cancellationToken);
