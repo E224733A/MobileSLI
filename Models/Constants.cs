@@ -42,9 +42,11 @@ public static class ArticleCodes
     public const string Sacs = "SACS";
 
     /*
-     * Article de récupération uniquement.
-     * Le livreur ne livre pas de rolls vides au client.
-     * Côté mobile, QuantiteLivree doit toujours rester à 0.
+     * Règle métier mise à jour :
+     * ROLLS = Chariots.
+     * ROLLS_VIDES = Chariots vides.
+     * ROLLS_VIDES peut maintenant porter une quantité livrée prévue,
+     * une quantité livrée et une quantité récupérée.
      */
     public const string RollsVides = "ROLLS_VIDES";
 }
