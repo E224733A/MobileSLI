@@ -180,16 +180,6 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
             }
         }
 
-        /*
-         * Sécurité métier : ROLLS_VIDES est récupéré uniquement.
-         * Même si l'interface masque la colonne Livré, on force la valeur à 0 avant sauvegarde.
-         */
-        foreach (var quantite in Quantites.Where(q => q.IsRollsVides))
-        {
-            quantite.Entity.QuantiteLivreePrevue = null;
-            quantite.Entity.QuantiteLivree = 0;
-        }
-
         _ligne.StatutPassage = SelectedStatut;
         _ligne.EstValidee = true;
         _ligne.HeureValidation = DateTime.Now;
@@ -237,7 +227,5 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(AnomalieButtonTextColor));
 
         OnPropertyChanged(nameof(FaitButtonBorderColor));
-        OnPropertyChanged(nameof(NonFaitButtonBorderColor));
-        OnPropertyChanged(nameof(AnomalieButtonBorderColor));
     }
 }
