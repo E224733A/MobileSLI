@@ -12,6 +12,7 @@ public sealed class SyncErrorViewModel : BaseViewModel
     private const string DateTourneeNonAutoriseeCode = "DATE_TOURNEE_NON_AUTORISEE";
     private const string DateTourneeExpireeCode = "DATE_TOURNEE_EXPIREE";
     private const string TourneeLocaleExpireeCode = "TOURNEE_LOCALE_EXPIREE";
+    private const string ValidationErrorCode = "VALIDATION_ERROR";
 
     private readonly AppStateService _appStateService;
     private readonly SynchronisationService _synchronisationService;
@@ -34,6 +35,14 @@ public sealed class SyncErrorViewModel : BaseViewModel
         BackRecapCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
     }
 
+    public string PageTitle => IsValidationError()
+        ? "Tournée incomplète"
+        : "Erreur envoi";
+
+    public string Subtitle => IsValidationError()
+        ? "La tournée n'est pas encore prête à être envoyée."
+        : "La tournée n'a pas pu être envoyée.";
+
     public string Message => _appStateService.LastSyncResult?.Message ?? "Erreur lors de l'envoi.";
 
     public string TechnicalDetail => string.IsNullOrWhiteSpace(_appStateService.LastSyncResult?.TechnicalDetail)
@@ -44,6 +53,11 @@ public sealed class SyncErrorViewModel : BaseViewModel
     {
         get
         {
+            if (IsValidationError())
+            {
+                return "Retournez au récapitulatif ou à la liste des clients, puis corrigez le point indiqué avant d’envoyer la tournée.";
+            }
+
             if (IsDateTourneeNonAutorisee() || IsTourneeLocaleExpiree())
             {
                 return "Ne pas renvoyer cette tournée. Rechargez les tournées du jour depuis le dépôt.";
@@ -59,6 +73,7 @@ public sealed class SyncErrorViewModel : BaseViewModel
     }
 
     public bool CanRetry => _appStateService.LastSyncResult?.AlreadySynchronized != true
+                            && !IsValidationError()
                             && !IsDateTourneeNonAutorisee()
                             && !IsTourneeLocaleExpiree();
 
@@ -70,6 +85,8 @@ public sealed class SyncErrorViewModel : BaseViewModel
 
     public void Refresh()
     {
+        OnPropertyChanged(nameof(PageTitle));
+        OnPropertyChanged(nameof(Subtitle));
         OnPropertyChanged(nameof(Message));
         OnPropertyChanged(nameof(TechnicalDetail));
         OnPropertyChanged(nameof(ActionText));
@@ -126,6 +143,17 @@ public sealed class SyncErrorViewModel : BaseViewModel
         {
             SetBusy(false);
         }
+    }
+
+    private bool IsValidationError()
+    {
+        var result = _appStateService.LastSyncResult;
+        if (result is null)
+        {
+            return false;
+        }
+
+        return string.Equals(result.Code, ValidationErrorCode, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsDateTourneeNonAutorisee()

@@ -7,8 +7,8 @@
     <Grid Padding="20" RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
             <VerticalStackLayout Spacing="12">
-                <Label Text="Erreur envoi" Style="{StaticResource PageTitle}" />
-                <Label Text="Contrôle doublon ou erreur de connexion." Style="{StaticResource PageSubtitle}" />
+                <Label Text="{Binding PageTitle}" Style="{StaticResource PageTitle}" />
+                <Label Text="{Binding Subtitle}" Style="{StaticResource PageSubtitle}" />
 
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="8" HorizontalOptions="Center">

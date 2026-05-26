@@ -113,6 +113,12 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
+        /*
+         * Corrige les clients fermés avant le calcul du récapitulatif :
+         * ils doivent être comptés comme traités, en NON_FAIT avec commentaire automatique.
+         */
+        await _databaseService.NormalizeClosedLinesAsync(_tournee.Id);
+
         var lignes = await _databaseService.GetLignesAsync(_tournee.Id);
         TotalClients = lignes.Count;
         Valides = lignes.Count(l => l.StatutPassage != StatutPassageConstants.AFaire);
@@ -220,6 +226,17 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
+        var validationMessage = await GetLocalBlockingValidationMessageAsync();
+        if (!string.IsNullOrWhiteSpace(validationMessage))
+        {
+            await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Tournée incomplète",
+                validationMessage,
+                "OK");
+
+            return;
+        }
+
         var apiDisponible = await TestConnectionAsync(showAlert: false);
 
         if (!apiDisponible)
@@ -270,6 +287,37 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         {
             SetBusy(false);
         }
+    }
+
+    private async Task<string?> GetLocalBlockingValidationMessageAsync()
+    {
+        if (_appStateService.CurrentTourneeId <= 0)
+        {
+            return "Aucune tournée locale n'est sélectionnée pour l'envoi.";
+        }
+
+        await _databaseService.NormalizeClosedLinesAsync(_appStateService.CurrentTourneeId);
+
+        var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
+        var ligneAFaire = lignes.FirstOrDefault(ligne =>
+            string.Equals(ligne.StatutPassage, StatutPassageConstants.AFaire, StringComparison.OrdinalIgnoreCase));
+
+        if (ligneAFaire is not null)
+        {
+            return $"Le point {ligneAFaire.NumClient} - {ligneAFaire.NomClient} est encore à faire. Validez tous les points avant d’envoyer la tournée.";
+        }
+
+        var ligneSansCommentaire = lignes.FirstOrDefault(ligne =>
+            (string.Equals(ligne.StatutPassage, StatutPassageConstants.NonFait, StringComparison.OrdinalIgnoreCase)
+             || string.Equals(ligne.StatutPassage, StatutPassageConstants.Anomalie, StringComparison.OrdinalIgnoreCase))
+            && string.IsNullOrWhiteSpace(ligne.CommentaireLivreur));
+
+        if (ligneSansCommentaire is not null)
+        {
+            return $"Le point {ligneSansCommentaire.NumClient} - {ligneSansCommentaire.NomClient} nécessite un commentaire pour le statut choisi.";
+        }
+
+        return null;
     }
 
     private void SetBusy(bool value)

@@ -26,6 +26,13 @@ public static class TourneeLocalStatus
     public const string ErreurSynchronisation = "ERREUR_SYNCHRONISATION";
     public const string DejaSynchronisee = "DEJA_SYNCHRONISEE";
     public const string Expiree = "EXPIREE";
+
+    /*
+     * Tournée volontairement abandonnée sur le téléphone.
+     * Elle n'est plus considérée comme active et ne bloque plus le chargement
+     * d'une nouvelle tournée, mais elle reste traçable dans SQLite pendant les tests.
+     */
+    public const string AbandonneeLocale = "ABANDONNEE_LOCALE";
 }
 
 public static class ArticleCodes

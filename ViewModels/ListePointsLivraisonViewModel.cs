@@ -77,6 +77,13 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(HeaderText));
         OnPropertyChanged(nameof(SubtitleText));
 
+        /*
+         * Sécurité métier : les clients fermés sont traités automatiquement
+         * comme NON_FAIT avec le commentaire "Client fermé". Cela corrige aussi
+         * les tournées déjà chargées avant l'ajout de cette règle.
+         */
+        await _databaseService.NormalizeClosedLinesAsync(_appStateService.CurrentTourneeId);
+
         var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
 
         HasClosedClients = lignes.Any(ligne => ligne.EstFerme);

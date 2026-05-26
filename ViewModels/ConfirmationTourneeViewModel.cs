@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls;
 using System.Windows.Input;
+using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
@@ -90,24 +91,11 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             var activeTournee = await _databaseService.GetActiveTourneeAsync(dateTourneeAutorisee);
             if (activeTournee is not null)
             {
-                var reprendre = await Shell.Current.CurrentPage.DisplayAlertAsync(
-                    "Reprendre votre tournée ?",
-                    $"Une tournée non synchronisée du jour est déjà présente : " +
-                    $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}. Voulez-vous la reprendre ?",
-                    "Reprendre",
-                    "Retour");
-
-                if (reprendre)
+                var canContinue = await HandleExistingActiveTourneeAsync(activeTournee, selectedTournee);
+                if (!canContinue)
                 {
-                    _appStateService.CurrentTourneeId = activeTournee.Id;
-                    _appStateService.SelectedLigneId = 0;
-
-                    await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
                     return;
                 }
-
-                await Shell.Current.GoToAsync("..");
-                return;
             }
 
             if (expiredCount > 0)
@@ -116,30 +104,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
                     $"{expiredCount} ancienne(s) tournée(s) ont été marquée(s) EXPIREE et ne peuvent plus être reprises.";
             }
 
-            LoadingMessage = "Chargement de la tournée depuis l'API...";
-            LoadMessage = "Chargement depuis l'API…";
-
-            /*
-             * Le mobile ne transmet plus dateTournee à l'API.
-             * L'API calcule la date métier et renvoie la tournée complète.
-             */
-            var dto = await _tourneesApiService.GetTourneeJourAsync(
-                selectedTournee.CodeTournee,
-                _appStateService.CurrentLivreur.CodeLivreur);
-
-            if (dto.DateTournee != default)
-            {
-                _appStateService.DateTourneeAutorisee = dto.DateTournee.Date;
-            }
-
-            var tourneeId = await _databaseService.SaveTourneeAsync(dto);
-
-            _appStateService.CurrentTourneeId = tourneeId;
-            _appStateService.SelectedLigneId = 0;
-
-            LoadMessage = "Tournée chargée localement.";
-
-            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+            await LoadSelectedTourneeFromApiAsync(selectedTournee);
         }
         catch (Exception exception)
         {
@@ -158,6 +123,91 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         {
             SetBusy(false);
         }
+    }
+
+    private async Task<bool> HandleExistingActiveTourneeAsync(
+        LocalTournee activeTournee,
+        TourneeResumeDto selectedTournee)
+    {
+        var selectedLabel = string.IsNullOrWhiteSpace(selectedTournee.LibelleTournee)
+            ? selectedTournee.CodeTournee
+            : $"{selectedTournee.CodeTournee} — {selectedTournee.LibelleTournee}";
+
+        var activeLabel = string.IsNullOrWhiteSpace(activeTournee.LibelleTournee)
+            ? activeTournee.CodeTournee
+            : $"{activeTournee.CodeTournee} — {activeTournee.LibelleTournee}";
+
+        var action = await Shell.Current.CurrentPage.DisplayActionSheet(
+            $"Une tournée non synchronisée existe déjà :\n{activeLabel} du {activeTournee.DateTournee:dd/MM/yyyy}\n\nQue voulez-vous faire ?",
+            "Retour à la liste",
+            $"Abandonner {activeTournee.CodeTournee} et charger {selectedTournee.CodeTournee}",
+            "Reprendre cette tournée");
+
+        if (string.Equals(action, "Reprendre cette tournée", StringComparison.OrdinalIgnoreCase))
+        {
+            _appStateService.CurrentTourneeId = activeTournee.Id;
+            _appStateService.SelectedLigneId = 0;
+
+            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+            return false;
+        }
+
+        if (string.Equals(
+                action,
+                $"Abandonner {activeTournee.CodeTournee} et charger {selectedTournee.CodeTournee}",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var confirmed = await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Abandonner la tournée locale ?",
+                $"Attention : cette action abandonnera la tournée locale non synchronisée {activeLabel} du {activeTournee.DateTournee:dd/MM/yyyy}.\n\n" +
+                $"Elle ne sera plus proposée à la reprise sur ce téléphone. Utilisez cette option uniquement si la tournée est bloquée ou chargée par erreur.\n\n" +
+                $"Voulez-vous vraiment l'abandonner et charger {selectedLabel} ?",
+                "Abandonner et charger",
+                "Annuler");
+
+            if (!confirmed)
+            {
+                return false;
+            }
+
+            await _databaseService.AbandonnerTourneeLocaleAsync(
+                activeTournee.Id,
+                $"Remplacée par la tournée {selectedTournee.CodeTournee} depuis l'écran de chargement.");
+
+            LoadMessage = $"La tournée locale {activeTournee.CodeTournee} a été abandonnée. Chargement de {selectedTournee.CodeTournee}.";
+            return true;
+        }
+
+        await Shell.Current.GoToAsync("..");
+        return false;
+    }
+
+    private async Task LoadSelectedTourneeFromApiAsync(TourneeResumeDto selectedTournee)
+    {
+        LoadingMessage = "Chargement de la tournée depuis l'API...";
+        LoadMessage = "Chargement depuis l'API…";
+
+        /*
+         * Le mobile ne transmet plus dateTournee à l'API.
+         * L'API calcule la date métier et renvoie la tournée complète.
+         */
+        var dto = await _tourneesApiService.GetTourneeJourAsync(
+            selectedTournee.CodeTournee,
+            _appStateService.CurrentLivreur!.CodeLivreur);
+
+        if (dto.DateTournee != default)
+        {
+            _appStateService.DateTourneeAutorisee = dto.DateTournee.Date;
+        }
+
+        var tourneeId = await _databaseService.SaveTourneeAsync(dto);
+
+        _appStateService.CurrentTourneeId = tourneeId;
+        _appStateService.SelectedLigneId = 0;
+
+        LoadMessage = "Tournée chargée localement.";
+
+        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
     private void SetBusy(bool value)

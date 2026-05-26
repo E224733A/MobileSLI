@@ -23,13 +23,13 @@ public sealed class SynchronisationService
     {
         if (idTourneeLocale <= 0)
         {
-            return Failure("Aucune tournée locale n'est sélectionnée pour la synchronisation.");
+            return Failure("Aucune tournée locale n'est sélectionnée pour la synchronisation.", code: "VALIDATION_ERROR");
         }
 
         var tournee = await _databaseService.GetTourneeAsync(idTourneeLocale);
         if (tournee is null)
         {
-            return Failure("Tournée locale introuvable.");
+            return Failure("Tournée locale introuvable.", code: "VALIDATION_ERROR");
         }
 
         if (string.Equals(tournee.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase))
@@ -52,12 +52,24 @@ public sealed class SynchronisationService
                 code: tournee.StatutLocal);
         }
 
+        /*
+         * Les clients fermés sont des cas métier particuliers : ils ne sont pas
+         * à traiter manuellement par le livreur, mais ils doivent être présents
+         * dans le JSON final comme NON_FAIT avec le commentaire "Client fermé".
+         * Cette normalisation protège aussi les anciennes bases SQLite déjà chargées.
+         */
+        await _databaseService.NormalizeClosedLinesAsync(idTourneeLocale);
+
         var lignes = await _databaseService.GetLignesAsync(idTourneeLocale);
         var validation = await ValidateBeforeSendAsync(lignes);
 
         if (!validation.Success)
         {
-            await _databaseService.MarkErreurSynchronisationAsync(idTourneeLocale);
+            /*
+             * Une tournée incomplète n'est pas une erreur technique de synchronisation.
+             * On ne marque donc pas la tournée en ERREUR_SYNCHRONISATION : elle reste
+             * corrigeable localement par l'utilisateur.
+             */
             return validation;
         }
 

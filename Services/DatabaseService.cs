@@ -14,6 +14,7 @@ namespace MobileSLI.Services;
 public sealed class DatabaseService
 {
     private const string DatabaseFileName = "mobile_sli.db3";
+    private const string CommentaireClientFermeAutomatique = "Client fermé";
 
     private SQLiteAsyncConnection? _database;
     private readonly SettingsService _settings;
@@ -230,11 +231,14 @@ public sealed class DatabaseService
         var db = await GetDatabaseAsync();
         var dateTournee = dto.DateTournee.Date;
 
-        var existing = await db.Table<LocalTournee>()
+        var existingTournees = await db.Table<LocalTournee>()
             .Where(t => t.DateTournee == dateTournee
                         && t.CodeTournee == dto.CodeTournee
                         && t.CodeLivreur == dto.Livreur.CodeLivreur)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        var existing = existingTournees.FirstOrDefault(tournee =>
+            !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
 
         if (existing is not null
             && string.Equals(existing.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase))
@@ -337,13 +341,23 @@ public sealed class DatabaseService
                 PrecisionLivreur = null
             };
 
+            ApplyClosedLineDefaults(ligne);
+
             await db.InsertAsync(ligne);
 
             foreach (var quantite in BuildQuantitesForLocalStorage(ligneDto, dto.ArticlesSaisissables))
             {
+                if (ligne.EstFerme)
+                {
+                    quantite.QuantiteLivree = 0;
+                    quantite.QuantiteRecuperee = 0;
+                }
+
                 await InsertQuantiteAsync(db, ligne.Id, quantite);
             }
         }
+
+        await NormalizeClosedLinesAsync(tournee.Id);
 
         return tournee.Id;
     }
@@ -415,9 +429,12 @@ public sealed class DatabaseService
     public async Task<LocalTournee?> GetLatestTourneeAsync()
     {
         var db = await GetDatabaseAsync();
-        return await db.Table<LocalTournee>()
+        var tournees = await db.Table<LocalTournee>()
             .OrderByDescending(t => t.DateChargement)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        return tournees.FirstOrDefault(tournee =>
+            !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<LocalTournee?> GetActiveTourneeAsync(DateTime? dateTourneeAutorisee = null)
@@ -434,7 +451,8 @@ public sealed class DatabaseService
             && tournee.DateTournee.Date == referenceDate
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase));
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<int> ExpireOldActiveTourneesAsync(DateTime? dateTourneeAutorisee = null)
@@ -448,7 +466,8 @@ public sealed class DatabaseService
                 && t.DateTournee < referenceDate
                 && t.StatutLocal != TourneeLocalStatus.Synchronisee
                 && t.StatutLocal != TourneeLocalStatus.DejaSynchronisee
-                && t.StatutLocal != TourneeLocalStatus.Expiree)
+                && t.StatutLocal != TourneeLocalStatus.Expiree
+                && t.StatutLocal != TourneeLocalStatus.AbandonneeLocale)
             .ToListAsync();
 
         foreach (var tournee in tournees)
@@ -510,6 +529,78 @@ public sealed class DatabaseService
         return referenceDate < cutoff;
     }
 
+    public async Task<int> NormalizeClosedLinesAsync(int tourneeId)
+    {
+        if (tourneeId <= 0)
+        {
+            return 0;
+        }
+
+        var db = await GetDatabaseAsync();
+        var tournee = await db.Table<LocalTournee>()
+            .Where(t => t.Id == tourneeId)
+            .FirstOrDefaultAsync();
+
+        if (tournee is null || tournee.EstVerrouillee)
+        {
+            return 0;
+        }
+
+        var lignesFermees = await db.Table<LocalTourneeLigne>()
+            .Where(l => l.TourneeId == tourneeId && l.EstFerme)
+            .ToListAsync();
+
+        var lignesCorrigees = 0;
+
+        foreach (var ligne in lignesFermees)
+        {
+            var statutAvant = ligne.StatutPassage;
+            var estValideeAvant = ligne.EstValidee;
+            var heureAvant = ligne.HeureValidation;
+            var commentaireAvant = ligne.CommentaireLivreur;
+
+            ApplyClosedLineDefaults(ligne);
+
+            if (!string.Equals(statutAvant, ligne.StatutPassage, StringComparison.OrdinalIgnoreCase)
+                || estValideeAvant != ligne.EstValidee
+                || heureAvant != ligne.HeureValidation
+                || !string.Equals(commentaireAvant, ligne.CommentaireLivreur, StringComparison.Ordinal))
+            {
+                await db.UpdateAsync(ligne);
+                lignesCorrigees++;
+            }
+
+            var quantites = await db.Table<LocalTourneeLigneQuantite>()
+                .Where(q => q.LigneId == ligne.Id)
+                .ToListAsync();
+
+            foreach (var quantite in quantites)
+            {
+                if (quantite.QuantiteLivree != 0 || quantite.QuantiteRecuperee != 0)
+                {
+                    quantite.QuantiteLivree = 0;
+                    quantite.QuantiteRecuperee = 0;
+                    await db.UpdateAsync(quantite);
+                }
+            }
+        }
+
+        return lignesCorrigees;
+    }
+
+    private static void ApplyClosedLineDefaults(LocalTourneeLigne ligne)
+    {
+        if (!ligne.EstFerme)
+        {
+            return;
+        }
+
+        ligne.StatutPassage = StatutPassageConstants.NonFait;
+        ligne.EstValidee = true;
+        ligne.HeureValidation ??= DateTime.Now;
+        ligne.CommentaireLivreur = CommentaireClientFermeAutomatique;
+    }
+
     public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -546,10 +637,18 @@ public sealed class DatabaseService
             throw new InvalidOperationException("La tournée est verrouillée après synchronisation.");
         }
 
+        ApplyClosedLineDefaults(ligne);
+
         await db.UpdateAsync(ligne);
 
         foreach (var quantite in quantites)
         {
+            if (ligne.EstFerme)
+            {
+                quantite.QuantiteLivree = 0;
+                quantite.QuantiteRecuperee = 0;
+            }
+
             if (IsRollsVides(quantite.CodeArticle))
             {
                 quantite.QuantiteLivreePrevue = null;
@@ -573,6 +672,8 @@ public sealed class DatabaseService
 
     public async Task<SynchronisationTourneeRequest> BuildSynchronisationRequestAsync(int tourneeId)
     {
+        await NormalizeClosedLinesAsync(tourneeId);
+
         var tournee = await GetTourneeAsync(tourneeId)
             ?? throw new InvalidOperationException("Aucune tournée locale trouvée.");
 
@@ -664,7 +765,9 @@ public sealed class DatabaseService
                     Precision = ligne.Precision,
                     Cle = ligne.Cle,
                     EstFerme = ligne.EstFerme,
-                    DateFermeture = ligne.DateFermeture,
+                    DateFermeture = ligne.DateFermeture.HasValue
+                        ? ligne.DateFermeture.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                        : null,
                     MotifFermeture = ligne.MotifFermeture
                 },
                 Saisie = new SynchronisationSaisieRequest
@@ -747,6 +850,36 @@ public sealed class DatabaseService
         tournee.StatutLocal = TourneeLocalStatus.ErreurSynchronisation;
 
         await db.UpdateAsync(tournee);
+    }
+
+    public async Task<bool> AbandonnerTourneeLocaleAsync(int tourneeId, string? raison = null)
+    {
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId);
+
+        if (tournee is null)
+        {
+            return false;
+        }
+
+        if (string.Equals(tournee.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(tournee.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Une tournée déjà synchronisée ne peut pas être abandonnée localement.");
+        }
+
+        var trace = string.IsNullOrWhiteSpace(raison)
+            ? $"Tournée abandonnée localement le {DateTime.Now:dd/MM/yyyy HH:mm}."
+            : $"Tournée abandonnée localement le {DateTime.Now:dd/MM/yyyy HH:mm}. Raison : {raison.Trim()}";
+
+        tournee.StatutLocal = TourneeLocalStatus.AbandonneeLocale;
+        tournee.EstVerrouillee = true;
+        tournee.CommentaireGlobal = string.IsNullOrWhiteSpace(tournee.CommentaireGlobal)
+            ? trace
+            : $"{tournee.CommentaireGlobal.Trim()}{Environment.NewLine}{trace}";
+
+        await db.UpdateAsync(tournee);
+        return true;
     }
 
     public async Task MarkDejaSynchroniseeAsync(int tourneeId)

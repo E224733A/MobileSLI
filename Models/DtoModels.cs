@@ -444,7 +444,11 @@ public sealed class SynchronisationInfosLivreurRequest
 
     public bool EstFerme { get; set; }
 
-    public DateTime? DateFermeture { get; set; }
+    /*
+     * Le contrat API mobile attend une date pure pour dateFermeture.
+     * On envoie donc yyyy-MM-dd, et non un DateTime ISO avec heure.
+     */
+    public string? DateFermeture { get; set; }
 
     public string? MotifFermeture { get; set; }
 }
@@ -489,14 +493,6 @@ public sealed class ApiErrorResponse
 /*
  * L'API peut parfois renvoyer horaire sous forme de nombre, de chaîne ou null.
  * Ce convertisseur évite de casser la désérialisation mobile.
- *
- * Remplacer le bloc :
- *     _ => reader.GetRawText()
- *
- * par :
- *     _ => ReadComplexTokenAsText(ref reader)
- *
- * et ajouter la méthode privée ReadComplexTokenAsText dans FlexibleStringJsonConverter.
  */
 public sealed class FlexibleStringJsonConverter : JsonConverter<string?>
 {
