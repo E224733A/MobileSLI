@@ -134,6 +134,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
             var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             var deletedCount = await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+            var abandonedDeletedCount = await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
 
@@ -149,10 +150,12 @@ public sealed class AccueilViewModel : BaseViewModel
                     return;
                 }
 
-                if (deletedCount > 0)
+                if (deletedCount > 0 || abandonedDeletedCount > 0)
                 {
                     ConnectionTitle = "Nettoyage local effectué";
-                    ConnectionMessage = $"{deletedCount} ancienne(s) tournée(s) synchronisée(s) ont été supprimée(s) du téléphone.";
+                    ConnectionMessage =
+                        $"{deletedCount} ancienne(s) tournée(s) synchronisée(s) et " +
+                        $"{abandonedDeletedCount} tournée(s) abandonnée(s) ont été supprimée(s) du téléphone.";
                 }
 
                 return;
@@ -315,6 +318,7 @@ public sealed class AccueilViewModel : BaseViewModel
              */
             var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+            await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
             if (expiredCount > 0)
             {

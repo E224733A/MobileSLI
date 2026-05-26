@@ -251,11 +251,9 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         Entity = entity;
 
-        _quantiteLivreeText = IsRollsVides
-            ? string.Empty
-            : entity.QuantiteLivree > 0
-                ? entity.QuantiteLivree.ToString()
-                : string.Empty;
+        _quantiteLivreeText = entity.QuantiteLivree > 0
+            ? entity.QuantiteLivree.ToString()
+            : string.Empty;
 
         _quantiteRecupereeText = entity.QuantiteRecuperee > 0
             ? entity.QuantiteRecuperee.ToString()
@@ -271,42 +269,24 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     public bool IsRollsVides =>
         string.Equals(CodeArticle, ArticleCodes.RollsVides, StringComparison.OrdinalIgnoreCase);
 
-    public bool IsLivreeEditable => !IsRollsVides;
+    /*
+     * Règle métier mise à jour : ROLLS_VIDES peut désormais être prévu et livré.
+     * Il doit donc se comporter comme les autres articles côté saisie mobile.
+     */
+    public bool IsLivreeEditable => true;
 
-    public int? QuantiteLivreePrevue => IsRollsVides
-        ? null
-        : Entity.QuantiteLivreePrevue;
+    public int? QuantiteLivreePrevue => Entity.QuantiteLivreePrevue;
 
-    public bool HasQuantiteLivreePrevue => !IsRollsVides && Entity.QuantiteLivreePrevue.HasValue;
+    public bool HasQuantiteLivreePrevue => Entity.QuantiteLivreePrevue.HasValue;
 
-    public string QuantitePrevueText
-    {
-        get
-        {
-            if (IsRollsVides)
-            {
-                return "Récupéré uniquement";
-            }
-
-            return Entity.QuantiteLivreePrevue.HasValue
-                ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
-                : "Prévu : non renseigné";
-        }
-    }
+    public string QuantitePrevueText => Entity.QuantiteLivreePrevue.HasValue
+        ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
+        : "Prévu : non renseigné";
 
     public string QuantiteLivreeText
     {
         get => _quantiteLivreeText;
-        set
-        {
-            if (IsRollsVides)
-            {
-                SetProperty(ref _quantiteLivreeText, string.Empty);
-                return;
-            }
-
-            SetProperty(ref _quantiteLivreeText, value);
-        }
+        set => SetProperty(ref _quantiteLivreeText, value);
     }
 
     public string QuantiteRecupereeText
@@ -319,11 +299,9 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
     {
         error = string.Empty;
 
-        var livreText = IsRollsVides
+        var livreText = string.IsNullOrWhiteSpace(QuantiteLivreeText)
             ? "0"
-            : string.IsNullOrWhiteSpace(QuantiteLivreeText)
-                ? "0"
-                : QuantiteLivreeText.Trim();
+            : QuantiteLivreeText.Trim();
 
         var recupereText = string.IsNullOrWhiteSpace(QuantiteRecupereeText)
             ? "0"
@@ -347,14 +325,7 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
             return false;
         }
 
-        Entity.QuantiteLivreePrevue = IsRollsVides
-            ? null
-            : Entity.QuantiteLivreePrevue;
-
-        Entity.QuantiteLivree = IsRollsVides
-            ? 0
-            : quantiteLivree;
-
+        Entity.QuantiteLivree = quantiteLivree;
         Entity.QuantiteRecuperee = quantiteRecuperee;
 
         return true;

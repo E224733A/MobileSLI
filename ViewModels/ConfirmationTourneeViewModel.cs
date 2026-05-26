@@ -87,6 +87,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
              */
             var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync(dateTourneeAutorisee);
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
+            await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
             var activeTournee = await _databaseService.GetActiveTourneeAsync(dateTourneeAutorisee);
             if (activeTournee is not null)
@@ -137,7 +138,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             ? activeTournee.CodeTournee
             : $"{activeTournee.CodeTournee} — {activeTournee.LibelleTournee}";
 
-        var action = await Shell.Current.CurrentPage.DisplayActionSheet(
+        var action = await Shell.Current.CurrentPage.DisplayActionSheetAsync(
             $"Une tournée non synchronisée existe déjà :\n{activeLabel} du {activeTournee.DateTournee:dd/MM/yyyy}\n\nQue voulez-vous faire ?",
             "Retour à la liste",
             $"Abandonner {activeTournee.CodeTournee} et charger {selectedTournee.CodeTournee}",
@@ -173,6 +174,8 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             await _databaseService.AbandonnerTourneeLocaleAsync(
                 activeTournee.Id,
                 $"Remplacée par la tournée {selectedTournee.CodeTournee} depuis l'écran de chargement.");
+
+            await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
             LoadMessage = $"La tournée locale {activeTournee.CodeTournee} a été abandonnée. Chargement de {selectedTournee.CodeTournee}.";
             return true;

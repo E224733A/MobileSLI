@@ -402,15 +402,13 @@ public sealed class DatabaseService
         int ligneId,
         QuantiteSaisieMobileDto quantite)
     {
-        var isRollsVides = IsRollsVides(quantite.CodeArticle);
-
         await db.InsertAsync(new LocalTourneeLigneQuantite
         {
             LigneId = ligneId,
             CodeArticle = quantite.CodeArticle,
             Libelle = quantite.Libelle ?? quantite.CodeArticle,
-            QuantiteLivreePrevue = isRollsVides ? null : quantite.QuantiteLivreePrevue,
-            QuantiteLivree = isRollsVides ? 0 : Math.Max(0, quantite.QuantiteLivree),
+            QuantiteLivreePrevue = quantite.QuantiteLivreePrevue,
+            QuantiteLivree = Math.Max(0, quantite.QuantiteLivree),
             QuantiteRecuperee = Math.Max(0, quantite.QuantiteRecuperee)
         });
     }
@@ -508,6 +506,34 @@ public sealed class DatabaseService
         return candidates.Count;
     }
 
+    public async Task<int> PurgeOldAbandonedTourneesAsync(int retentionDays = 30)
+    {
+        var db = await GetDatabaseAsync();
+
+        if (retentionDays < 1)
+        {
+            retentionDays = 30;
+        }
+
+        var cutoff = DateTime.Now.AddDays(-retentionDays);
+
+        var tournees = await db.Table<LocalTournee>()
+            .Where(t => t.EstVerrouillee)
+            .ToListAsync();
+
+        var candidates = tournees
+            .Where(t => IsPurgeableAbandonedTournee(t, cutoff))
+            .OrderBy(t => t.DateChargement)
+            .ToList();
+
+        foreach (var tournee in candidates)
+        {
+            await DeleteTourneeDataAsync(tournee.Id);
+        }
+
+        return candidates.Count;
+    }
+
     private static bool IsPurgeableSynchronizedTournee(LocalTournee tournee, DateTime cutoff)
     {
         if (!tournee.EstVerrouillee)
@@ -527,6 +553,21 @@ public sealed class DatabaseService
         var referenceDate = tournee.DateEnvoi ?? tournee.DateChargement;
 
         return referenceDate < cutoff;
+    }
+
+    private static bool IsPurgeableAbandonedTournee(LocalTournee tournee, DateTime cutoff)
+    {
+        if (!tournee.EstVerrouillee)
+        {
+            return false;
+        }
+
+        if (!string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return tournee.DateChargement < cutoff;
     }
 
     public async Task<int> NormalizeClosedLinesAsync(int tourneeId)
@@ -647,12 +688,6 @@ public sealed class DatabaseService
             {
                 quantite.QuantiteLivree = 0;
                 quantite.QuantiteRecuperee = 0;
-            }
-
-            if (IsRollsVides(quantite.CodeArticle))
-            {
-                quantite.QuantiteLivreePrevue = null;
-                quantite.QuantiteLivree = 0;
             }
 
             if (quantite.QuantiteLivree < 0 || quantite.QuantiteRecuperee < 0)
@@ -783,18 +818,13 @@ public sealed class DatabaseService
                         ? FormatDateTime(ligne.HeureValidation.Value)
                         : null,
                     EstValidee = ligne.EstValidee,
-                    Quantites = quantites.Select(q =>
+                    Quantites = quantites.Select(q => new SynchronisationQuantiteRequest
                     {
-                        var isRollsVides = IsRollsVides(q.CodeArticle);
-
-                        return new SynchronisationQuantiteRequest
-                        {
-                            CodeArticle = q.CodeArticle,
-                            Libelle = q.Libelle,
-                            QuantiteLivreePrevue = isRollsVides ? null : q.QuantiteLivreePrevue,
-                            QuantiteLivree = isRollsVides ? 0 : q.QuantiteLivree,
-                            QuantiteRecuperee = q.QuantiteRecuperee
-                        };
+                        CodeArticle = q.CodeArticle,
+                        Libelle = q.Libelle,
+                        QuantiteLivreePrevue = q.QuantiteLivreePrevue,
+                        QuantiteLivree = q.QuantiteLivree,
+                        QuantiteRecuperee = q.QuantiteRecuperee
                     }).ToList()
                 }
             });
