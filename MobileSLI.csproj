@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-android</TargetFramework>
-		<SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion>31.0</SupportedOSPlatformVersion>
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>MobileSLI</RootNamespace>
@@ -16,8 +16,13 @@
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
-		<AndroidTargetSdkVersion>36</AndroidTargetSdkVersion>
-		<AndroidCompileSdkVersion>36</AndroidCompileSdkVersion>
+		<!-- Configuration Android alignée sur Android 12 (API 31) - cible terrain -->
+		<AndroidMinSdkVersion>31</AndroidMinSdkVersion>
+		<AndroidTargetSdkVersion>31</AndroidTargetSdkVersion>
+		<AndroidCompileSdkVersion>31</AndroidCompileSdkVersion>
+
+		<!-- Activation de la compilation XAML pour éliminer les warnings XC0022/XC0025 -->
+		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
 	</PropertyGroup>
 	
 	
@@ -40,6 +45,7 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8" />
 	</ItemGroup>
 
 </Project>

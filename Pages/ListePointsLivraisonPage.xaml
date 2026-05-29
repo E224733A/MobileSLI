@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Version corrigée de la page ListePointsLivraisonPage basée sur le commit a0c4cbb.
+    Les modifications visent uniquement à harmoniser le design :
+    - application du fond sombre (PageBackground) à la page et à la grille
+      principale pour éviter toute zone claire résiduelle ;
+    - réduction du padding général de 20 à 16 dp pour optimiser la largeur
+      utile ;
+    - aucune modification de la logique métier ou des commandes.
+-->
 <ContentPage
     x:Class="MobileSLI.Pages.ListePointsLivraisonPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="viewModels:ListePointsLivraisonViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="Auto,Auto,*,Auto">
+    <!-- Grille principale avec fond sombre et padding réduit -->
+    <Grid Padding="16" RowDefinitions="Auto,Auto,*,Auto" BackgroundColor="{StaticResource PageBackground}">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
             <Label Text="Points de livraison" Style="{StaticResource PageTitle}" />
             <Label Text="{Binding HeaderText}" Style="{StaticResource PageSubtitle}" />
@@ -24,16 +37,12 @@
                     <Frame Style="{StaticResource Card}">
                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5">
                             <Label Grid.Row="0" Grid.Column="0" Text="{Binding ClientText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="15" />
-
                             <Frame Grid.Row="0" Grid.Column="1" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="10" HasShadow="False" Padding="6,2" Margin="0">
                                 <Label Text="{Binding StatutText}" TextColor="{StaticResource InfoText}" FontSize="10" FontAttributes="Bold" />
                             </Frame>
-
                             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding OrdreText}" Style="{StaticResource MutedText}" />
                             <Label Grid.Row="2" Grid.Column="0" Text="{Binding DetailText}" Style="{StaticResource MutedText}" />
-
                             <Button Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
-
                             <Frame Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasInformationLivreur}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="12" HasShadow="False" Padding="8" Margin="0,4,0,0">
                                 <VerticalStackLayout Spacing="3">
                                     <Label IsVisible="{Binding HasInstruction}" Text="Instruction" TextColor="{StaticResource InfoText}" FontSize="11" FontAttributes="Bold" />

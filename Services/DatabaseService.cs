@@ -144,59 +144,59 @@ public sealed class DatabaseService
     }
 
 #if ANDROID
+    [System.Runtime.Versioning.SupportedOSPlatform("android31")]
     private static Task<string> ExportDatabaseToAndroidDownloadsAsync(
+        string sourcePath,
+        string exportFileName)
+    {
+        /*
+         * Avec SupportedOSPlatformVersion=31 (Android 12), on est toujours >= API 29.
+         * On utilise donc toujours l'API MediaStore pour l'export.
+         */
+        return ExportToMediaStoreAsync(sourcePath, exportFileName);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("android31")]
+    private static async Task<string> ExportToMediaStoreAsync(
         string sourcePath,
         string exportFileName)
     {
         var context = Android.App.Application.Context
             ?? throw new InvalidOperationException("Contexte Android indisponible.");
 
-        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
+        var values = new ContentValues();
+        values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, exportFileName);
+        values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "application/x-sqlite3");
+        values.Put(Android.Provider.MediaStore.IMediaColumns.RelativePath, Android.OS.Environment.DirectoryDownloads);
+        values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 1);
+
+        var resolver = context.ContentResolver
+            ?? throw new InvalidOperationException("ContentResolver Android indisponible.");
+
+        var destinationUri = resolver.Insert(Android.Provider.MediaStore.Downloads.ExternalContentUri, values)
+            ?? throw new InvalidOperationException("Impossible de créer le fichier d'export dans Téléchargements.");
+
+        try
         {
-            var values = new ContentValues();
-            values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, exportFileName);
-            values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "application/x-sqlite3");
-            values.Put(Android.Provider.MediaStore.IMediaColumns.RelativePath, Android.OS.Environment.DirectoryDownloads);
-            values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 1);
+            using var input = File.OpenRead(sourcePath);
+            using var output = resolver.OpenOutputStream(destinationUri)
+                ?? throw new InvalidOperationException("Impossible d'ouvrir le flux d'écriture Android.");
 
-            var resolver = context.ContentResolver
-                ?? throw new InvalidOperationException("ContentResolver Android indisponible.");
-
-            var destinationUri = resolver.Insert(Android.Provider.MediaStore.Downloads.ExternalContentUri, values)
-                ?? throw new InvalidOperationException("Impossible de créer le fichier d'export dans Téléchargements.");
-
-            try
-            {
-                using var input = File.OpenRead(sourcePath);
-                using var output = resolver.OpenOutputStream(destinationUri)
-                    ?? throw new InvalidOperationException("Impossible d'ouvrir le flux d'écriture Android.");
-
-                input.CopyTo(output);
-            }
-            catch
-            {
-                resolver.Delete(destinationUri, null, null);
-                throw;
-            }
-            finally
-            {
-                values.Clear();
-                values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 0);
-                resolver.Update(destinationUri, values, null, null);
-            }
-
-            return Task.FromResult($"Téléchargements/{exportFileName}");
+            input.CopyTo(output);
+        }
+        catch
+        {
+            resolver.Delete(destinationUri, null, null);
+            throw;
+        }
+        finally
+        {
+            values.Clear();
+            values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 0);
+            resolver.Update(destinationUri, values, null, null);
         }
 
-        var downloadsDirectory = Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDownloads)
-            ?? throw new InvalidOperationException("Dossier Téléchargements Android indisponible.");
-
-        Directory.CreateDirectory(downloadsDirectory.AbsolutePath);
-
-        var destinationPath = Path.Combine(downloadsDirectory.AbsolutePath, exportFileName);
-        File.Copy(sourcePath, destinationPath, overwrite: true);
-
-        return Task.FromResult(destinationPath);
+        return $"Téléchargements/{exportFileName}";
     }
 #endif
 

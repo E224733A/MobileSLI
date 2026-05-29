@@ -1,30 +1,59 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Cette version de la page d'identification applique les règles de design
+    décrites dans le guide de correction. Les principales différences avec
+    la version du commit a0c4cbb sont :
+    - l'application explicite du fond sombre via PageBackground sur la page
+      et la grille racine pour éviter tout fond clair résiduel ;
+    - la réduction du padding de la page (20 ➔ 16 dp) pour mieux exploiter
+      la largeur utile des petits écrans Android 12 ;
+    - la suppression de la hauteur fixe de la CollectionView et utilisation
+      de VerticalOptions="FillAndExpand" pour que la liste s'adapte à
+      l'espace disponible sans générer de grandes zones vides ;
+    - l'ajout d'un état visuel pour les éléments sélectionnés dans la
+      CollectionView grâce à VisualStateManager : lorsque l'utilisateur
+      sélectionne un livreur, la carte change de couleur de fond et de
+      bordure en utilisant les ressources SelectedBackground et
+      SelectedBorder définies dans Colors.xaml.
+-->
 <ContentPage
     x:Class="MobileSLI.Pages.IdentificationLivreurPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="viewModels:IdentificationLivreurViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
+    <!-- Grille racine : fond sombre et padding réduit -->
+    <Grid Padding="16"
+          RowDefinitions="*,Auto"
+          BackgroundColor="{StaticResource PageBackground}">
+
+        <!-- Contenu scrollable principal -->
         <ScrollView Grid.Row="0">
             <VerticalStackLayout Spacing="12">
                 <Label Text="Identification livreur" Style="{StaticResource PageTitle}" />
                 <Label Text="Sélectionnez le livreur qui charge sa tournée" Style="{StaticResource PageSubtitle}" />
 
+                <!-- Carte contenant la liste des livreurs et les actions associées -->
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="10">
                         <Label Text="Liste des livreurs" Style="{StaticResource MutedText}" />
 
+                        <!-- Bouton de rechargement des livreurs -->
                         <Button
                             Text="Recharger les livreurs depuis l'API"
                             Command="{Binding LoadLivreursCommand}"
                             Style="{StaticResource SecondaryButton}" />
 
+                        <!-- Liste des livreurs avec sélection visuelle -->
                         <CollectionView
                             ItemsSource="{Binding Livreurs}"
                             SelectedItem="{Binding SelectedLivreur, Mode=TwoWay}"
                             SelectionMode="Single"
-                            HeightRequest="380">
+                            VerticalOptions="FillAndExpand">
 
+                            <!-- Vue affichée lorsqu'il n'y a aucun livreur -->
                             <CollectionView.EmptyView>
                                 <VerticalStackLayout Padding="12" Spacing="4">
                                     <Label
@@ -38,43 +67,65 @@
                                 </VerticalStackLayout>
                             </CollectionView.EmptyView>
 
+                            <!-- Gabarit des lignes de livreur -->
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Padding="12" ColumnDefinitions="52,*">
-                                        <Border
-                                            Grid.ColumnSpan="2"
-                                            StrokeThickness="1"
-                                            Stroke="{StaticResource BorderColor}"
-                                            BackgroundColor="{StaticResource CardBackground}"
-                                            StrokeShape="RoundRectangle 12" />
+                                    <!-- Le Border englobant gère la couleur de fond et de bordure -->
+                                    <Border
+                                        x:Name="ItemBorder"
+                                        Padding="12"
+                                        StrokeThickness="1"
+                                        Stroke="{StaticResource BorderColor}"
+                                        BackgroundColor="{StaticResource CardBackground}"
+                                        StrokeShape="RoundRectangle 12">
+                                        <!-- États visuels pour gérer la sélection -->
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup x:Name="CommonStates">
+                                                <VisualState x:Name="Normal">
+                                                    <VisualState.Setters>
+                                                        <Setter TargetName="ItemBorder" Property="BackgroundColor" Value="{StaticResource CardBackground}" />
+                                                        <Setter TargetName="ItemBorder" Property="Stroke" Value="{StaticResource BorderColor}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                                <VisualState x:Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter TargetName="ItemBorder" Property="BackgroundColor" Value="{StaticResource SelectedBackground}" />
+                                                        <Setter TargetName="ItemBorder" Property="Stroke" Value="{StaticResource SelectedBorder}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
 
-                                        <Label
-                                            Grid.Column="0"
-                                            Text="{Binding CodeLivreur}"
-                                            TextColor="{StaticResource Primary}"
-                                            FontAttributes="Bold"
-                                            FontSize="18"
-                                            VerticalOptions="Center"
-                                            HorizontalOptions="Center" />
-
-                                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                        <!-- Contenu de la ligne : code et nom du livreur -->
+                                        <Grid ColumnDefinitions="52,*">
                                             <Label
-                                                Text="{Binding NomLivreur}"
-                                                TextColor="{StaticResource TextMain}"
+                                                Grid.Column="0"
+                                                Text="{Binding CodeLivreur}"
+                                                TextColor="{StaticResource Primary}"
                                                 FontAttributes="Bold"
-                                                FontSize="15" />
-                                            <Label
-                                                Text="{Binding NomAffiche}"
-                                                FontSize="12"
-                                                TextColor="{StaticResource TextMuted}" />
-                                        </VerticalStackLayout>
-                                    </Grid>
+                                                FontSize="18"
+                                                VerticalOptions="Center"
+                                                HorizontalOptions="Center" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                                <Label
+                                                    Text="{Binding NomLivreur}"
+                                                    TextColor="{StaticResource TextMain}"
+                                                    FontAttributes="Bold"
+                                                    FontSize="15" />
+                                                <Label
+                                                    Text="{Binding NomAffiche}"
+                                                    FontSize="12"
+                                                    TextColor="{StaticResource TextMuted}" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
                         </CollectionView>
                     </VerticalStackLayout>
                 </Frame>
 
+                <!-- Carte d'information sur l'état du chargement -->
                 <Frame
                     Style="{StaticResource Card}"
                     BackgroundColor="{StaticResource InfoBackground}"
@@ -98,6 +149,7 @@
             </VerticalStackLayout>
         </ScrollView>
 
+        <!-- Bouton principal en bas -->
         <Button
             Grid.Row="1"
             Text="Continuer vers la tournée"
@@ -105,6 +157,7 @@
             Style="{StaticResource PrimaryButton}"
             Margin="0,14,0,0" />
 
+        <!-- Overlay de chargement -->
         <Grid
             Grid.RowSpan="2"
             IsVisible="{Binding IsLoading}"

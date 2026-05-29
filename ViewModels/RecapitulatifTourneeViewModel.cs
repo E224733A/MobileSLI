@@ -229,10 +229,14 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         var validationMessage = await GetLocalBlockingValidationMessageAsync();
         if (!string.IsNullOrWhiteSpace(validationMessage))
         {
-            await Shell.Current.CurrentPage.DisplayAlertAsync(
-                "Tournée incomplète",
-                validationMessage,
-                "OK");
+            var currentPage = Shell.Current?.CurrentPage;
+            if (currentPage is not null)
+            {
+                await currentPage.DisplayAlertAsync(
+                    "Tournée incomplète",
+                    validationMessage,
+                    "OK");
+            }
 
             return;
         }
