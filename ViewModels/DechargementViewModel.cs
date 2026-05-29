@@ -15,9 +15,10 @@ public sealed class DechargementViewModel : BaseViewModel
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
+        LoadingMessage = "Chargement du déchargement...";
         Items = new ObservableCollection<DechargementItemViewModel>();
-        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)));
-        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)), () => !IsBusy);
+        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."), () => !IsBusy);
     }
 
     public ObservableCollection<DechargementItemViewModel> Items { get; }
@@ -30,31 +31,62 @@ public sealed class DechargementViewModel : BaseViewModel
 
     public async Task LoadAsync()
     {
-        Items.Clear();
-
-        var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
-
-        foreach (var ligne in lignes.OrderBy(l => l.NomClient).ThenBy(l => l.OrdreArret))
+        if (IsBusy)
         {
-            var quantites = await _databaseService.GetQuantitesAsync(ligne.Id);
-            var recuperees = quantites.Where(q => q.QuantiteRecuperee > 0).ToList();
-
-            if (recuperees.Count == 0)
-            {
-                continue;
-            }
-
-            Items.Add(new DechargementItemViewModel
-            {
-                ClientText = $"{ligne.NumClient} - {ligne.NomClient}",
-                PointText = ligne.DescriptionPDL ?? string.Empty,
-                ZoneText = string.IsNullOrWhiteSpace(ligne.ZoneDechargementAffichee)
-                    ? "Zone : non renseignée"
-                    : $"Zone : {ligne.ZoneDechargementAffichee}",
-                ArticlesText = string.Join(" · ", recuperees.Select(q => $"{q.QuantiteRecuperee} {q.Libelle}"))
-            });
+            return;
         }
 
-        OnPropertyChanged(nameof(CountText));
+        try
+        {
+            LoadingMessage = "Chargement du déchargement...";
+            SetBusy(true);
+            await Task.Yield();
+
+            Items.Clear();
+
+            var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
+
+            foreach (var ligne in lignes.OrderBy(l => l.NomClient).ThenBy(l => l.OrdreArret))
+            {
+                var quantites = await _databaseService.GetQuantitesAsync(ligne.Id);
+                var recuperees = quantites.Where(q => q.QuantiteRecuperee > 0).ToList();
+
+                if (recuperees.Count == 0)
+                {
+                    continue;
+                }
+
+                Items.Add(new DechargementItemViewModel
+                {
+                    ClientText = $"{ligne.NumClient} - {ligne.NomClient}",
+                    PointText = ligne.DescriptionPDL ?? string.Empty,
+                    ZoneText = string.IsNullOrWhiteSpace(ligne.ZoneDechargementAffichee)
+                        ? "Zone : non renseignée"
+                        : $"Zone : {ligne.ZoneDechargementAffichee}",
+                    ArticlesText = string.Join(" · ", recuperees.Select(q => $"{q.QuantiteRecuperee} {q.Libelle}"))
+                });
+            }
+
+            OnPropertyChanged(nameof(CountText));
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool value)
+    {
+        IsBusy = value;
+
+        if (GoRecapCommand is Command recapCommand)
+        {
+            recapCommand.ChangeCanExecute();
+        }
+
+        if (BackCommand is Command backCommand)
+        {
+            backCommand.ChangeCanExecute();
+        }
     }
 }

@@ -26,12 +26,13 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
         _appStateService = appStateService;
         _databaseService = databaseService;
 
+        LoadingMessage = "Chargement des points de livraison...";
         Lignes = new ObservableCollection<LigneListItemViewModel>();
 
-        OpenDetailCommand = new Command<LigneListItemViewModel>(async item => await OpenDetailAsync(item));
-        SetFilterCommand = new Command<string>(async filter => await SetFilterAsync(filter));
-        GoDechargementCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(DechargementPage)));
-        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)));
+        OpenDetailCommand = new Command<LigneListItemViewModel>(async item => await OpenDetailAsync(item), _ => !IsBusy);
+        SetFilterCommand = new Command<string>(async filter => await SetFilterAsync(filter), _ => !IsBusy);
+        GoDechargementCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(DechargementPage)), () => !IsBusy);
+        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)), () => !IsBusy);
     }
 
     public ObservableCollection<LigneListItemViewModel> Lignes { get; }
@@ -63,61 +64,77 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
     public async Task LoadAsync()
     {
-        if (_appStateService.CurrentTourneeId <= 0)
+        if (IsBusy)
         {
-            var latest = await _databaseService.GetLatestTourneeAsync();
-            if (latest is not null)
+            return;
+        }
+
+        try
+        {
+            LoadingMessage = "Chargement des points de livraison...";
+            SetBusy(true);
+            await Task.Yield();
+
+            if (_appStateService.CurrentTourneeId <= 0)
             {
-                _appStateService.CurrentTourneeId = latest.Id;
+                var latest = await _databaseService.GetLatestTourneeAsync();
+                if (latest is not null)
+                {
+                    _appStateService.CurrentTourneeId = latest.Id;
+                }
+            }
+
+            _tournee = await _databaseService.GetTourneeAsync(_appStateService.CurrentTourneeId);
+
+            OnPropertyChanged(nameof(HeaderText));
+            OnPropertyChanged(nameof(SubtitleText));
+
+            await _databaseService.NormalizeClosedLinesAsync(_appStateService.CurrentTourneeId);
+
+            var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
+
+            HasClosedClients = lignes.Any(ligne => ligne.EstFerme);
+
+            if (!HasClosedClients && CurrentFilter == FiltreFerme)
+            {
+                CurrentFilter = FiltreTous;
+            }
+
+            var filtered = CurrentFilter switch
+            {
+                FiltreAFaire => lignes.Where(ligne =>
+                    !ligne.EstFerme &&
+                    ligne.StatutPassage == StatutPassageConstants.AFaire),
+
+                FiltreFait => lignes.Where(ligne =>
+                    !ligne.EstFerme &&
+                    ligne.StatutPassage == StatutPassageConstants.Fait),
+
+                FiltreFerme => lignes.Where(ligne => ligne.EstFerme),
+
+                _ => lignes
+            };
+
+            Lignes.Clear();
+
+            foreach (var ligne in filtered.OrderBy(ligne => ligne.OrdreArret))
+            {
+                Lignes.Add(new LigneListItemViewModel(ligne));
             }
         }
-
-        _tournee = await _databaseService.GetTourneeAsync(_appStateService.CurrentTourneeId);
-
-        OnPropertyChanged(nameof(HeaderText));
-        OnPropertyChanged(nameof(SubtitleText));
-
-        /*
-         * Sécurité métier : les clients fermés sont traités automatiquement
-         * comme NON_FAIT avec le commentaire "Client fermé". Cela corrige aussi
-         * les tournées déjà chargées avant l'ajout de cette règle.
-         */
-        await _databaseService.NormalizeClosedLinesAsync(_appStateService.CurrentTourneeId);
-
-        var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
-
-        HasClosedClients = lignes.Any(ligne => ligne.EstFerme);
-
-        if (!HasClosedClients && CurrentFilter == FiltreFerme)
+        finally
         {
-            CurrentFilter = FiltreTous;
-        }
-
-        var filtered = CurrentFilter switch
-        {
-            FiltreAFaire => lignes.Where(ligne =>
-                !ligne.EstFerme &&
-                ligne.StatutPassage == StatutPassageConstants.AFaire),
-
-            FiltreFait => lignes.Where(ligne =>
-                !ligne.EstFerme &&
-                ligne.StatutPassage == StatutPassageConstants.Fait),
-
-            FiltreFerme => lignes.Where(ligne => ligne.EstFerme),
-
-            _ => lignes
-        };
-
-        Lignes.Clear();
-
-        foreach (var ligne in filtered.OrderBy(ligne => ligne.OrdreArret))
-        {
-            Lignes.Add(new LigneListItemViewModel(ligne));
+            SetBusy(false);
         }
     }
 
     private async Task SetFilterAsync(string? filter)
     {
+        if (IsBusy)
+        {
+            return;
+        }
+
         var requestedFilter = string.IsNullOrWhiteSpace(filter)
             ? FiltreTous
             : filter;
@@ -133,12 +150,41 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
     private async Task OpenDetailAsync(LigneListItemViewModel? item)
     {
-        if (item is null)
+        if (IsBusy || item is null)
         {
             return;
         }
 
         _appStateService.SelectedLigneId = item.Id;
         await Shell.Current.GoToAsync(nameof(DetailPointLivraisonPage));
+    }
+
+    private void SetBusy(bool value)
+    {
+        IsBusy = value;
+        RefreshCommandStates();
+    }
+
+    private void RefreshCommandStates()
+    {
+        if (OpenDetailCommand is Command<LigneListItemViewModel> openCommand)
+        {
+            openCommand.ChangeCanExecute();
+        }
+
+        if (SetFilterCommand is Command<string> filterCommand)
+        {
+            filterCommand.ChangeCanExecute();
+        }
+
+        if (GoDechargementCommand is Command dechargementCommand)
+        {
+            dechargementCommand.ChangeCanExecute();
+        }
+
+        if (GoRecapCommand is Command recapCommand)
+        {
+            recapCommand.ChangeCanExecute();
+        }
     }
 }

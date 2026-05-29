@@ -2,11 +2,14 @@
 <ContentPage
     x:Class="MobileSLI.Pages.AccueilPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:AccueilViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
-            <VerticalStackLayout Spacing="12">
+    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Accueil" Style="{StaticResource PageTitle}" />
                 <Label Text="Connexion au Wi-Fi du dépôt" Style="{StaticResource PageSubtitle}" />
 
@@ -14,15 +17,15 @@
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Adresse de l'API" Style="{StaticResource SectionTitle}" />
                         <Entry Text="{Binding ApiBaseUrl}" Style="{StaticResource Input}" Keyboard="Url" />
-                        <Button Text="Enregistrer l'adresse" Command="{Binding SaveApiUrlCommand}" Style="{StaticResource SecondaryButton}" />
+                        <Button Text="Enregistrer l'adresse" Command="{Binding SaveApiUrlCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
                     </VerticalStackLayout>
                 </Frame>
 
-                <Button Text="Tester la connexion" Command="{Binding TestConnectionCommand}" Style="{StaticResource PrimaryButton}" />
+                <Button Text="Tester la connexion" Command="{Binding TestConnectionCommand}" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding IsNotBusy}" />
 
                 <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource SuccessBackground}" BorderColor="{StaticResource SuccessBorder}">
                     <VerticalStackLayout Spacing="6">
-                        <Label Text="{Binding ConnectionTitle}" TextColor="{StaticResource SuccessText}" FontAttributes="Bold" FontSize="20" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding ConnectionTitle}" TextColor="{StaticResource SuccessText}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
                         <Label Text="{Binding ConnectionMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Frame>
@@ -37,8 +40,8 @@
                 <Frame Style="{StaticResource Card}" IsVisible="{Binding IsDiagnosticVisible}">
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Diagnostic test" Style="{StaticResource SectionTitle}" />
-                        <Label Text="Réservé aux tests : exporte la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
-                        <Button Text="Exporter base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" />
+                        <Label Text="Export de la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
+                        <Button Text="Exporter base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
                         <Label Text="{Binding DiagnosticMessage}" IsVisible="{Binding HasDiagnosticMessage}" TextColor="{StaticResource TextMuted}" FontSize="12" />
                     </VerticalStackLayout>
                 </Frame>
@@ -50,40 +53,27 @@
             Text="Continuer vers l'identification"
             Command="{Binding ContinueCommand}"
             Style="{StaticResource PrimaryButton}"
-            Margin="0,14,0,0" />
+            Margin="0,12,0,0"
+            IsEnabled="{Binding IsNotBusy}" />
 
         <Grid
             Grid.RowSpan="2"
             IsVisible="{Binding IsBusy}"
-            BackgroundColor="#CC020617"
+            BackgroundColor="#DD020617"
             InputTransparent="False"
             ZIndex="99">
             <Frame
-                Padding="24"
+                Padding="22"
                 CornerRadius="18"
                 HasShadow="False"
                 BackgroundColor="{StaticResource CardBackground}"
                 BorderColor="{StaticResource BorderColor}"
                 HorizontalOptions="Center"
                 VerticalOptions="Center">
-                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
-                    <ActivityIndicator
-                        IsRunning="{Binding IsBusy}"
-                        Color="{StaticResource Primary}"
-                        WidthRequest="42"
-                        HeightRequest="42" />
-
-                    <Label
-                        Text="{Binding LoadingMessage}"
-                        TextColor="{StaticResource TextMain}"
-                        FontAttributes="Bold"
-                        HorizontalTextAlignment="Center" />
-
-                    <Label
-                        Text="Veuillez patienter."
-                        TextColor="{StaticResource TextMuted}"
-                        FontSize="13"
-                        HorizontalTextAlignment="Center" />
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
+                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Frame>
         </Grid>

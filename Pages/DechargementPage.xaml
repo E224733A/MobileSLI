@@ -2,29 +2,32 @@
 <ContentPage
     x:Class="MobileSLI.Pages.DechargementPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:DechargementViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="Auto,*,Auto">
+    <Grid Padding="12,16" RowDefinitions="Auto,*,Auto" BackgroundColor="{StaticResource PageBackground}">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
             <Label Text="Déchargement" Style="{StaticResource PageTitle}" />
             <Label Text="Aide au tri des articles récupérés." Style="{StaticResource PageSubtitle}" />
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,8,0,12">
-                <Frame Style="{StaticResource Card}" Padding="10" Margin="0">
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6" Margin="0,8,0,12">
+                <Frame Style="{StaticResource Card}" Padding="8" Margin="0">
                     <VerticalStackLayout>
-                        <Label Text="8" TextColor="{StaticResource SuccessText}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label Text="clients" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding CountText}" TextColor="{StaticResource SuccessText}" FontAttributes="Bold" FontSize="11" HorizontalTextAlignment="Center" />
+                        <Label Text="récap." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Frame>
-                <Frame Grid.Column="1" Style="{StaticResource Card}" Padding="10" Margin="0">
+                <Frame Grid.Column="1" Style="{StaticResource Card}" Padding="8" Margin="0">
                     <VerticalStackLayout>
-                        <Label Text="18" TextColor="{StaticResource WarningText}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="Tri" TextColor="{StaticResource WarningText}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                         <Label Text="récup." Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Frame>
-                <Frame Grid.Column="2" Style="{StaticResource Card}" Padding="10" Margin="0">
+                <Frame Grid.Column="2" Style="{StaticResource Card}" Padding="8" Margin="0">
                     <VerticalStackLayout>
-                        <Label Text="3" TextColor="{StaticResource Primary}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
-                        <Label Text="zones" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
+                        <Label Text="Zones" TextColor="{StaticResource Primary}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                        <Label Text="dépôt" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
                 </Frame>
             </Grid>
@@ -35,7 +38,7 @@
                 <Label Text="Aucun article récupéré pour le moment." TextColor="{StaticResource TextMuted}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="vm:DechargementItemViewModel">
                     <Frame Style="{StaticResource Card}">
                         <VerticalStackLayout Spacing="6">
                             <Label Text="{Binding ClientText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
@@ -48,9 +51,19 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <VerticalStackLayout Grid.Row="2" Spacing="8" Margin="0,14,0,0">
-            <Button Text="Récapitulatif" Command="{Binding GoRecapCommand}" Style="{StaticResource PrimaryButton}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+        <VerticalStackLayout Grid.Row="2" Spacing="8" Margin="0,12,0,0">
+            <Button Text="Récapitulatif" Command="{Binding GoRecapCommand}" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding IsNotBusy}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
         </VerticalStackLayout>
+
+        <Grid Grid.RowSpan="3" IsVisible="{Binding IsBusy}" BackgroundColor="#DD020617" InputTransparent="False" ZIndex="99">
+            <Frame Padding="22" CornerRadius="18" HasShadow="False" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HorizontalOptions="Center" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
+                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
     </Grid>
 </ContentPage>

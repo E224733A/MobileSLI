@@ -2,58 +2,34 @@
 <ContentPage
     x:Class="MobileSLI.Pages.SyncResultPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:SyncResultViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
-            <VerticalStackLayout Spacing="12">
+    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Synchronisation" Style="{StaticResource PageTitle}" />
                 <Label Text="La tournée a été envoyée avec succès." Style="{StaticResource PageSubtitle}" />
 
-                <Frame
-                    Style="{StaticResource Card}"
-                    BackgroundColor="{StaticResource SuccessBackground}"
-                    BorderColor="{StaticResource SuccessBorder}">
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource SuccessBackground}" BorderColor="{StaticResource SuccessBorder}">
                     <VerticalStackLayout Spacing="10">
-                        <Label
-                            Text="Succès"
-                            TextColor="{StaticResource SuccessText}"
-                            FontSize="13" />
-
-                        <Label
-                            Text="{Binding Message}"
-                            TextColor="{StaticResource SuccessText}"
-                            FontSize="22"
-                            FontAttributes="Bold" />
-
+                        <Label Text="Succès" TextColor="{StaticResource SuccessText}" FontSize="13" />
+                        <Label Text="{Binding Message}" TextColor="{StaticResource SuccessText}" FontSize="20" FontAttributes="Bold" />
                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto" RowSpacing="5">
-                            <Label
-                                Text="Date et heure d'envoi"
-                                Style="{StaticResource MutedText}" />
-
-                            <Label
-                                Grid.Column="1"
-                                Text="{Binding DateText}"
-                                TextColor="{StaticResource TextMain}"
-                                FontAttributes="Bold" />
+                            <Label Text="Date et heure d'envoi" Style="{StaticResource MutedText}" />
+                            <Label Grid.Column="1" Text="{Binding DateText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
                         </Grid>
                     </VerticalStackLayout>
                 </Frame>
 
                 <Frame Style="{StaticResource Card}">
-                    <Label
-                        Text="La tournée est maintenant verrouillée localement. Les corrections éventuelles doivent passer par un responsable habilité."
-                        TextColor="{StaticResource TextMuted}"
-                        FontSize="13" />
+                    <Label Text="La tournée est maintenant verrouillée localement. Les corrections éventuelles doivent passer par un responsable habilité." TextColor="{StaticResource TextMuted}" FontSize="13" />
                 </Frame>
             </VerticalStackLayout>
         </ScrollView>
 
-        <Button
-            Grid.Row="1"
-            Text="Retour à l'accueil"
-            Command="{Binding BackHomeCommand}"
-            Style="{StaticResource PrimaryButton}"
-            Margin="0,14,0,0" />
+        <Button Grid.Row="1" Text="Retour à l'accueil" Command="{Binding BackHomeCommand}" Style="{StaticResource PrimaryButton}" Margin="0,12,0,0" />
     </Grid>
 </ContentPage>

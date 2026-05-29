@@ -88,17 +88,7 @@ public sealed class AccueilViewModel : BaseViewModel
         set => SetProperty(ref _isConnected, value);
     }
 
-    public bool IsDiagnosticVisible
-    {
-        get
-        {
-#if DEBUG
-            return true;
-#else
-            return false;
-#endif
-        }
-    }
+    public bool IsDiagnosticVisible => true;
 
     public ICommand TestConnectionCommand { get; }
 
@@ -110,16 +100,6 @@ public sealed class AccueilViewModel : BaseViewModel
 
     public async Task CheckActiveTourneeOnStartupAsync()
     {
-        /*
-         * La reprise automatique doit être proposée uniquement au démarrage
-         * réel de l'application, par exemple après fermeture depuis les
-         * applications récentes puis réouverture.
-         *
-         * Une tournée locale ancienne ne doit jamais être proposée à la reprise.
-         * Elle est verrouillée localement avec le statut EXPIREE. Cela empêche
-         * toute modification accidentelle sans ajouter de route API ni bloquer
-         * les validations ligne par ligne pendant une tournée du jour.
-         */
         if (_appStateService.HasCheckedActiveTourneeOnStartup || IsBusy)
         {
             return;
@@ -311,11 +291,6 @@ public sealed class AccueilViewModel : BaseViewModel
             SetBusy(true);
             ErrorMessage = string.Empty;
 
-            /*
-             * Le nettoyage reste autorisé ici pour éviter qu'une tournée d'hier
-             * bloque le chargement du jour. On ne propose jamais de reprendre
-             * une tournée expirée depuis le bouton Continuer.
-             */
             var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
             await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);

@@ -1,8 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-android</TargetFramework>
-		<SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion>31.0</SupportedOSPlatformVersion>
+		<AndroidMinSdkVersion>31</AndroidMinSdkVersion>
+		<AndroidTargetSdkVersion>31</AndroidTargetSdkVersion>
+		<AndroidCompileSdkVersion>36</AndroidCompileSdkVersion>
+		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>MobileSLI</RootNamespace>
@@ -15,12 +19,8 @@
 		<ApplicationId>fr.sli.mobiletournee</ApplicationId>
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
-
-		<AndroidTargetSdkVersion>36</AndroidTargetSdkVersion>
-		<AndroidCompileSdkVersion>36</AndroidCompileSdkVersion>
 	</PropertyGroup>
-	
-	
+
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
 		<AndroidLinkMode>None</AndroidLinkMode>
 		<RunAOTCompilation>false</RunAOTCompilation>
@@ -40,6 +40,7 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
 	</ItemGroup>
 
 </Project>

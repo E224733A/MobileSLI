@@ -2,11 +2,14 @@
 <ContentPage
     x:Class="MobileSLI.Pages.ChoixTourneePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:ChoixTourneeViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
-            <VerticalStackLayout Spacing="12">
+    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="Choix de la tournée" Style="{StaticResource PageTitle}" />
                 <Label Text="Sélectionnez une tournée proposée pour aujourd'hui." Style="{StaticResource PageSubtitle}" />
 
@@ -14,34 +17,18 @@
                     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8">
                         <Label Grid.Row="0" Grid.Column="0" Text="Livreur" Style="{StaticResource MutedText}" />
                         <Label Grid.Row="0" Grid.Column="1" Text="Date" Style="{StaticResource MutedText}" />
-                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding LivreurText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
-                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding LivreurText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" FontSize="14" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" FontSize="14" />
                     </Grid>
                 </Frame>
 
-                <Frame
-                    Style="{StaticResource Card}"
-                    BackgroundColor="{StaticResource InfoBackground}"
-                    BorderColor="{StaticResource InfoBorder}">
-                    <Label
-                        Text="{Binding HelpText}"
-                        TextColor="{StaticResource InfoText}"
-                        FontSize="13" />
+                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
+                    <Label Text="{Binding HelpText}" TextColor="{StaticResource InfoText}" FontSize="13" />
                 </Frame>
 
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <Entry
-                        Grid.Column="0"
-                        Text="{Binding SearchText}"
-                        Placeholder="Filtrer par code ou libellé"
-                        Style="{StaticResource Input}" />
-
-                    <Button
-                        Grid.Column="1"
-                        Text="↻"
-                        Command="{Binding RefreshCommand}"
-                        Style="{StaticResource SecondaryButton}"
-                        WidthRequest="56" />
+                    <Entry Grid.Column="0" Text="{Binding SearchText}" Placeholder="Filtrer par code ou libellé" Style="{StaticResource Input}" IsEnabled="{Binding IsNotBusy}" />
+                    <Button Grid.Column="1" Text="↻" Command="{Binding RefreshCommand}" Style="{StaticResource SecondaryButton}" WidthRequest="48" />
                 </Grid>
 
                 <Grid ColumnDefinitions="*,Auto">
@@ -51,130 +38,78 @@
 
                 <CollectionView ItemsSource="{Binding Tournees}" SelectionMode="None">
                     <CollectionView.EmptyView>
-                        <VerticalStackLayout Padding="12" Spacing="4">
-                            <Label
-                                Text="Aucune tournée disponible."
-                                FontAttributes="Bold"
-                                TextColor="{StaticResource TextMain}" />
-                            <Label
-                                Text="Vérifiez que l'API est lancée et que des tournées existent pour la date du jour."
-                                FontSize="13"
-                                TextColor="{StaticResource TextMuted}" />
+                        <VerticalStackLayout Padding="10" Spacing="4">
+                            <Label Text="Aucune tournée disponible." FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                            <Label Text="Vérifiez que l'API est lancée et que des tournées existent pour la date du jour." FontSize="13" TextColor="{StaticResource TextMuted}" />
                         </VerticalStackLayout>
                     </CollectionView.EmptyView>
 
                     <CollectionView.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:TourneeListItemViewModel">
                             <Frame
                                 BackgroundColor="{Binding CardBackgroundColor}"
                                 BorderColor="{Binding CardBorderColor}"
-                                CornerRadius="18"
+                                CornerRadius="16"
                                 HasShadow="False"
-                                Padding="16"
-                                Margin="0,0,0,12">
+                                Padding="12"
+                                Margin="0,0,0,10">
                                 <Frame.GestureRecognizers>
                                     <TapGestureRecognizer
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ChoixTourneeViewModel}}, Path=SelectTourneeCommand}"
                                         CommandParameter="{Binding .}" />
                                 </Frame.GestureRecognizers>
 
-                                <VerticalStackLayout Spacing="10">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                        <Frame
-                                            Grid.Column="0"
-                                            Style="{StaticResource SmallPill}"
-                                            BackgroundColor="{Binding BadgeBackgroundColor}"
-                                            BorderColor="{Binding BadgeBorderColor}">
-                                            <Label
-                                                Text="{Binding CodeTournee}"
-                                                TextColor="{Binding BadgeTextColor}"
-                                                FontSize="12"
-                                                FontAttributes="Bold" />
+                                <VerticalStackLayout Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                        <Frame Grid.Column="0" Style="{StaticResource SmallPill}" BackgroundColor="{Binding BadgeBackgroundColor}" BorderColor="{Binding BadgeBorderColor}">
+                                            <Label Text="{Binding CodeTournee}" TextColor="{Binding BadgeTextColor}" FontSize="11" FontAttributes="Bold" />
                                         </Frame>
 
                                         <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                            <Label
-                                                Text="{Binding LibelleTournee}"
-                                                TextColor="{StaticResource TextMain}"
-                                                FontAttributes="Bold" />
-                                            <Label
-                                                Text="{Binding CodeTournee}"
-                                                TextColor="{StaticResource TextMuted}"
-                                                FontSize="12" />
+                                            <Label Text="{Binding LibelleTournee}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="14" />
+                                            <Label Text="{Binding CodeTournee}" TextColor="{StaticResource TextMuted}" FontSize="12" />
                                         </VerticalStackLayout>
 
                                         <Button
                                             Grid.Column="2"
                                             Text="{Binding ButtonText}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ChoixTourneeViewModel}}, Path=SelectTourneeCommand}"
                                             CommandParameter="{Binding .}"
                                             BackgroundColor="{Binding ButtonBackgroundColor}"
                                             TextColor="{Binding ButtonTextColor}"
                                             BorderColor="{Binding CardBorderColor}"
                                             BorderWidth="1"
                                             CornerRadius="10"
-                                            HeightRequest="38"
+                                            HeightRequest="36"
                                             FontAttributes="Bold"
-                                            FontSize="12"
-                                            WidthRequest="104" />
+                                            FontSize="11"
+                                            WidthRequest="88" />
                                     </Grid>
 
-                                    <Label
-                                        Text="{Binding SelectionText}"
-                                        TextColor="{Binding SelectionTextColor}"
-                                        FontSize="12" />
+                                    <Label Text="{Binding SelectionText}" TextColor="{Binding SelectionTextColor}" FontSize="12" />
                                 </VerticalStackLayout>
                             </Frame>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Label
-                    Text="{Binding ErrorMessage}"
-                    TextColor="{StaticResource DangerText}"
-                    FontSize="13"
-                    IsVisible="{Binding HasErrorMessage}" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,12,0,0">
             <Button Text="Continuer avec cette tournée" Command="{Binding ContinueCommand}" Style="{StaticResource PrimaryButton}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
         </VerticalStackLayout>
 
-        <Grid
-            Grid.RowSpan="2"
-            IsVisible="{Binding IsBusy}"
-            BackgroundColor="#CC020617"
-            InputTransparent="False"
-            ZIndex="99">
-            <Frame
-                Padding="24"
-                CornerRadius="18"
-                HasShadow="False"
-                BackgroundColor="{StaticResource CardBackground}"
-                BorderColor="{StaticResource BorderColor}"
-                HorizontalOptions="Center"
-                VerticalOptions="Center">
-                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
-                    <ActivityIndicator
-                        IsRunning="{Binding IsBusy}"
-                        Color="{StaticResource Primary}"
-                        WidthRequest="42"
-                        HeightRequest="42" />
-                    <Label
-                        Text="{Binding LoadingMessage}"
-                        TextColor="{StaticResource TextMain}"
-                        FontAttributes="Bold"
-                        HorizontalTextAlignment="Center" />
-                    <Label
-                        Text="Veuillez patienter."
-                        TextColor="{StaticResource TextMuted}"
-                        FontSize="13"
-                        HorizontalTextAlignment="Center" />
+        <Grid Grid.RowSpan="2" IsVisible="{Binding IsBusy}" BackgroundColor="#DD020617" InputTransparent="False" ZIndex="99">
+            <Frame Padding="22" CornerRadius="18" HasShadow="False" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HorizontalOptions="Center" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
+                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Frame>
         </Grid>
-
     </Grid>
 </ContentPage>
