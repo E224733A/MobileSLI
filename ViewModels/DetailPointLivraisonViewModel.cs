@@ -22,17 +22,18 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         _appStateService = appStateService;
         _databaseService = databaseService;
 
-        LoadingMessage = "Chargement du point de livraison...";
         Quantites = new ObservableCollection<QuantiteSaisieViewModel>();
-        SetStatutCommand = new Command<string>(SetStatut, _ => !IsBusy);
-        ValidateCommand = new Command(async () => await ValidateAsync(), () => !IsBusy);
-        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."), () => !IsBusy);
+        SetStatutCommand = new Command<string>(SetStatut);
+        ValidateCommand = new Command(async () => await ValidateAsync());
+        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
     }
 
     public ObservableCollection<QuantiteSaisieViewModel> Quantites { get; }
 
     public string ClientText => _ligne is null ? "Client" : $"{_ligne.NumClient} — {_ligne.NomClient}";
+
     public string PointText => _ligne?.DescriptionPDL ?? string.Empty;
+
     public string AdresseText => _ligne?.AdresseLigne1 ?? string.Empty;
 
     public string ZoneText => _ligne is null
@@ -42,12 +43,19 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
             : $"Zone : {_ligne.ZoneDechargementAffichee}";
 
     public bool IsFermetureVisible => _ligne?.EstFerme == true;
+
     public string FermetureText => _ligne?.FermetureText ?? string.Empty;
+
     public string OrdreText => _ligne is null ? string.Empty : $"Arrêt {_ligne.OrdreArret}";
+
     public bool HasInstructions => !string.IsNullOrWhiteSpace(_ligne?.Instructions);
+
     public string InstructionsText => _ligne?.Instructions ?? string.Empty;
+
     public bool HasCommentaireExceptionnel => !string.IsNullOrWhiteSpace(_ligne?.CommentaireExceptionnel);
+
     public string CommentaireExceptionnelText => _ligne?.CommentaireExceptionnel ?? string.Empty;
+
     public bool HasInformationsLivreur => HasInstructions || HasCommentaireExceptionnel;
 
     public string SelectedStatut
@@ -92,51 +100,46 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
 
     public async Task LoadAsync()
     {
-        if (IsBusy)
+        ErrorMessage = string.Empty;
+        InfoText = string.Empty;
+        Quantites.Clear();
+
+        _ligne = await _databaseService.GetLigneAsync(_appStateService.SelectedLigneId);
+        if (_ligne is null)
         {
+            ErrorMessage = "Point de livraison introuvable.";
             return;
         }
 
-        try
+        SelectedStatut = _ligne.StatutPassage == StatutPassageConstants.AFaire
+            ? StatutPassageConstants.Fait
+            : _ligne.StatutPassage;
+
+        CommentaireLivreur = _ligne.CommentaireLivreur ?? string.Empty;
+
+        var quantites = await _databaseService.GetQuantitesAsync(_ligne.Id);
+        foreach (var quantite in quantites)
         {
-            LoadingMessage = "Chargement du point de livraison...";
-            SetBusy(true);
-            await Task.Yield();
-
-            ErrorMessage = string.Empty;
-            InfoText = string.Empty;
-            Quantites.Clear();
-
-            _ligne = await _databaseService.GetLigneAsync(_appStateService.SelectedLigneId);
-            if (_ligne is null)
-            {
-                ErrorMessage = "Point de livraison introuvable.";
-                return;
-            }
-
-            SelectedStatut = _ligne.StatutPassage == StatutPassageConstants.AFaire
-                ? StatutPassageConstants.Fait
-                : _ligne.StatutPassage;
-
-            CommentaireLivreur = _ligne.CommentaireLivreur ?? string.Empty;
-
-            var quantites = await _databaseService.GetQuantitesAsync(_ligne.Id);
-            foreach (var quantite in quantites)
-            {
-                Quantites.Add(new QuantiteSaisieViewModel(quantite));
-            }
-
-            RefreshPageProperties();
+            Quantites.Add(new QuantiteSaisieViewModel(quantite));
         }
-        finally
-        {
-            SetBusy(false);
-        }
+
+        OnPropertyChanged(nameof(ClientText));
+        OnPropertyChanged(nameof(PointText));
+        OnPropertyChanged(nameof(AdresseText));
+        OnPropertyChanged(nameof(ZoneText));
+        OnPropertyChanged(nameof(IsFermetureVisible));
+        OnPropertyChanged(nameof(FermetureText));
+        OnPropertyChanged(nameof(OrdreText));
+        OnPropertyChanged(nameof(HasInstructions));
+        OnPropertyChanged(nameof(InstructionsText));
+        OnPropertyChanged(nameof(HasCommentaireExceptionnel));
+        OnPropertyChanged(nameof(CommentaireExceptionnelText));
+        OnPropertyChanged(nameof(HasInformationsLivreur));
     }
 
     private void SetStatut(string? statut)
     {
-        if (IsBusy || string.IsNullOrWhiteSpace(statut))
+        if (string.IsNullOrWhiteSpace(statut))
         {
             return;
         }
@@ -146,60 +149,45 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
 
     private async Task ValidateAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
         if (_ligne is null)
         {
             ErrorMessage = "Point de livraison introuvable.";
             return;
         }
 
-        try
+        ErrorMessage = string.Empty;
+        InfoText = string.Empty;
+
+        if (SelectedStatut == StatutPassageConstants.AFaire)
         {
-            LoadingMessage = "Validation du passage...";
-            SetBusy(true);
-            await Task.Yield();
+            ErrorMessage = "Choisissez un statut de passage avant de valider.";
+            return;
+        }
 
-            ErrorMessage = string.Empty;
-            InfoText = string.Empty;
+        if ((SelectedStatut == StatutPassageConstants.NonFait || SelectedStatut == StatutPassageConstants.Anomalie)
+            && string.IsNullOrWhiteSpace(CommentaireLivreur))
+        {
+            ErrorMessage = "Un commentaire est obligatoire pour Non fait ou Anomalie.";
+            return;
+        }
 
-            if (SelectedStatut == StatutPassageConstants.AFaire)
+        foreach (var quantite in Quantites)
+        {
+            if (!quantite.ApplyToEntity(out var error))
             {
-                ErrorMessage = "Choisissez un statut de passage avant de valider.";
+                ErrorMessage = error;
                 return;
             }
-
-            if ((SelectedStatut == StatutPassageConstants.NonFait || SelectedStatut == StatutPassageConstants.Anomalie)
-                && string.IsNullOrWhiteSpace(CommentaireLivreur))
-            {
-                ErrorMessage = "Un commentaire est obligatoire pour Non fait ou Anomalie.";
-                return;
-            }
-
-            foreach (var quantite in Quantites)
-            {
-                if (!quantite.ApplyToEntity(out var error))
-                {
-                    ErrorMessage = error;
-                    return;
-                }
-            }
-
-            _ligne.StatutPassage = SelectedStatut;
-            _ligne.EstValidee = true;
-            _ligne.HeureValidation = DateTime.Now;
-            _ligne.CommentaireLivreur = string.IsNullOrWhiteSpace(CommentaireLivreur) ? null : CommentaireLivreur.Trim();
-
-            await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
-            await Shell.Current.GoToAsync("..");
         }
-        finally
-        {
-            SetBusy(false);
-        }
+
+        _ligne.StatutPassage = SelectedStatut;
+        _ligne.EstValidee = true;
+        _ligne.HeureValidation = DateTime.Now;
+        _ligne.CommentaireLivreur = string.IsNullOrWhiteSpace(CommentaireLivreur) ? null : CommentaireLivreur.Trim();
+
+        await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
+
+        await Shell.Current.GoToAsync("..");
     }
 
     private bool IsSelectedStatut(string statut)
@@ -233,51 +221,11 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(FaitButtonBackgroundColor));
         OnPropertyChanged(nameof(NonFaitButtonBackgroundColor));
         OnPropertyChanged(nameof(AnomalieButtonBackgroundColor));
+
         OnPropertyChanged(nameof(FaitButtonTextColor));
         OnPropertyChanged(nameof(NonFaitButtonTextColor));
         OnPropertyChanged(nameof(AnomalieButtonTextColor));
+
         OnPropertyChanged(nameof(FaitButtonBorderColor));
-        OnPropertyChanged(nameof(NonFaitButtonBorderColor));
-        OnPropertyChanged(nameof(AnomalieButtonBorderColor));
-    }
-
-    private void RefreshPageProperties()
-    {
-        OnPropertyChanged(nameof(ClientText));
-        OnPropertyChanged(nameof(PointText));
-        OnPropertyChanged(nameof(AdresseText));
-        OnPropertyChanged(nameof(ZoneText));
-        OnPropertyChanged(nameof(IsFermetureVisible));
-        OnPropertyChanged(nameof(FermetureText));
-        OnPropertyChanged(nameof(OrdreText));
-        OnPropertyChanged(nameof(HasInstructions));
-        OnPropertyChanged(nameof(InstructionsText));
-        OnPropertyChanged(nameof(HasCommentaireExceptionnel));
-        OnPropertyChanged(nameof(CommentaireExceptionnelText));
-        OnPropertyChanged(nameof(HasInformationsLivreur));
-    }
-
-    private void SetBusy(bool value)
-    {
-        IsBusy = value;
-        RefreshCommandStates();
-    }
-
-    private void RefreshCommandStates()
-    {
-        if (SetStatutCommand is Command<string> statutCommand)
-        {
-            statutCommand.ChangeCanExecute();
-        }
-
-        if (ValidateCommand is Command validateCommand)
-        {
-            validateCommand.ChangeCanExecute();
-        }
-
-        if (BackCommand is Command backCommand)
-        {
-            backCommand.ChangeCanExecute();
-        }
     }
 }

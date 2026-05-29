@@ -2,25 +2,36 @@
 <ContentPage
     x:Class="MobileSLI.Pages.RecapitulatifTourneePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:RecapitulatifTourneeViewModel"
-    BackgroundColor="{StaticResource PageBackground}">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
-        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
-            <VerticalStackLayout Spacing="10">
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Récapitulatif" Style="{StaticResource PageTitle}" />
                 <Label Text="Dernier contrôle avant synchronisation." Style="{StaticResource PageSubtitle}" />
 
-                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource DangerBackground}" BorderColor="{StaticResource DangerBorder}" IsVisible="{Binding HasErrorMessage}">
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource DangerBackground}"
+                    BorderColor="{StaticResource DangerBorder}"
+                    IsVisible="{Binding HasErrorMessage}">
                     <VerticalStackLayout Spacing="5">
-                        <Label Text="Connexion dépôt requise" TextColor="{StaticResource DangerText}" FontAttributes="Bold" />
-                        <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" />
+                        <Label
+                            Text="Connexion dépôt requise"
+                            TextColor="{StaticResource DangerText}"
+                            FontAttributes="Bold" />
+                        <Label
+                            Text="{Binding ErrorMessage}"
+                            TextColor="{StaticResource DangerText}"
+                            FontSize="13" />
                     </VerticalStackLayout>
                 </Frame>
 
-                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" IsVisible="{Binding HasConnectionMessage}">
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}"
+                    IsVisible="{Binding HasConnectionMessage}">
                     <VerticalStackLayout Spacing="5">
                         <Label Text="Connexion dépôt" TextColor="{StaticResource InfoText}" FontAttributes="Bold" />
                         <Label Text="{Binding ConnectionMessage}" TextColor="{StaticResource InfoText}" FontSize="13" />
@@ -36,28 +47,31 @@
                     </Grid>
                 </Frame>
 
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
-                    <Frame Style="{StaticResource Card}" Padding="8" Margin="0">
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                    <Frame Style="{StaticResource Card}" Padding="10" Margin="0">
                         <VerticalStackLayout>
-                            <Label Text="{Binding TotalClients}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextMain}" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding TotalClients}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource TextMain}" HorizontalTextAlignment="Center" />
                             <Label Text="clients" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Frame>
-                    <Frame Grid.Column="1" Style="{StaticResource Card}" Padding="8" Margin="0">
+
+                    <Frame Grid.Column="1" Style="{StaticResource Card}" Padding="10" Margin="0">
                         <VerticalStackLayout>
-                            <Label Text="{Binding Valides}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource SuccessText}" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding Valides}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource SuccessText}" HorizontalTextAlignment="Center" />
                             <Label Text="validés" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Frame>
-                    <Frame Grid.Column="2" Style="{StaticResource Card}" Padding="8" Margin="0">
+
+                    <Frame Grid.Column="2" Style="{StaticResource Card}" Padding="10" Margin="0">
                         <VerticalStackLayout>
-                            <Label Text="{Binding NonFaits}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource WarningText}" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding NonFaits}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource WarningText}" HorizontalTextAlignment="Center" />
                             <Label Text="non fait" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Frame>
-                    <Frame Grid.Column="3" Style="{StaticResource Card}" Padding="8" Margin="0">
+
+                    <Frame Grid.Column="3" Style="{StaticResource Card}" Padding="10" Margin="0">
                         <VerticalStackLayout>
-                            <Label Text="{Binding Anomalies}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource DangerText}" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding Anomalies}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource DangerText}" HorizontalTextAlignment="Center" />
                             <Label Text="anomalies" Style="{StaticResource MutedText}" HorizontalTextAlignment="Center" />
                         </VerticalStackLayout>
                     </Frame>
@@ -65,7 +79,7 @@
 
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="8">
-                        <Grid ColumnDefinitions="*,70,70">
+                        <Grid ColumnDefinitions="*,90,90">
                             <Label Text="Article" Style="{StaticResource MutedText}" />
                             <Label Grid.Column="1" Text="Livré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
                             <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
@@ -73,8 +87,8 @@
 
                         <CollectionView ItemsSource="{Binding Articles}" SelectionMode="None">
                             <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:RecapArticleViewModel">
-                                    <Grid ColumnDefinitions="*,70,70" Padding="0,6">
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,90,90" Padding="0,6">
                                         <Label Text="{Binding Libelle}" TextColor="{StaticResource TextMain}" />
                                         <Label Grid.Column="1" Text="{Binding TotalLivre}" HorizontalTextAlignment="Center" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
                                         <Label Grid.Column="2" Text="{Binding TotalRecupere}" HorizontalTextAlignment="Center" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
@@ -88,7 +102,7 @@
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="6">
                         <Label Text="Commentaire global" Style="{StaticResource MutedText}" />
-                        <Editor Text="{Binding CommentaireGlobal}" Placeholder="Optionnel" HeightRequest="74" Style="{StaticResource InputEditor}" IsEnabled="{Binding IsNotBusy}" />
+                        <Editor Text="{Binding CommentaireGlobal}" Placeholder="Optionnel" HeightRequest="74" Style="{StaticResource InputEditor}" />
                     </VerticalStackLayout>
                 </Frame>
 
@@ -101,20 +115,56 @@
             </VerticalStackLayout>
         </ScrollView>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,12,0,0">
-            <Button Text="Tester la connexion au dépôt" Command="{Binding TestConnectionCommand}" Style="{StaticResource SecondaryButton}" />
-            <Button Text="Envoyer la tournée" Command="{Binding SendCommand}" Style="{StaticResource PrimaryButton}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button
+                Text="Tester la connexion au dépôt"
+                Command="{Binding TestConnectionCommand}"
+                Style="{StaticResource SecondaryButton}" />
+
+            <Button
+                Text="Envoyer la tournée"
+                Command="{Binding SendCommand}"
+                Style="{StaticResource PrimaryButton}" />
+
+            <Button
+                Text="Retour"
+                Command="{Binding BackCommand}"
+                Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
 
-        <Grid Grid.RowSpan="2" IsVisible="{Binding IsBusy}" BackgroundColor="#DD020617" InputTransparent="False" ZIndex="99">
-            <Frame Padding="22" CornerRadius="18" HasShadow="False" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HorizontalOptions="Center" VerticalOptions="Center">
-                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
-                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
-                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsBusy}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsBusy}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="{Binding LoadingMessage}"
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Frame>
         </Grid>
+
     </Grid>
 </ContentPage>

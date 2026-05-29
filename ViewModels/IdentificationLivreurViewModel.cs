@@ -30,7 +30,6 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         _settingsService = settingsService;
 
         _codeLivreur = _settingsService.LastLivreurCode;
-        LoadingMessage = "Chargement des livreurs...";
 
         Livreurs = new ObservableCollection<LivreurItemViewModel>();
 
@@ -98,14 +97,15 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         {
             if (SetProperty(ref _isLoading, value))
             {
-                IsBusy = value;
                 RefreshCommandStates();
             }
         }
     }
 
     public ICommand LoadLivreursCommand { get; }
+
     public ICommand ValidateCommand { get; }
+
     public ICommand ContinueCommand { get; }
 
     public async Task LoadLivreursAsync(bool forceReload = false)
@@ -122,9 +122,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         }
 
         ErrorMessage = string.Empty;
-        LoadingMessage = "Chargement des livreurs...";
         IsLoading = true;
-        await Task.Yield();
 
         try
         {
@@ -175,11 +173,6 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
 
     private async Task ValidateLivreurAsync()
     {
-        if (IsLoading)
-        {
-            return;
-        }
-
         ErrorMessage = string.Empty;
 
         if (Livreurs.Count == 0)
@@ -218,11 +211,6 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
 
     private async Task ContinueAsync()
     {
-        if (IsLoading)
-        {
-            return;
-        }
-
         if (_appStateService.CurrentLivreur is null)
         {
             await ValidateLivreurAsync();

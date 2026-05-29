@@ -275,8 +275,6 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
      */
     public bool IsLivreeEditable => true;
 
-    public bool IsLivreePlaceholderVisible => !IsLivreeEditable;
-
     public int? QuantiteLivreePrevue => Entity.QuantiteLivreePrevue;
 
     public bool HasQuantiteLivreePrevue => Entity.QuantiteLivreePrevue.HasValue;

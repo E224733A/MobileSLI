@@ -2,14 +2,11 @@
 <ContentPage
     x:Class="MobileSLI.Pages.DetailPointLivraisonPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:DetailPointLivraisonViewModel"
-    BackgroundColor="{StaticResource PageBackground}">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
-        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
-            <VerticalStackLayout Spacing="10">
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Détail point" Style="{StaticResource PageTitle}" />
                 <Label Text="Saisie rapide des quantités livrées et récupérées." Style="{StaticResource PageSubtitle}" />
 
@@ -23,22 +20,54 @@
                     </Grid>
                 </Frame>
 
-                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource DangerBackground}" BorderColor="{StaticResource DangerBorder}" IsVisible="{Binding IsFermetureVisible}">
-                    <Label Text="{Binding FermetureText}" TextColor="{StaticResource DangerText}" FontAttributes="Bold" FontSize="13" />
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource DangerBackground}"
+                    BorderColor="{StaticResource DangerBorder}"
+                    IsVisible="{Binding IsFermetureVisible}">
+                    <Label
+                        Text="{Binding FermetureText}"
+                        TextColor="{StaticResource DangerText}"
+                        FontAttributes="Bold"
+                        FontSize="13" />
                 </Frame>
 
-                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" IsVisible="{Binding HasInformationsLivreur}">
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}"
+                    IsVisible="{Binding HasInformationsLivreur}">
                     <VerticalStackLayout Spacing="4">
-                        <Label IsVisible="{Binding HasInstructions}" Text="Instruction" TextColor="{StaticResource InfoText}" FontSize="12" FontAttributes="Bold" />
-                        <Label IsVisible="{Binding HasInstructions}" Text="{Binding InstructionsText}" TextColor="{StaticResource InfoText}" FontSize="13" />
-                        <Label IsVisible="{Binding HasCommentaireExceptionnel}" Text="Commentaire" TextColor="{StaticResource InfoText}" FontSize="12" FontAttributes="Bold" Margin="0,6,0,0" />
-                        <Label IsVisible="{Binding HasCommentaireExceptionnel}" Text="{Binding CommentaireExceptionnelText}" TextColor="{StaticResource InfoText}" FontSize="13" />
+                        <Label
+                            IsVisible="{Binding HasInstructions}"
+                            Text="Instruction"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="12"
+                            FontAttributes="Bold" />
+                        <Label
+                            IsVisible="{Binding HasInstructions}"
+                            Text="{Binding InstructionsText}"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="13" />
+
+                        <Label
+                            IsVisible="{Binding HasCommentaireExceptionnel}"
+                            Text="Commentaire"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="12"
+                            FontAttributes="Bold"
+                            Margin="0,6,0,0" />
+                        <Label
+                            IsVisible="{Binding HasCommentaireExceptionnel}"
+                            Text="{Binding CommentaireExceptionnelText}"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="13" />
                     </VerticalStackLayout>
                 </Frame>
 
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="8">
-                        <Grid ColumnDefinitions="*,70,70">
+                        <Grid ColumnDefinitions="*,90,90">
                             <Label Text="Quantités article" Style="{StaticResource MutedText}" />
                             <Label Grid.Column="1" Text="Livré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
                             <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
@@ -46,12 +75,52 @@
 
                         <CollectionView ItemsSource="{Binding Quantites}" SelectionMode="None">
                             <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:QuantiteSaisieViewModel">
-                                    <Grid ColumnDefinitions="*,70,70" RowDefinitions="Auto,Auto" ColumnSpacing="6" Padding="0,3">
-                                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Libelle}" VerticalTextAlignment="Center" TextColor="{StaticResource TextMain}" />
-                                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding QuantitePrevueText}" Style="{StaticResource MutedText}" FontSize="11" />
-                                        <Entry Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Text="{Binding QuantiteLivreeText}" Keyboard="Numeric" HorizontalTextAlignment="Center" Style="{StaticResource Input}" IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:DetailPointLivraisonViewModel}}, Path=IsNotBusy}" />
-                                        <Entry Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Text="{Binding QuantiteRecupereeText}" Keyboard="Numeric" HorizontalTextAlignment="Center" Style="{StaticResource Input}" IsEnabled="{Binding Source={RelativeSource AncestorType={x:Type vm:DetailPointLivraisonViewModel}}, Path=IsNotBusy}" />
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,90,90" RowDefinitions="Auto,Auto" ColumnSpacing="8" Padding="0,3">
+                                        <Label
+                                            Grid.Row="0"
+                                            Grid.Column="0"
+                                            Text="{Binding Libelle}"
+                                            VerticalTextAlignment="Center"
+                                            TextColor="{StaticResource TextMain}" />
+
+                                        <Label
+                                            Grid.Row="1"
+                                            Grid.Column="0"
+                                            Text="{Binding QuantitePrevueText}"
+                                            Style="{StaticResource MutedText}"
+                                            FontSize="11" />
+
+                                        <Entry
+                                            Grid.Row="0"
+                                            Grid.RowSpan="2"
+                                            Grid.Column="1"
+                                            Text="{Binding QuantiteLivreeText}"
+                                            Keyboard="Numeric"
+                                            HorizontalTextAlignment="Center"
+                                            Style="{StaticResource Input}"
+                                            IsVisible="{Binding IsLivreeEditable}" />
+
+                                        <Label
+                                            Grid.Row="0"
+                                            Grid.RowSpan="2"
+                                            Grid.Column="1"
+                                            Text="—"
+                                            HorizontalTextAlignment="Center"
+                                            VerticalTextAlignment="Center"
+                                            TextColor="{StaticResource TextMuted}"
+                                            FontAttributes="Bold"
+                                            FontSize="18"
+                                            IsVisible="{Binding IsRollsVides}" />
+
+                                        <Entry
+                                            Grid.Row="0"
+                                            Grid.RowSpan="2"
+                                            Grid.Column="2"
+                                            Text="{Binding QuantiteRecupereeText}"
+                                            Keyboard="Numeric"
+                                            HorizontalTextAlignment="Center"
+                                            Style="{StaticResource Input}" />
                                     </Grid>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
@@ -64,39 +133,70 @@
                         <Label Text="Statut du passage" Style="{StaticResource MutedText}" />
 
                         <HorizontalStackLayout Spacing="6">
-                            <Button Text="Fait" Command="{Binding SetStatutCommand}" CommandParameter="FAIT" Style="{StaticResource SecondaryButton}" BackgroundColor="{Binding FaitButtonBackgroundColor}" TextColor="{Binding FaitButtonTextColor}" BorderColor="{Binding FaitButtonBorderColor}" BorderWidth="1" HeightRequest="38" WidthRequest="70" IsEnabled="{Binding IsNotBusy}" />
-                            <Button Text="Non fait" Command="{Binding SetStatutCommand}" CommandParameter="NON_FAIT" Style="{StaticResource SecondaryButton}" BackgroundColor="{Binding NonFaitButtonBackgroundColor}" TextColor="{Binding NonFaitButtonTextColor}" BorderColor="{Binding NonFaitButtonBorderColor}" BorderWidth="1" HeightRequest="38" WidthRequest="86" IsEnabled="{Binding IsNotBusy}" />
-                            <Button Text="Anomalie" Command="{Binding SetStatutCommand}" CommandParameter="ANOMALIE" Style="{StaticResource SecondaryButton}" BackgroundColor="{Binding AnomalieButtonBackgroundColor}" TextColor="{Binding AnomalieButtonTextColor}" BorderColor="{Binding AnomalieButtonBorderColor}" BorderWidth="1" HeightRequest="38" WidthRequest="92" IsEnabled="{Binding IsNotBusy}" />
+                            <Button
+                                Text="Fait"
+                                Command="{Binding SetStatutCommand}"
+                                CommandParameter="FAIT"
+                                Style="{StaticResource SecondaryButton}"
+                                BackgroundColor="{Binding FaitButtonBackgroundColor}"
+                                TextColor="{Binding FaitButtonTextColor}"
+                                BorderColor="{Binding FaitButtonBorderColor}"
+                                BorderWidth="1"
+                                HeightRequest="38"
+                                WidthRequest="76" />
+
+                            <Button
+                                Text="Non fait"
+                                Command="{Binding SetStatutCommand}"
+                                CommandParameter="NON_FAIT"
+                                Style="{StaticResource SecondaryButton}"
+                                BackgroundColor="{Binding NonFaitButtonBackgroundColor}"
+                                TextColor="{Binding NonFaitButtonTextColor}"
+                                BorderColor="{Binding NonFaitButtonBorderColor}"
+                                BorderWidth="1"
+                                HeightRequest="38"
+                                WidthRequest="96" />
+
+                            <Button
+                                Text="Anomalie"
+                                Command="{Binding SetStatutCommand}"
+                                CommandParameter="ANOMALIE"
+                                Style="{StaticResource SecondaryButton}"
+                                BackgroundColor="{Binding AnomalieButtonBackgroundColor}"
+                                TextColor="{Binding AnomalieButtonTextColor}"
+                                BorderColor="{Binding AnomalieButtonBorderColor}"
+                                BorderWidth="1"
+                                HeightRequest="38"
+                                WidthRequest="100" />
                         </HorizontalStackLayout>
 
                         <Label Text="Statut sélectionné :" Style="{StaticResource MutedText}" />
                         <Label Text="{Binding SelectedStatut}" TextColor="{StaticResource Primary}" FontAttributes="Bold" />
 
                         <Label Text="Commentaire livreur" Style="{StaticResource MutedText}" />
-                        <Editor Text="{Binding CommentaireLivreur}" Placeholder="Obligatoire si Non fait ou Anomalie" HeightRequest="86" Style="{StaticResource InputEditor}" IsEnabled="{Binding IsNotBusy}" />
+                        <Editor
+                            Text="{Binding CommentaireLivreur}"
+                            Placeholder="Obligatoire si Non fait ou Anomalie"
+                            HeightRequest="86"
+                            Style="{StaticResource InputEditor}" />
 
                         <Label Text="Heure de validation automatique." Style="{StaticResource MutedText}" />
                     </VerticalStackLayout>
                 </Frame>
 
                 <Label Text="{Binding InfoText}" TextColor="{StaticResource SuccessText}" FontSize="13" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" IsVisible="{Binding HasErrorMessage}" />
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="{StaticResource DangerText}"
+                    FontSize="13"
+                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,12,0,0">
-            <Button Text="Valider le passage" Command="{Binding ValidateCommand}" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding IsNotBusy}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
+            <Button Text="Valider le passage" Command="{Binding ValidateCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
-
-        <Grid Grid.RowSpan="2" IsVisible="{Binding IsBusy}" BackgroundColor="#DD020617" InputTransparent="False" ZIndex="99">
-            <Frame Padding="22" CornerRadius="18" HasShadow="False" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HorizontalOptions="Center" VerticalOptions="Center">
-                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
-                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
-                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
-                </VerticalStackLayout>
-            </Frame>
-        </Grid>
     </Grid>
 </ContentPage>

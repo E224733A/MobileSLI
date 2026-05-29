@@ -9,8 +9,18 @@ public sealed class SettingsService
 {
     private const string ApiBaseUrlKey = "api_base_url";
     private const string LastLivreurCodeKey = "last_livreur_code";
-    private const string AllowedApiHost = "api.mobilesli.intra";
 
+    /*
+     * L'URL par défaut est centralisée dans :
+     *
+     * Configuration/AppConfig.cs
+     *
+     * Mode actuel téléphone physique + adb reverse :
+     * http://127.0.0.1:5000
+     *
+     * Commande à lancer avant le test :
+     * adb reverse tcp:5000 tcp:5000
+     */
     public string DefaultApiBaseUrl => NormalizeBaseUrl(AppConfig.ApiBaseUrl);
 
     public string ApiBaseUrl
@@ -18,22 +28,11 @@ public sealed class SettingsService
         get
         {
             var savedValue = Preferences.Default.Get(ApiBaseUrlKey, DefaultApiBaseUrl);
-            var normalized = NormalizeBaseUrl(savedValue);
-
-            if (!IsAllowedApiEndpoint(normalized))
-            {
-                Preferences.Default.Set(ApiBaseUrlKey, DefaultApiBaseUrl);
-                return DefaultApiBaseUrl;
-            }
-
-            return normalized;
+            return NormalizeBaseUrl(savedValue);
         }
         set
         {
-            var normalized = NormalizeBaseUrl(value);
-            Preferences.Default.Set(
-                ApiBaseUrlKey,
-                IsAllowedApiEndpoint(normalized) ? normalized : DefaultApiBaseUrl);
+            Preferences.Default.Set(ApiBaseUrlKey, NormalizeBaseUrl(value));
         }
     }
 
@@ -91,31 +90,6 @@ public sealed class SettingsService
         }
 
         return normalized;
-    }
-
-    private static bool IsAllowedApiEndpoint(string value)
-    {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
-        {
-            return false;
-        }
-
-        if (!string.Equals(uri.Host, AllowedApiHost, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
-        {
-            return uri.Port == 5000;
-        }
-
-        if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return uri.Port is 443 or 5000;
-        }
-
-        return false;
     }
 
     private static string NormalizeLivreurCode(string? value)

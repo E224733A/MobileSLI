@@ -2,14 +2,11 @@
 <ContentPage
     x:Class="MobileSLI.Pages.ConfirmationTourneePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:ConfirmationTourneeViewModel"
-    BackgroundColor="{StaticResource PageBackground}">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
-        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
-            <VerticalStackLayout Spacing="10">
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Choix de la tournée" Style="{StaticResource PageTitle}" />
                 <Label Text="Confirmation avant chargement." Style="{StaticResource PageSubtitle}" />
 
@@ -17,15 +14,15 @@
                     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8">
                         <Label Grid.Row="0" Grid.Column="0" Text="Livreur" Style="{StaticResource MutedText}" />
                         <Label Grid.Row="0" Grid.Column="1" Text="Date" Style="{StaticResource MutedText}" />
-                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding LivreurText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" FontSize="14" />
-                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" FontSize="14" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding LivreurText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding DateText}" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
                     </Grid>
                 </Frame>
 
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Tournée choisie" Style="{StaticResource MutedText}" />
-                        <Label Text="{Binding TourneeText}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
+                        <Label Text="{Binding TourneeText}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
                         <Label Text="{Binding NombrePointsText}" Style="{StaticResource MutedText}" />
                     </VerticalStackLayout>
                 </Frame>
@@ -42,23 +39,53 @@
                 </Frame>
 
                 <Label Text="{Binding LoadMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" IsVisible="{Binding HasErrorMessage}" />
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="{StaticResource DangerText}"
+                    FontSize="13"
+                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,12,0,0">
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
             <Button Text="Charger la tournée" Command="{Binding LoadTourneeCommand}" Style="{StaticResource PrimaryButton}" />
-            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" IsEnabled="{Binding IsNotBusy}" />
+            <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
 
-        <Grid Grid.RowSpan="2" IsVisible="{Binding IsBusy}" BackgroundColor="#DD020617" InputTransparent="False" ZIndex="99">
-            <Frame Padding="22" CornerRadius="18" HasShadow="False" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HorizontalOptions="Center" VerticalOptions="Center">
-                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
-                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
-                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsBusy}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsBusy}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="{Binding LoadingMessage}"
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Frame>
         </Grid>
+
     </Grid>
 </ContentPage>

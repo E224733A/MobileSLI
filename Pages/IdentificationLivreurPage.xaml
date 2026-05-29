@@ -2,14 +2,11 @@
 <ContentPage
     x:Class="MobileSLI.Pages.IdentificationLivreurPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:IdentificationLivreurViewModel"
-    BackgroundColor="{StaticResource PageBackground}">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Grid Padding="12,16" RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackground}">
-        <ScrollView Grid.Row="0" BackgroundColor="{StaticResource PageBackground}">
-            <VerticalStackLayout Spacing="10">
+    <Grid Padding="20" RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Identification livreur" Style="{StaticResource PageTitle}" />
                 <Label Text="Sélectionnez le livreur qui charge sa tournée" Style="{StaticResource PageSubtitle}" />
 
@@ -26,31 +23,50 @@
                             ItemsSource="{Binding Livreurs}"
                             SelectedItem="{Binding SelectedLivreur, Mode=TwoWay}"
                             SelectionMode="Single"
-                            HeightRequest="340">
+                            HeightRequest="380">
+
                             <CollectionView.EmptyView>
-                                <VerticalStackLayout Padding="10" Spacing="4">
-                                    <Label Text="Aucun livreur chargé." FontAttributes="Bold" TextColor="{StaticResource TextMain}" />
-                                    <Label Text="Vérifiez que l'API est accessible depuis le Wi-Fi du dépôt." FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                <VerticalStackLayout Padding="12" Spacing="4">
+                                    <Label
+                                        Text="Aucun livreur chargé."
+                                        FontAttributes="Bold"
+                                        TextColor="{StaticResource TextMain}" />
+                                    <Label
+                                        Text="Vérifiez que l'API est lancée et que adb reverse tcp:5000 tcp:5000 est actif."
+                                        FontSize="13"
+                                        TextColor="{StaticResource TextMuted}" />
                                 </VerticalStackLayout>
                             </CollectionView.EmptyView>
 
                             <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:LivreurItemViewModel">
-                                    <Grid Padding="8,10" ColumnDefinitions="44,*">
-                                        <Border Grid.ColumnSpan="2" StrokeThickness="1" Stroke="{StaticResource BorderColor}" BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 12" />
+                                <DataTemplate>
+                                    <Grid Padding="12" ColumnDefinitions="52,*">
+                                        <Border
+                                            Grid.ColumnSpan="2"
+                                            StrokeThickness="1"
+                                            Stroke="{StaticResource BorderColor}"
+                                            BackgroundColor="{StaticResource CardBackground}"
+                                            StrokeShape="RoundRectangle 12" />
 
                                         <Label
                                             Grid.Column="0"
                                             Text="{Binding CodeLivreur}"
                                             TextColor="{StaticResource Primary}"
                                             FontAttributes="Bold"
-                                            FontSize="16"
+                                            FontSize="18"
                                             VerticalOptions="Center"
                                             HorizontalOptions="Center" />
 
                                         <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                            <Label Text="{Binding NomLivreur}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="15" />
-                                            <Label Text="{Binding NomAffiche}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                            <Label
+                                                Text="{Binding NomLivreur}"
+                                                TextColor="{StaticResource TextMain}"
+                                                FontAttributes="Bold"
+                                                FontSize="15" />
+                                            <Label
+                                                Text="{Binding NomAffiche}"
+                                                FontSize="12"
+                                                TextColor="{StaticResource TextMuted}" />
                                         </VerticalStackLayout>
                                     </Grid>
                                 </DataTemplate>
@@ -59,11 +75,24 @@
                     </VerticalStackLayout>
                 </Frame>
 
-                <Frame Style="{StaticResource Card}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}">
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}">
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="État du chargement" TextColor="{StaticResource InfoText}" FontSize="12" />
-                        <Label Text="Les livreurs sont chargés depuis l'API réelle. Sélectionnez un livreur dans la liste pour continuer." TextColor="{StaticResource InfoText}" FontSize="13" />
-                        <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerText}" FontSize="13" IsVisible="{Binding HasErrorMessage}" />
+                        <Label
+                            Text="État du chargement"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="12" />
+                        <Label
+                            Text="Les livreurs sont chargés depuis l'API réelle. Sélectionnez un livreur dans la liste pour continuer."
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="13" />
+                        <Label
+                            Text="{Binding ErrorMessage}"
+                            TextColor="{StaticResource DangerText}"
+                            FontSize="13"
+                            IsVisible="{Binding HasErrorMessage}" />
                     </VerticalStackLayout>
                 </Frame>
             </VerticalStackLayout>
@@ -74,28 +103,41 @@
             Text="Continuer vers la tournée"
             Command="{Binding ContinueCommand}"
             Style="{StaticResource PrimaryButton}"
-            Margin="0,12,0,0" />
+            Margin="0,14,0,0" />
 
         <Grid
             Grid.RowSpan="2"
             IsVisible="{Binding IsLoading}"
-            BackgroundColor="#DD020617"
+            BackgroundColor="#CC020617"
             InputTransparent="False"
             ZIndex="99">
             <Frame
-                Padding="22"
+                Padding="24"
                 CornerRadius="18"
                 HasShadow="False"
                 BackgroundColor="{StaticResource CardBackground}"
                 BorderColor="{StaticResource BorderColor}"
                 HorizontalOptions="Center"
                 VerticalOptions="Center">
-                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-                    <ActivityIndicator IsRunning="{Binding IsLoading}" Color="{StaticResource Primary}" WidthRequest="42" HeightRequest="42" />
-                    <Label Text="Chargement" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" />
-                    <Label Text="{Binding LoadingMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" HorizontalTextAlignment="Center" />
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsLoading}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="Chargement des livreurs..."
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
                 </VerticalStackLayout>
             </Frame>
         </Grid>
+
     </Grid>
 </ContentPage>
