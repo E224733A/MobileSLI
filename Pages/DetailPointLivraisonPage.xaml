@@ -4,10 +4,16 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:DetailPointLivraisonViewModel">
+    x:DataType="vm:DetailPointLivraisonViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
+    <Grid
+        Padding="20"
+        RowDefinitions="*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView
+            Grid.Row="0"
+            BackgroundColor="{StaticResource PageBackground}">
             <VerticalStackLayout Spacing="12">
                 <Label Text="Détail point" Style="{StaticResource PageTitle}" />
                 <Label Text="Saisie rapide des quantités livrées et récupérées." Style="{StaticResource PageSubtitle}" />
@@ -75,7 +81,10 @@
                             <Label Grid.Column="2" Text="Récupéré" HorizontalTextAlignment="Center" Style="{StaticResource MutedText}" />
                         </Grid>
 
-                        <CollectionView ItemsSource="{Binding Quantites}" SelectionMode="None">
+                        <CollectionView
+                            ItemsSource="{Binding Quantites}"
+                            SelectionMode="None"
+                            BackgroundColor="{StaticResource CardBackground}">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:QuantiteSaisieViewModel">
                                     <Grid ColumnDefinitions="*,90,90" RowDefinitions="Auto,Auto" ColumnSpacing="8" Padding="0,3">

@@ -4,10 +4,16 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:ChoixTourneeViewModel">
+    x:DataType="vm:ChoixTourneeViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
+    <Grid
+        Padding="20"
+        RowDefinitions="*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView
+            Grid.Row="0"
+            BackgroundColor="{StaticResource PageBackground}">
             <VerticalStackLayout Spacing="12">
                 <Label Text="Choix de la tournée" Style="{StaticResource PageTitle}" />
                 <Label Text="Sélectionnez une tournée proposée pour aujourd'hui." Style="{StaticResource PageSubtitle}" />
@@ -51,7 +57,10 @@
                     <Label Grid.Column="1" Text="{Binding CountText}" TextColor="{StaticResource Primary}" FontSize="12" />
                 </Grid>
 
-                <CollectionView ItemsSource="{Binding Tournees}" SelectionMode="None">
+                <CollectionView
+                    ItemsSource="{Binding Tournees}"
+                    SelectionMode="None"
+                    BackgroundColor="{StaticResource PageBackground}">
                     <CollectionView.EmptyView>
                         <VerticalStackLayout Padding="12" Spacing="4">
                             <Label

@@ -4,10 +4,16 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:IdentificationLivreurViewModel">
+    x:DataType="vm:IdentificationLivreurViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="*,Auto">
-        <ScrollView Grid.Row="0">
+    <Grid
+        Padding="20"
+        RowDefinitions="*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView
+            Grid.Row="0"
+            BackgroundColor="{StaticResource PageBackground}">
             <VerticalStackLayout Spacing="12">
                 <Label Text="Identification livreur" Style="{StaticResource PageTitle}" />
                 <Label Text="Sélectionnez le livreur qui charge sa tournée" Style="{StaticResource PageSubtitle}" />
@@ -25,7 +31,8 @@
                             ItemsSource="{Binding Livreurs}"
                             SelectedItem="{Binding SelectedLivreur, Mode=TwoWay}"
                             SelectionMode="Single"
-                            HeightRequest="380">
+                            HeightRequest="380"
+                            BackgroundColor="{StaticResource PageBackground}">
 
                             <CollectionView.EmptyView>
                                 <VerticalStackLayout Padding="12" Spacing="4">

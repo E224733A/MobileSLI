@@ -4,9 +4,13 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:DechargementViewModel">
+    x:DataType="vm:DechargementViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="Auto,*,Auto">
+    <Grid
+        Padding="20"
+        RowDefinitions="Auto,*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
             <Label Text="Déchargement" Style="{StaticResource PageTitle}" />
             <Label Text="Aide au tri des articles récupérés." Style="{StaticResource PageSubtitle}" />
@@ -32,7 +36,11 @@
             </Grid>
         </VerticalStackLayout>
 
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Items}" SelectionMode="None">
+        <CollectionView
+            Grid.Row="1"
+            ItemsSource="{Binding Items}"
+            SelectionMode="None"
+            BackgroundColor="{StaticResource PageBackground}">
             <CollectionView.EmptyView>
                 <Label Text="Aucun article récupéré pour le moment." TextColor="{StaticResource TextMuted}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </CollectionView.EmptyView>

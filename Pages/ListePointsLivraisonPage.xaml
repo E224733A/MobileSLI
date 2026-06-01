@@ -4,9 +4,13 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:MobileSLI.ViewModels"
-    x:DataType="vm:ListePointsLivraisonViewModel">
+    x:DataType="vm:ListePointsLivraisonViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
 
-    <Grid Padding="20" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid
+        Padding="20"
+        RowDefinitions="Auto,Auto,*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
             <Label Text="Points de livraison" Style="{StaticResource PageTitle}" />
             <Label Text="{Binding HeaderText}" Style="{StaticResource PageSubtitle}" />
@@ -20,7 +24,11 @@
             <Button Text="Fermés" Command="{Binding SetFilterCommand}" CommandParameter="FERME" IsVisible="{Binding HasClosedClients}" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="86" />
         </HorizontalStackLayout>
 
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Lignes}" SelectionMode="None">
+        <CollectionView
+            Grid.Row="2"
+            ItemsSource="{Binding Lignes}"
+            SelectionMode="None"
+            BackgroundColor="{StaticResource PageBackground}">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:LigneListItemViewModel">
                     <Frame Style="{StaticResource Card}">
