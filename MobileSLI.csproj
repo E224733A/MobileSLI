@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-android</TargetFramework>
-		<SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion>31.0</SupportedOSPlatformVersion>
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>MobileSLI</RootNamespace>

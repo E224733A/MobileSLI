@@ -2,7 +2,9 @@
 <ContentPage
     x:Class="MobileSLI.Pages.ListePointsLivraisonPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:ListePointsLivraisonViewModel">
 
     <Grid Padding="20" RowDefinitions="Auto,Auto,*,Auto">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
@@ -20,7 +22,7 @@
 
         <CollectionView Grid.Row="2" ItemsSource="{Binding Lignes}" SelectionMode="None">
             <CollectionView.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="vm:LigneListItemViewModel">
                     <Frame Style="{StaticResource Card}">
                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5">
                             <Label Grid.Row="0" Grid.Column="0" Text="{Binding ClientText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" FontSize="15" />
@@ -32,7 +34,7 @@
                             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding OrdreText}" Style="{StaticResource MutedText}" />
                             <Label Grid.Row="2" Grid.Column="0" Text="{Binding DetailText}" Style="{StaticResource MutedText}" />
 
-                            <Button Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
+                            <Button x:DataType="{x:Null}" Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
 
                             <Frame Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasInformationLivreur}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="12" HasShadow="False" Padding="8" Margin="0,4,0,0">
                                 <VerticalStackLayout Spacing="3">

@@ -2,7 +2,9 @@
 <ContentPage
     x:Class="MobileSLI.Pages.ChoixTourneePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:ChoixTourneeViewModel">
 
     <Grid Padding="20" RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
@@ -64,7 +66,7 @@
                     </CollectionView.EmptyView>
 
                     <CollectionView.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:TourneeListItemViewModel">
                             <Frame
                                 BackgroundColor="{Binding CardBackgroundColor}"
                                 BorderColor="{Binding CardBorderColor}"
@@ -74,6 +76,7 @@
                                 Margin="0,0,0,12">
                                 <Frame.GestureRecognizers>
                                     <TapGestureRecognizer
+                                        x:DataType="{x:Null}"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
                                         CommandParameter="{Binding .}" />
                                 </Frame.GestureRecognizers>
@@ -104,6 +107,7 @@
                                         </VerticalStackLayout>
 
                                         <Button
+                                            x:DataType="{x:Null}"
                                             Grid.Column="2"
                                             Text="{Binding ButtonText}"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"

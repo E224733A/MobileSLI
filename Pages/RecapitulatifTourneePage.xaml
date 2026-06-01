@@ -2,7 +2,9 @@
 <ContentPage
     x:Class="MobileSLI.Pages.RecapitulatifTourneePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:RecapitulatifTourneeViewModel">
 
     <Grid Padding="20" RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
@@ -87,7 +89,7 @@
 
                         <CollectionView ItemsSource="{Binding Articles}" SelectionMode="None">
                             <CollectionView.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:RecapArticleViewModel">
                                     <Grid ColumnDefinitions="*,90,90" Padding="0,6">
                                         <Label Text="{Binding Libelle}" TextColor="{StaticResource TextMain}" />
                                         <Label Grid.Column="1" Text="{Binding TotalLivre}" HorizontalTextAlignment="Center" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
