@@ -4,8 +4,16 @@ using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using System.Linq;
 
 namespace MobileSLI.ViewModels;
+
+/*
+ * ViewModel de la page listant les points de livraison (lignes) pour une tournée.
+ * Cette version modifie la manière dont les items "LigneListItemViewModel" sont instanciés dans la méthode LoadAsync :
+ * chaque item reçoit une action asynchrone lui permettant d'ouvrir son détail via sa propre commande OpenCommand.
+ * Ainsi, le XAML peut binder directement sur OpenCommand sans passer par RelativeSource.
+ */
 
 public sealed class ListePointsLivraisonViewModel : BaseViewModel
 {
@@ -112,7 +120,8 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
         foreach (var ligne in filtered.OrderBy(ligne => ligne.OrdreArret))
         {
-            Lignes.Add(new LigneListItemViewModel(ligne));
+            // Passe une action asynchrone d'ouverture à chaque item pour disposer d'une commande spécifique.
+            Lignes.Add(new LigneListItemViewModel(ligne, async item => await OpenDetailAsync(item)));
         }
     }
 

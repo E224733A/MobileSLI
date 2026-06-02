@@ -8,6 +8,13 @@ using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
 
+/*
+ * ViewModel de la page de choix de tournée.
+ * Cette version modifie la manière dont les items de la collection "Tournees" sont instanciés,
+ * en passant une action de sélection au constructeur de TourneeListItemViewModel afin que chaque item
+ * expose sa propre commande de sélection. Cela évite d'utiliser des bindings RelativeSource dans le XAML.
+ */
+
 public sealed class ChoixTourneeViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -144,7 +151,8 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
 
             foreach (var tournee in tournees)
             {
-                Tournees.Add(new TourneeListItemViewModel(tournee));
+                // Passe une action de sélection à chaque item pour disposer d'une commande spécifique.
+                Tournees.Add(new TourneeListItemViewModel(tournee, SelectTournee));
             }
 
             if (Tournees.Count == 0)

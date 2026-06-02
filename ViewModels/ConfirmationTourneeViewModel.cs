@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using System;
 using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
@@ -6,6 +7,14 @@ using MobileSLI.Services;
 using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
+
+/*
+ * ViewModel de la page de confirmation de tournée.
+ * Cette version ajoute la propriété NombrePointsText, qui expose le nombre de points/clients de la tournée
+ * sélectionnée sous forme de chaîne prête à afficher. Si le nombre de points n'est pas renseigné ou est
+ * inférieur ou égal à zéro, la propriété renvoie une chaîne vide pour ne pas afficher la ligne correspondante
+ * dans le XAML.
+ */
 
 public sealed class ConfirmationTourneeViewModel : BaseViewModel
 {
@@ -44,6 +53,31 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         _appStateService.SelectedTournee is null
             ? "Aucune tournée"
             : _appStateService.SelectedTournee.NomAffiche;
+
+    /// <summary>
+    /// Texte indiquant le nombre de points/clients pour la tournée sélectionnée.
+    /// Renvoie une chaîne vide si l'information n'est pas disponible ou nulle ou égale à 0.
+    /// </summary>
+    public string NombrePointsText
+    {
+        get
+        {
+            // On récupère le nombre de points à partir de la tournée sélectionnée.
+            // Le champ NombrePoints est un entier (non nullable) mais la tournée peut être nulle.
+            // S'il est <= 0, on considère que l'information n'est pas renseignée et on masque l'affichage.
+            var nombrePoints = _appStateService.SelectedTournee?.NombrePoints ?? 0;
+            if (nombrePoints > 0)
+            {
+                // Pluralisation basique : "1 point" ou "n points" pour n > 1.
+                return nombrePoints == 1
+                    ? "1 point"
+                    : $"{nombrePoints} points";
+            }
+
+            // Aucun point renseigné : on ne retourne pas de texte pour ne pas afficher la ligne.
+            return string.Empty;
+        }
+    }
 
     public string LoadMessage
     {

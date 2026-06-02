@@ -84,10 +84,8 @@
                                 Padding="16"
                                 Margin="0,0,0,12">
                                 <Frame.GestureRecognizers>
-                                    <TapGestureRecognizer
-                                        x:DataType="{x:Null}"
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
-                                        CommandParameter="{Binding .}" />
+                                    <!-- Bind directement sur la commande de l'item au lieu d'utiliser RelativeSource -->
+                                    <TapGestureRecognizer Command="{Binding SelectCommand}" />
                                 </Frame.GestureRecognizers>
 
                                 <VerticalStackLayout Spacing="10">
@@ -116,11 +114,9 @@
                                         </VerticalStackLayout>
 
                                         <Button
-                                            x:DataType="{x:Null}"
                                             Grid.Column="2"
                                             Text="{Binding ButtonText}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectTourneeCommand}"
-                                            CommandParameter="{Binding .}"
+                                            Command="{Binding SelectCommand}"
                                             BackgroundColor="{Binding ButtonBackgroundColor}"
                                             TextColor="{Binding ButtonTextColor}"
                                             BorderColor="{Binding CardBorderColor}"

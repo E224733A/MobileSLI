@@ -1,15 +1,40 @@
 using Microsoft.Maui.Graphics;
 using MobileSLI.Models;
+using System;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using Microsoft.Maui.Controls;
 
 namespace MobileSLI.ViewModels;
+
+/*
+ * Classe représentant un item de la liste des tournées ainsi que des lignes de livraison.
+ * Cette version intègre des commandes propres à chaque item pour éviter l'utilisation de RelativeSource
+ * dans le XAML. Chaque item expose une commande SelectCommand (pour les tournées) ou OpenCommand
+ * (pour les lignes) afin que la page puisse y binder directement.
+ */
 
 public sealed class TourneeListItemViewModel : ObservableObject
 {
     private bool _isSelected;
 
-    public TourneeListItemViewModel(TourneeResumeDto dto)
+    /// <summary>
+    /// Commande déclenchée lorsque l'utilisateur sélectionne cette tournée.
+    /// Elle est fournie par le ViewModel parent lors de la création de l'item.
+    /// </summary>
+    public ICommand SelectCommand { get; }
+
+    // Constructeur principal permettant de spécifier une action à exécuter lors de la sélection.
+    public TourneeListItemViewModel(TourneeResumeDto dto, Action<TourneeListItemViewModel> selectAction)
     {
         Dto = dto;
+        // Création de la commande de sélection. Elle invoque l'action fournie avec l'instance actuelle.
+        SelectCommand = new Command(() => selectAction(this));
+    }
+
+    // Constructeur par défaut conservé pour compatibilité. La commande de sélection ne fait rien.
+    public TourneeListItemViewModel(TourneeResumeDto dto) : this(dto, _ => { })
+    {
     }
 
     public TourneeResumeDto Dto { get; }
@@ -90,9 +115,22 @@ public sealed class TourneeListItemViewModel : ObservableObject
 
 public sealed class LigneListItemViewModel : ObservableObject
 {
-    public LigneListItemViewModel(LocalTourneeLigne ligne)
+    /// <summary>
+    /// Commande déclenchée lorsque l'utilisateur souhaite ouvrir le détail de cette ligne.
+    /// Elle est fournie par le ViewModel parent lors de la création de l'item.
+    /// </summary>
+    public ICommand OpenCommand { get; }
+
+    // Constructeur principal permettant de spécifier une action asynchrone pour l'ouverture.
+    public LigneListItemViewModel(LocalTourneeLigne ligne, Func<LigneListItemViewModel, Task> openAction)
     {
         Ligne = ligne;
+        OpenCommand = new Command(async () => await openAction(this));
+    }
+
+    // Constructeur par défaut conservé pour compatibilité. La commande d'ouverture ne fait rien.
+    public LigneListItemViewModel(LocalTourneeLigne ligne) : this(ligne, _ => Task.CompletedTask)
+    {
     }
 
     public LocalTourneeLigne Ligne { get; }

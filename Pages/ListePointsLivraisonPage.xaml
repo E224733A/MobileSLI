@@ -42,7 +42,8 @@
                             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding OrdreText}" Style="{StaticResource MutedText}" />
                             <Label Grid.Row="2" Grid.Column="0" Text="{Binding DetailText}" Style="{StaticResource MutedText}" />
 
-                            <Button x:DataType="{x:Null}" Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}" CommandParameter="{Binding .}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
+                            <!-- Lien vers le détail : on bind directement sur la commande de l'item -->
+                            <Button Grid.Row="2" Grid.Column="1" Text="Ouvrir" Command="{Binding OpenCommand}" Style="{StaticResource PrimaryButton}" HeightRequest="36" WidthRequest="82" />
 
                             <Frame Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding HasInformationLivreur}" BackgroundColor="{StaticResource InfoBackground}" BorderColor="{StaticResource InfoBorder}" CornerRadius="12" HasShadow="False" Padding="8" Margin="0,4,0,0">
                                 <VerticalStackLayout Spacing="3">
