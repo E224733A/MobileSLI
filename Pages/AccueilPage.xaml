@@ -45,8 +45,8 @@
                 <Frame Style="{StaticResource Card}" IsVisible="{Binding IsDiagnosticVisible}">
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Diagnostic test" Style="{StaticResource SectionTitle}" />
-                        <Label Text="Réservé aux tests : exporte la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
-                        <Button Text="Exporter base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" />
+                        <Label Text="Outil diagnostic : exporte la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
+                        <Button Text="Exporter la base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" />
                         <Label Text="{Binding DiagnosticMessage}" IsVisible="{Binding HasDiagnosticMessage}" TextColor="{StaticResource TextMuted}" FontSize="12" />
                     </VerticalStackLayout>
                 </Frame>

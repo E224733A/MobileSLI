@@ -317,9 +317,17 @@ public sealed class QuantiteSaisieViewModel : ObservableObject
 
     public bool HasQuantiteLivreePrevue => Entity.QuantiteLivreePrevue.HasValue;
 
-    public string QuantitePrevueText => Entity.QuantiteLivreePrevue.HasValue
-        ? $"Prévu : {Entity.QuantiteLivreePrevue.Value}"
-        : "Prévu : non renseigné";
+    public string QuantitePrevueText{
+        get{
+            if (Entity.QuantiteLivreePrevue.HasValue){
+                return $"Prévu : {Entity.QuantiteLivreePrevue.Value}";
+            }
+            if (IsRollsVides){
+                return string.Empty;
+            }
+            return "Prévu : non renseigné";
+        }
+    }
 
     public string QuantiteLivreeText
     {
