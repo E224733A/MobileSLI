@@ -1,8 +1,20 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using MobileSLI.Models;
 
 namespace MobileSLI.Services.Api;
 
+/// <summary>
+/// Service dédié aux appels relatifs aux tournées. Cette version ajuste les
+/// délais d'appel pour la récupération des listes de tournées et des
+/// tournées complètes afin de respecter les nouvelles valeurs de timeout
+/// définies dans ApiTimeouts. Elle n'envoie plus de date de tournée lors des
+/// appels, conformément au contrat de l'API.
+/// </summary>
 public sealed class TourneesApiService
 {
     private readonly ApiClient _apiClient;
@@ -12,31 +24,20 @@ public sealed class TourneesApiService
         _apiClient = apiClient;
     }
 
+    /// <summary>
+    /// Date de tournée renvoyée par le dernier appel à l'API. Utile pour
+    /// connaître la date métier prise en compte par l'API sans l'envoyer dans
+    /// les requêtes.
+    /// </summary>
     public DateTime? LastDateTourneeApi { get; private set; }
 
-    /*
-     * Écran "Choix de tournée"
-     *
-     * Contrat API final :
-     * GET /api/tournees/disponibles?codeLivreur=XX
-     *
-     * La date de tournée n'est plus envoyée par le mobile.
-     * Elle est calculée côté API avec la date métier Europe/Paris.
-     *
-     * Réponse finale v1.2 :
-     * {
-     *   "schemaVersion": "1.2",
-     *   "dateTournee": "2026-05-21",
-     *   "dateModifiable": false,
-     *   "livreur": { ... },
-     *   "tournees": [ ... ]
-     * }
-     *
-     * Compatibilité conservée temporairement avec l'ancien format :
-     * [
-     *   { "codeTournee": "3001", "libelleTournee": "MDR VENDEE" }
-     * ]
-     */
+    /// <summary>
+    /// Récupère la liste des tournées disponibles pour un livreur. Ne transmet
+    /// plus de date à l'API. Utilise ApiTimeouts.TourneesDisponibles (120s).
+    /// </summary>
+    /// <param name="codeLivreur">Code du livreur</param>
+    /// <param name="cancellationToken">Jeton d'annulation</param>
+    /// <returns>Liste triée des tournées disponibles</returns>
     public async Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
         string codeLivreur,
         CancellationToken cancellationToken = default)
@@ -55,7 +56,7 @@ public sealed class TourneesApiService
 
         var response = await _apiClient.GetRawAsync(
             route,
-            ApiTimeouts.ChargementTournee,
+            ApiTimeouts.TourneesDisponibles,
             retryCount: 0,
             retryDelay: TimeSpan.Zero,
             cancellationToken);
@@ -101,11 +102,10 @@ public sealed class TourneesApiService
             .ToList();
     }
 
-    /*
-     * Surcharge conservée pour compatibilité interne.
-     * Le paramètre dateTournee est volontairement ignoré, car l'API finale refuse
-     * toute date dans l'URL.
-     */
+    /// <summary>
+    /// Surcharge pour compatibilité interne. Le paramètre dateTournee est
+    /// ignoré car l'API calcule la date métier.
+    /// </summary>
     public Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
         DateTime dateTournee,
         string codeLivreur,
@@ -122,18 +122,11 @@ public sealed class TourneesApiService
         return GetTourneesDuJourAsync(codeLivreur, cancellationToken);
     }
 
-    /*
-     * Écran "Confirmation de tournée"
-     *
-     * Contrat API final :
-     * GET /api/tournees/jour?codeTournee=XXXX&codeLivreur=XX
-     *
-     * La date de tournée n'est plus envoyée par le mobile.
-     * Elle est calculée côté API avec la date métier Europe/Paris.
-     *
-     * Timeout réseau : 60 secondes.
-     * Retry automatique : 1 seule nouvelle tentative après 1,5 seconde.
-     */
+    /// <summary>
+    /// Récupère la tournée complète du jour pour un code tournée et un livreur. Le
+    /// timeout est défini à ApiTimeouts.ChargementTournee (180s) et une
+    /// tentative supplémentaire sera effectuée après un délai de 1,5s.
+    /// </summary>
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string codeTournee,
         string codeLivreur,
@@ -180,10 +173,6 @@ public sealed class TourneesApiService
         return tournee;
     }
 
-    /*
-     * Surcharge conservée pour compatibilité interne.
-     * Le paramètre dateTournee est volontairement ignoré.
-     */
     public Task<TourneeJourDto> GetTourneeJourAsync(
         DateTime dateTournee,
         string codeTournee,
@@ -193,11 +182,6 @@ public sealed class TourneesApiService
         return GetTourneeJourAsync(codeTournee, codeLivreur, cancellationToken);
     }
 
-    /*
-     * Surcharge conservée pour compatibilité avec d'anciens appels internes.
-     * Le paramètre dateTournee est validé uniquement pour éviter un appel incohérent,
-     * mais il n'est jamais envoyé à l'API.
-     */
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string dateTournee,
         string codeTournee,

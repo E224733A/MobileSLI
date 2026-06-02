@@ -42,9 +42,31 @@
                     </VerticalStackLayout>
                 </Frame>
 
+                <!-- Carte pour la reprise de tournée locale -->
+                <Frame
+                    Style="{StaticResource Card}"
+                    IsVisible="{Binding HasTourneeLocaleActive}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            Text="Tournée locale en cours"
+                            TextColor="{StaticResource InfoText}"
+                            FontAttributes="Bold" />
+                        <Label
+                            Text="{Binding TourneeLocaleActiveText}"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="13" />
+                        <Button
+                            Text="Reprendre la tournée"
+                            Command="{Binding ReprendreTourneeLocaleCommand}"
+                            Style="{StaticResource PrimaryButton}" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Frame Style="{StaticResource Card}" IsVisible="{Binding IsDiagnosticVisible}">
                     <VerticalStackLayout Spacing="8">
-                        <Label Text="Diagnostic test" Style="{StaticResource SectionTitle}" />
+                        <Label Text="Diagnostic" Style="{StaticResource SectionTitle}" />
                         <Label Text="Outil diagnostic : exporte la base locale SQLite dans le dossier Téléchargements du téléphone." TextColor="{StaticResource TextMuted}" FontSize="13" />
                         <Button Text="Exporter la base SQLite" Command="{Binding ExportDatabaseCommand}" Style="{StaticResource SecondaryButton}" />
                         <Label Text="{Binding DiagnosticMessage}" IsVisible="{Binding HasDiagnosticMessage}" TextColor="{StaticResource TextMuted}" FontSize="12" />

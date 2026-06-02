@@ -1,12 +1,21 @@
+using System;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using MobileSLI.Services;
 
 namespace MobileSLI.Services.Api;
 
+/// <summary>
+/// Client HTTP centralisé pour accéder à l'API. Cette version applique un
+/// timeout global raisonnable (180 secondes) sur HttpClient afin de ne pas
+/// bloquer indéfiniment en cas de problème réseau. Les délais spécifiques
+/// par appel restent pilotés par ApiTimeouts et fournis aux méthodes
+/// SendRawAsync.
+/// </summary>
 public sealed class ApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -22,11 +31,12 @@ public sealed class ApiClient
     {
         _settingsService = settingsService;
 
+        // Utilisation d'un timeout global de 180 secondes. Les appels
+        // individuels spécifient leurs propres délais via ApiTimeouts, mais ce
+        // timeout protège contre des blocages réseau sans fin.
         _httpClient = new HttpClient
         {
-            // Le timeout global de 8 secondes provoquait des coupures réseau trop rapides
-            // sur les chargements métier. Les délais sont maintenant pilotés appel par appel.
-            Timeout = System.Threading.Timeout.InfiniteTimeSpan
+            Timeout = TimeSpan.FromSeconds(180)
         };
     }
 

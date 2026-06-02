@@ -22,6 +22,11 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     private readonly TourneesApiService _tourneesApiService;
     private readonly DatabaseService _databaseService;
 
+    private LocalTournee? _activeTourneeEnConflit;
+    private TourneeResumeDto? _selectedTourneeEnConflit;
+    private bool _hasExistingActiveTournee;
+    private string _existingActiveTourneeText = string.Empty;
+    private string _selectedTourneeConflitText = string.Empty;
     private string _loadMessage = string.Empty;
 
     public ConfirmationTourneeViewModel(
@@ -39,6 +44,18 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         BackCommand = new Command(
             async () => await Shell.Current.GoToAsync(".."));
+
+        ReprendreTourneeExistanteCommand = new Command(
+            async () => await ReprendreTourneeExistanteAsync(),
+            () => !IsBusy && _activeTourneeEnConflit is not null);
+
+        RetourListeTourneesCommand = new Command(
+            async () => await Shell.Current.GoToAsync(".."),
+            () => !IsBusy);
+
+        AbandonnerEtChargerTourneeCommand = new Command(
+            async () => await AbandonnerEtChargerTourneeAsync(),
+            () => !IsBusy && _activeTourneeEnConflit is not null && _selectedTourneeEnConflit is not null);
     }
 
     public string LivreurText =>
@@ -79,6 +96,32 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         }
     }
 
+    public bool HasExistingActiveTournee
+    {
+        get => _hasExistingActiveTournee;
+        set
+        {
+            if (SetProperty(ref _hasExistingActiveTournee, value))
+            {
+                OnPropertyChanged(nameof(CanLoadSelectedTournee));
+            }
+        }
+    }
+
+    public bool CanLoadSelectedTournee => !HasExistingActiveTournee;
+
+    public string ExistingActiveTourneeText
+    {
+        get => _existingActiveTourneeText;
+        set => SetProperty(ref _existingActiveTourneeText, value);
+    }
+
+    public string SelectedTourneeConflitText
+    {
+        get => _selectedTourneeConflitText;
+        set => SetProperty(ref _selectedTourneeConflitText, value);
+    }
+
     public string LoadMessage
     {
         get => _loadMessage;
@@ -88,6 +131,12 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     public ICommand LoadTourneeCommand { get; }
 
     public ICommand BackCommand { get; }
+
+    public ICommand ReprendreTourneeExistanteCommand { get; }
+
+    public ICommand RetourListeTourneesCommand { get; }
+
+    public ICommand AbandonnerEtChargerTourneeCommand { get; }
 
     private async Task LoadTourneeAsync()
     {
@@ -109,6 +158,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
             ErrorMessage = string.Empty;
             LoadMessage = string.Empty;
+            ClearExistingActiveTourneeConflict();
 
             var selectedTournee = _appStateService.SelectedTournee;
             var dateTourneeAutorisee = selectedTournee.DateTournee.Date;
@@ -126,11 +176,17 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             var activeTournee = await _databaseService.GetActiveTourneeAsync(dateTourneeAutorisee);
             if (activeTournee is not null)
             {
-                var canContinue = await HandleExistingActiveTourneeAsync(activeTournee, selectedTournee);
-                if (!canContinue)
+                if (IsSameTournee(activeTournee, selectedTournee))
                 {
+                    _appStateService.CurrentTourneeId = activeTournee.Id;
+                    _appStateService.SelectedLigneId = 0;
+                    LoadMessage = "Tournée déjà chargée localement. Ouverture de la reprise.";
+                    await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
                     return;
                 }
+
+                ShowExistingActiveTourneeConflict(activeTournee, selectedTournee);
+                return;
             }
 
             if (expiredCount > 0)
@@ -160,63 +216,99 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         }
     }
 
-    private async Task<bool> HandleExistingActiveTourneeAsync(
+    private void ShowExistingActiveTourneeConflict(
         LocalTournee activeTournee,
         TourneeResumeDto selectedTournee)
     {
-        var selectedLabel = string.IsNullOrWhiteSpace(selectedTournee.LibelleTournee)
-            ? selectedTournee.CodeTournee
-            : $"{selectedTournee.CodeTournee} — {selectedTournee.LibelleTournee}";
+        _activeTourneeEnConflit = activeTournee;
+        _selectedTourneeEnConflit = selectedTournee;
 
-        var activeLabel = string.IsNullOrWhiteSpace(activeTournee.LibelleTournee)
-            ? activeTournee.CodeTournee
-            : $"{activeTournee.CodeTournee} — {activeTournee.LibelleTournee}";
+        ExistingActiveTourneeText = string.IsNullOrWhiteSpace(activeTournee.LibelleTournee)
+            ? $"{activeTournee.CodeTournee} du {activeTournee.DateTournee:dd/MM/yyyy}"
+            : $"{activeTournee.CodeTournee} — {activeTournee.LibelleTournee} du {activeTournee.DateTournee:dd/MM/yyyy}";
 
-        var action = await Shell.Current.CurrentPage.DisplayActionSheetAsync(
-            $"Une tournée non synchronisée existe déjà :\n{activeLabel} du {activeTournee.DateTournee:dd/MM/yyyy}\n\nQue voulez-vous faire ?",
-            "Retour à la liste",
-            $"Abandonner {activeTournee.CodeTournee} et charger {selectedTournee.CodeTournee}",
-            "Reprendre cette tournée");
+        SelectedTourneeConflitText = string.IsNullOrWhiteSpace(selectedTournee.LibelleTournee)
+            ? $"{selectedTournee.CodeTournee} du {selectedTournee.DateTournee:dd/MM/yyyy}"
+            : $"{selectedTournee.CodeTournee} — {selectedTournee.LibelleTournee} du {selectedTournee.DateTournee:dd/MM/yyyy}";
 
-        if (string.Equals(action, "Reprendre cette tournée", StringComparison.OrdinalIgnoreCase))
+        HasExistingActiveTournee = true;
+
+        LoadMessage = "Une tournée locale non synchronisée existe déjà sur ce téléphone.";
+        RefreshCommandStates();
+    }
+
+    private async Task ReprendreTourneeExistanteAsync()
+    {
+        if (_activeTourneeEnConflit is null)
         {
-            _appStateService.CurrentTourneeId = activeTournee.Id;
-            _appStateService.SelectedLigneId = 0;
-
-            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
-            return false;
+            return;
         }
 
-        if (string.Equals(
-                action,
-                $"Abandonner {activeTournee.CodeTournee} et charger {selectedTournee.CodeTournee}",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            var confirmed = await Shell.Current.CurrentPage.DisplayAlertAsync(
-                "Abandonner la tournée locale ?",
-                $"Attention : cette action abandonnera la tournée locale non synchronisée {activeLabel} du {activeTournee.DateTournee:dd/MM/yyyy}.\n\n" +
-                $"Elle ne sera plus proposée à la reprise sur ce téléphone. Utilisez cette option uniquement si la tournée est bloquée ou chargée par erreur.\n\n" +
-                $"Voulez-vous vraiment l'abandonner et charger {selectedLabel} ?",
-                "Abandonner et charger",
-                "Annuler");
+        _appStateService.CurrentTourneeId = _activeTourneeEnConflit.Id;
+        _appStateService.SelectedLigneId = 0;
 
-            if (!confirmed)
-            {
-                return false;
-            }
+        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+    }
+
+    private async Task AbandonnerEtChargerTourneeAsync()
+    {
+        if (_activeTourneeEnConflit is null || _selectedTourneeEnConflit is null)
+        {
+            return;
+        }
+
+        var confirmed = await Shell.Current.CurrentPage.DisplayAlertAsync(
+            "Abandonner la tournée locale ?",
+            $"La tournée locale {_activeTourneeEnConflit.CodeTournee} ne sera plus proposée à la reprise sur ce téléphone.\n\n" +
+            $"Nouvelle tournée à charger : {_selectedTourneeEnConflit.CodeTournee}.\n\n" +
+            "Cette action doit être utilisée uniquement si la tournée locale est bloquée ou chargée par erreur.",
+            "Abandonner et charger",
+            "Annuler");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            LoadingMessage = "Chargement de la nouvelle tournée...";
+            SetBusy(true);
+            ErrorMessage = string.Empty;
+
+            var activeTournee = _activeTourneeEnConflit;
+            var selectedTournee = _selectedTourneeEnConflit;
 
             await _databaseService.AbandonnerTourneeLocaleAsync(
                 activeTournee.Id,
-                $"Remplacée par la tournée {selectedTournee.CodeTournee} depuis l'écran de chargement.");
+                $"Remplacée par la tournée {selectedTournee.CodeTournee} depuis l'écran de confirmation.");
 
             await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
+            HasExistingActiveTournee = false;
             LoadMessage = $"La tournée locale {activeTournee.CodeTournee} a été abandonnée. Chargement de {selectedTournee.CodeTournee}.";
-            return true;
-        }
 
-        await Shell.Current.GoToAsync("..");
-        return false;
+            ClearExistingActiveTourneeConflict();
+
+            await LoadSelectedTourneeFromApiAsync(selectedTournee);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage =
+                "Chargement impossible après abandon de la tournée locale. " +
+                $"Détail : {exception.Message}";
+
+            LoadMessage = ErrorMessage;
+
+            await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Chargement impossible",
+                ErrorMessage,
+                "OK");
+        }
+        finally
+        {
+            SetBusy(false);
+        }
     }
 
     private async Task LoadSelectedTourneeFromApiAsync(TourneeResumeDto selectedTournee)
@@ -247,6 +339,22 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
+    private static bool IsSameTournee(LocalTournee activeTournee, TourneeResumeDto selectedTournee)
+    {
+        return string.Equals(activeTournee.CodeTournee, selectedTournee.CodeTournee, StringComparison.OrdinalIgnoreCase)
+            && activeTournee.DateTournee.Date == selectedTournee.DateTournee.Date;
+    }
+
+    private void ClearExistingActiveTourneeConflict()
+    {
+        _activeTourneeEnConflit = null;
+        _selectedTourneeEnConflit = null;
+        ExistingActiveTourneeText = string.Empty;
+        SelectedTourneeConflitText = string.Empty;
+        HasExistingActiveTournee = false;
+        RefreshCommandStates();
+    }
+
     private void SetBusy(bool value)
     {
         IsBusy = value;
@@ -258,6 +366,21 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         if (LoadTourneeCommand is Command loadCommand)
         {
             loadCommand.ChangeCanExecute();
+        }
+
+        if (ReprendreTourneeExistanteCommand is Command reprendreCommand)
+        {
+            reprendreCommand.ChangeCanExecute();
+        }
+
+        if (RetourListeTourneesCommand is Command retourCommand)
+        {
+            retourCommand.ChangeCanExecute();
+        }
+
+        if (AbandonnerEtChargerTourneeCommand is Command abandonnerCommand)
+        {
+            abandonnerCommand.ChangeCanExecute();
         }
     }
 }

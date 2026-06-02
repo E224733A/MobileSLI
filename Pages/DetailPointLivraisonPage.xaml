@@ -112,18 +112,6 @@
                                             Style="{StaticResource Input}"
                                             IsVisible="{Binding IsLivreeEditable}" />
 
-                                        <Label
-                                            Grid.Row="0"
-                                            Grid.RowSpan="2"
-                                            Grid.Column="1"
-                                            Text="—"
-                                            HorizontalTextAlignment="Center"
-                                            VerticalTextAlignment="Center"
-                                            TextColor="{StaticResource TextMuted}"
-                                            FontAttributes="Bold"
-                                            FontSize="18"
-                                            IsVisible="{Binding IsRollsVides}" />
-
                                         <Entry
                                             Grid.Row="0"
                                             Grid.RowSpan="2"

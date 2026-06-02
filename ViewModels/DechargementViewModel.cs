@@ -34,7 +34,7 @@ public sealed class DechargementViewModel : BaseViewModel
 
         var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
 
-        foreach (var ligne in lignes.OrderBy(l => l.NomClient).ThenBy(l => l.OrdreArret))
+        foreach (var ligne in lignes.OrderBy(l => l.OrdreArret).ThenBy(l => l.NomClient))
         {
             var quantites = await _databaseService.GetQuantitesAsync(ligne.Id);
             var recuperees = quantites.Where(q => q.QuantiteRecuperee > 0).ToList();

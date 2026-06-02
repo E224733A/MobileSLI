@@ -46,6 +46,65 @@
                     <Label Text="Après chargement, le livreur peut travailler sans connexion. Les saisies sont conservées localement." TextColor="{StaticResource InfoText}" FontSize="13" />
                 </Frame>
 
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource WarningBackground}"
+                    BorderColor="{StaticResource WarningBorder}"
+                    IsVisible="{Binding HasExistingActiveTournee}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label
+                            Text="Tournée locale déjà présente"
+                            TextColor="{StaticResource WarningText}"
+                            FontAttributes="Bold"
+                            FontSize="16" />
+
+                        <Label
+                            Text="Une tournée non synchronisée existe déjà sur ce téléphone. Vous pouvez la reprendre ou l’abandonner si elle a été chargée par erreur."
+                            TextColor="{StaticResource WarningText}"
+                            FontSize="13" />
+
+                        <Label
+                            Text="Tournée locale"
+                            TextColor="{StaticResource WarningText}"
+                            FontAttributes="Bold"
+                            FontSize="12" />
+
+                        <Label
+                            Text="{Binding ExistingActiveTourneeText}"
+                            TextColor="{StaticResource WarningText}"
+                            FontSize="13" />
+
+                        <Label
+                            Text="Tournée demandée"
+                            TextColor="{StaticResource WarningText}"
+                            FontAttributes="Bold"
+                            FontSize="12"
+                            Margin="0,4,0,0" />
+
+                        <Label
+                            Text="{Binding SelectedTourneeConflitText}"
+                            TextColor="{StaticResource WarningText}"
+                            FontSize="13" />
+
+                        <Button
+                            Text="Reprendre la tournée locale"
+                            Command="{Binding ReprendreTourneeExistanteCommand}"
+                            Style="{StaticResource PrimaryButton}" />
+
+                        <Button
+                            Text="Retour à la liste"
+                            Command="{Binding RetourListeTourneesCommand}"
+                            Style="{StaticResource SecondaryButton}" />
+
+                        <Button
+                            Text="Abandonner la tournée locale et charger la nouvelle"
+                            Command="{Binding AbandonnerEtChargerTourneeCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            TextColor="{StaticResource DangerText}"
+                            BorderColor="{StaticResource DangerBorder}" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Label Text="{Binding LoadMessage}" TextColor="{StaticResource TextMuted}" FontSize="13" />
 
                 <Label
@@ -57,7 +116,11 @@
         </ScrollView>
 
         <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,14,0,0">
-            <Button Text="Charger la tournée" Command="{Binding LoadTourneeCommand}" Style="{StaticResource PrimaryButton}" />
+            <Button
+                Text="Charger la tournée"
+                Command="{Binding LoadTourneeCommand}"
+                Style="{StaticResource PrimaryButton}"
+                IsVisible="{Binding CanLoadSelectedTournee}" />
             <Button Text="Retour" Command="{Binding BackCommand}" Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
 

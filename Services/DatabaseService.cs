@@ -453,6 +453,35 @@ public sealed class DatabaseService
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Retourne la tournée locale active correspondant au code tournée et à la date
+    /// spécifiés, si elle existe. Cette tournée doit être non synchronisée,
+    /// non abandonnée, non expirée et non verrouillée. Les tournées sont
+    /// triées par date de chargement décroissante pour privilégier la plus
+    /// récente.
+    /// </summary>
+    /// <param name="codeTournee">Code de la tournée recherchée.</param>
+    /// <param name="dateTournee">Date de la tournée recherchée.</param>
+    /// <returns>La tournée locale correspondante ou null si aucune ne correspond.</returns>
+    public async Task<LocalTournee?> GetActiveTourneeByCodeAndDateAsync(string codeTournee, DateTime dateTournee)
+    {
+        var db = await GetDatabaseAsync();
+        var date = dateTournee.Date;
+        var tournees = await db.Table<LocalTournee>()
+            .Where(t => t.CodeTournee == codeTournee && t.DateTournee == date)
+            .ToListAsync();
+
+        return tournees
+            .Where(t =>
+                !string.Equals(t.StatutLocal, TourneeLocalStatus.Synchronisee, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(t.StatutLocal, TourneeLocalStatus.DejaSynchronisee, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(t.StatutLocal, TourneeLocalStatus.Expiree, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(t.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase)
+                && !t.EstVerrouillee)
+            .OrderByDescending(t => t.DateChargement)
+            .FirstOrDefault();
+    }
+
     public async Task<int> ExpireOldActiveTourneesAsync(DateTime? dateTourneeAutorisee = null)
     {
         var db = await GetDatabaseAsync();

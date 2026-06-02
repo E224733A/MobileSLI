@@ -1,12 +1,19 @@
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using System.Windows.Input;
+using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de la page d'accueil.
+/// Cette version propose la reprise d'une tournée locale active via une carte et rend
+/// l'outil d'export SQLite visible en Release comme en Debug. Elle met également en cache
+/// certaines données pour améliorer la stabilité terrain.
+/// </summary>
 public sealed class AccueilViewModel : BaseViewModel
 {
     private readonly HealthApiService _healthApiService;
@@ -20,6 +27,8 @@ public sealed class AccueilViewModel : BaseViewModel
     private string _connectionMessage = "Testez la connexion au Wi-Fi du dépôt avant de continuer.";
     private string _diagnosticMessage = string.Empty;
     private bool _isConnected;
+
+    private LocalTournee? _tourneeLocaleActive;
 
     public AccueilViewModel(
         HealthApiService healthApiService,
@@ -47,7 +56,11 @@ public sealed class AccueilViewModel : BaseViewModel
 
         ExportDatabaseCommand = new Command(
             async () => await ExportDatabaseAsync(),
-            () => !IsBusy && IsDiagnosticVisible);
+            () => !IsBusy);
+
+        ReprendreTourneeLocaleCommand = new Command(
+            async () => await ReprendreTourneeLocaleAsync(),
+            () => HasTourneeLocaleActive && !IsBusy);
     }
 
     public string ApiBaseUrl
@@ -88,17 +101,24 @@ public sealed class AccueilViewModel : BaseViewModel
         set => SetProperty(ref _isConnected, value);
     }
 
-    public bool IsDiagnosticVisible
-    {
-        get
-        {
-#if DEBUG
-            return true;
-#else
-            return false;
-#endif
-        }
-    }
+    /// <summary>
+    /// Indique si le diagnostic (export SQLite) doit être visible. Désormais toujours vrai en Debug et Release.
+    /// </summary>
+    public bool IsDiagnosticVisible => true;
+
+    /// <summary>
+    /// Indique si une tournée locale active existe et peut être reprise.
+    /// </summary>
+    public bool HasTourneeLocaleActive => _tourneeLocaleActive is not null;
+
+    /// <summary>
+    /// Texte descriptif de la tournée locale active à afficher dans la carte de reprise.
+    /// </summary>
+    public string TourneeLocaleActiveText => _tourneeLocaleActive is null
+        ? string.Empty
+        : string.IsNullOrWhiteSpace(_tourneeLocaleActive.LibelleTournee)
+            ? $"{_tourneeLocaleActive.CodeTournee} du {_tourneeLocaleActive.DateTournee:dd/MM/yyyy}"
+            : $"{_tourneeLocaleActive.CodeTournee} — {_tourneeLocaleActive.LibelleTournee} du {_tourneeLocaleActive.DateTournee:dd/MM/yyyy}";
 
     public ICommand TestConnectionCommand { get; }
 
@@ -108,6 +128,11 @@ public sealed class AccueilViewModel : BaseViewModel
 
     public ICommand ExportDatabaseCommand { get; }
 
+    public ICommand ReprendreTourneeLocaleCommand { get; }
+
+    /// <summary>
+    /// Vérifie au démarrage si une tournée locale active existe et propose éventuellement une reprise.
+    /// </summary>
     public async Task CheckActiveTourneeOnStartupAsync()
     {
         /*
@@ -122,6 +147,8 @@ public sealed class AccueilViewModel : BaseViewModel
          */
         if (_appStateService.HasCheckedActiveTourneeOnStartup || IsBusy)
         {
+            // Même si la vérification a déjà eu lieu, charge la tournée locale active pour l'affichage de la carte.
+            await LoadActiveTourneeLocaleAsync();
             return;
         }
 
@@ -131,13 +158,19 @@ public sealed class AccueilViewModel : BaseViewModel
         {
             LoadingMessage = "Vérification des données locales";
             SetBusy(true);
+            ErrorMessage = string.Empty;
+
+            // Vide le cache API journalier à l'ouverture afin de ne pas réutiliser des listes obsolètes
+            _appStateService.ClearDailyApiCacheIfNeeded();
+
+            // Charge la tournée locale pour l'affichage initial de la carte
+            await LoadActiveTourneeLocaleAsync();
 
             var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
             var deletedCount = await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
             var abandonedDeletedCount = await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
 
             var activeTournee = await _databaseService.GetActiveTourneeAsync();
-
             if (activeTournee is null)
             {
                 if (expiredCount > 0)
@@ -171,15 +204,13 @@ public sealed class AccueilViewModel : BaseViewModel
                 "Une tournée du jour non synchronisée est déjà présente. Voulez-vous la reprendre ?",
                 "Reprendre",
                 "Retour");
-
-            if (!reprendre)
+            if (reprendre)
             {
+                _appStateService.CurrentTourneeId = activeTournee.Id;
+                _appStateService.SelectedLigneId = 0;
+                await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
                 return;
             }
-
-            _appStateService.CurrentTourneeId = activeTournee.Id;
-
-            await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
         }
         catch (Exception exception)
         {
@@ -190,7 +221,40 @@ public sealed class AccueilViewModel : BaseViewModel
         finally
         {
             SetBusy(false);
+            // Recharge la tournée locale pour mettre à jour l'affichage de la carte après les interactions
+            await LoadActiveTourneeLocaleAsync();
         }
+    }
+
+    /// <summary>
+    /// Charge la tournée locale active en base et met à jour les propriétés de reprise.
+    /// </summary>
+    private async Task LoadActiveTourneeLocaleAsync()
+    {
+        _tourneeLocaleActive = await _databaseService.GetActiveTourneeAsync();
+        OnPropertyChanged(nameof(HasTourneeLocaleActive));
+        OnPropertyChanged(nameof(TourneeLocaleActiveText));
+
+        if (ReprendreTourneeLocaleCommand is Command repriseCommand)
+        {
+            repriseCommand.ChangeCanExecute();
+        }
+    }
+
+    /// <summary>
+    /// Navigue directement vers la liste des points de livraison en reprenant la tournée locale active.
+    /// </summary>
+    private async Task ReprendreTourneeLocaleAsync()
+    {
+        if (_tourneeLocaleActive is null)
+        {
+            return;
+        }
+
+        _appStateService.CurrentTourneeId = _tourneeLocaleActive.Id;
+        _appStateService.SelectedLigneId = 0;
+
+        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
     private void SaveApiUrl()
@@ -249,7 +313,7 @@ public sealed class AccueilViewModel : BaseViewModel
 
     private async Task ExportDatabaseAsync()
     {
-        if (IsBusy || !IsDiagnosticVisible)
+        if (IsBusy)
         {
             return;
         }
@@ -370,6 +434,11 @@ public sealed class AccueilViewModel : BaseViewModel
         if (ExportDatabaseCommand is Command exportCommand)
         {
             exportCommand.ChangeCanExecute();
+        }
+
+        if (ReprendreTourneeLocaleCommand is Command repriseCommand)
+        {
+            repriseCommand.ChangeCanExecute();
         }
     }
 }
