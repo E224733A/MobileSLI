@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Storage;
 using MobileSLI.Configuration;
+using MobileSLI.Domain.Rules;
 using MobileSLI.Models;
 using MobileSLI.Services.Diagnostics;
 using SQLite;
@@ -15,7 +16,6 @@ namespace MobileSLI.Services;
 public sealed class DatabaseService
 {
     private const string DatabaseFileName = "mobile_sli.db3";
-    private const string CommentaireClientFermeAutomatique = "Client fermé";
 
     private SQLiteAsyncConnection? _database;
     private readonly SettingsService _settings;
@@ -278,11 +278,7 @@ public sealed class DatabaseService
 
             foreach (var quantite in BuildQuantitesForLocalStorage(ligneDto, dto.ArticlesSaisissables))
             {
-                if (ligne.EstFerme)
-                {
-                    quantite.QuantiteLivree = 0;
-                    quantite.QuantiteRecuperee = 0;
-                }
+                ApplyClosedQuantiteDefaults(ligne.EstFerme, quantite);
 
                 await InsertQuantiteAsync(db, ligne.Id, quantite);
             }
@@ -544,17 +540,7 @@ public sealed class DatabaseService
 
         foreach (var ligne in lignesFermees)
         {
-            var statutAvant = ligne.StatutPassage;
-            var estValideeAvant = ligne.EstValidee;
-            var heureAvant = ligne.HeureValidation;
-            var commentaireAvant = ligne.CommentaireLivreur;
-
-            ApplyClosedLineDefaults(ligne);
-
-            if (!string.Equals(statutAvant, ligne.StatutPassage, StringComparison.OrdinalIgnoreCase)
-                || estValideeAvant != ligne.EstValidee
-                || heureAvant != ligne.HeureValidation
-                || !string.Equals(commentaireAvant, ligne.CommentaireLivreur, StringComparison.Ordinal))
+            if (ApplyClosedLineDefaults(ligne))
             {
                 await db.UpdateAsync(ligne);
                 lignesCorrigees++;
@@ -566,10 +552,8 @@ public sealed class DatabaseService
 
             foreach (var quantite in quantites)
             {
-                if (quantite.QuantiteLivree != 0 || quantite.QuantiteRecuperee != 0)
+                if (ApplyClosedQuantiteDefaults(ligne.EstFerme, quantite))
                 {
-                    quantite.QuantiteLivree = 0;
-                    quantite.QuantiteRecuperee = 0;
                     await db.UpdateAsync(quantite);
                 }
             }
@@ -578,17 +562,75 @@ public sealed class DatabaseService
         return lignesCorrigees;
     }
 
-    private static void ApplyClosedLineDefaults(LocalTourneeLigne ligne)
+    private static bool ApplyClosedLineDefaults(LocalTourneeLigne ligne)
     {
-        if (!ligne.EstFerme)
+        var normalized = ClientFermeRules.NormalizeLine(
+            new ClientFermeLineState(
+                ligne.EstFerme,
+                ligne.StatutPassage,
+                ligne.EstValidee,
+                ligne.HeureValidation,
+                ligne.CommentaireLivreur),
+            DateTime.Now);
+
+        var hasChanged = !string.Equals(ligne.StatutPassage, normalized.StatutPassage, StringComparison.OrdinalIgnoreCase)
+            || ligne.EstValidee != normalized.EstValidee
+            || ligne.HeureValidation != normalized.HeureValidation
+            || !string.Equals(ligne.CommentaireLivreur, normalized.CommentaireLivreur, StringComparison.Ordinal);
+
+        if (ligne.EstFerme)
         {
-            return;
+            ligne.StatutPassage = normalized.StatutPassage ?? string.Empty;
+            ligne.EstValidee = normalized.EstValidee;
+            ligne.HeureValidation = normalized.HeureValidation;
+            ligne.CommentaireLivreur = normalized.CommentaireLivreur;
         }
 
-        ligne.StatutPassage = StatutPassageConstants.NonFait;
-        ligne.EstValidee = true;
-        ligne.HeureValidation ??= DateTime.Now;
-        ligne.CommentaireLivreur = CommentaireClientFermeAutomatique;
+        return hasChanged;
+    }
+
+    private static bool ApplyClosedQuantiteDefaults(bool estFerme, QuantiteSaisieMobileDto quantite)
+    {
+        var normalized = ClientFermeRules.NormalizeQuantite(
+            new ClientFermeQuantiteState(
+                quantite.QuantiteLivree,
+                quantite.QuantiteRecuperee),
+            estFerme);
+
+        var hasChanged = quantite.QuantiteLivree != normalized.QuantiteLivree
+            || quantite.QuantiteRecuperee != normalized.QuantiteRecuperee;
+
+        if (!hasChanged)
+        {
+            return false;
+        }
+
+        quantite.QuantiteLivree = normalized.QuantiteLivree;
+        quantite.QuantiteRecuperee = normalized.QuantiteRecuperee;
+
+        return true;
+    }
+
+    private static bool ApplyClosedQuantiteDefaults(bool estFerme, LocalTourneeLigneQuantite quantite)
+    {
+        var normalized = ClientFermeRules.NormalizeQuantite(
+            new ClientFermeQuantiteState(
+                quantite.QuantiteLivree,
+                quantite.QuantiteRecuperee),
+            estFerme);
+
+        var hasChanged = quantite.QuantiteLivree != normalized.QuantiteLivree
+            || quantite.QuantiteRecuperee != normalized.QuantiteRecuperee;
+
+        if (!hasChanged)
+        {
+            return false;
+        }
+
+        quantite.QuantiteLivree = normalized.QuantiteLivree;
+        quantite.QuantiteRecuperee = normalized.QuantiteRecuperee;
+
+        return true;
     }
 
     public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)
@@ -633,11 +675,7 @@ public sealed class DatabaseService
 
         foreach (var quantite in quantites)
         {
-            if (ligne.EstFerme)
-            {
-                quantite.QuantiteLivree = 0;
-                quantite.QuantiteRecuperee = 0;
-            }
+            ApplyClosedQuantiteDefaults(ligne.EstFerme, quantite);
 
             if (quantite.QuantiteLivree < 0 || quantite.QuantiteRecuperee < 0)
             {
