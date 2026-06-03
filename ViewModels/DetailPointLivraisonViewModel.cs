@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Services;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -11,21 +12,26 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
     private readonly DatabaseService _databaseService;
+    private readonly INavigationService _navigationService;
 
     private LocalTourneeLigne? _ligne;
     private string _selectedStatut = StatutPassageConstants.Fait;
     private string _commentaireLivreur = string.Empty;
     private string _infoText = string.Empty;
 
-    public DetailPointLivraisonViewModel(AppStateService appStateService, DatabaseService databaseService)
+    public DetailPointLivraisonViewModel(
+        AppStateService appStateService,
+        DatabaseService databaseService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
+        _navigationService = navigationService;
 
         Quantites = new ObservableCollection<QuantiteSaisieViewModel>();
         SetStatutCommand = new Command<string>(SetStatut);
         ValidateCommand = new Command(async () => await ValidateAsync());
-        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        BackCommand = new Command(async () => await _navigationService.GoBackAsync());
     }
 
     public ObservableCollection<QuantiteSaisieViewModel> Quantites { get; }
@@ -187,7 +193,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
 
         await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
 
-        await Shell.Current.GoToAsync("..");
+        await _navigationService.GoBackAsync();
     }
 
     private bool IsSelectedStatut(string statut)

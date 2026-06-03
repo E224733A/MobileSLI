@@ -5,6 +5,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -21,6 +22,7 @@ public sealed class AccueilViewModel : BaseViewModel
     private readonly ConnectivityService _connectivityService;
     private readonly DatabaseService _databaseService;
     private readonly AppStateService _appStateService;
+    private readonly INavigationService _navigationService;
 
     private string _apiBaseUrl;
     private string _connectionTitle = "Connexion non testée";
@@ -35,13 +37,15 @@ public sealed class AccueilViewModel : BaseViewModel
         SettingsService settingsService,
         ConnectivityService connectivityService,
         DatabaseService databaseService,
-        AppStateService appStateService)
+        AppStateService appStateService,
+        INavigationService navigationService)
     {
         _healthApiService = healthApiService;
         _settingsService = settingsService;
         _connectivityService = connectivityService;
         _databaseService = databaseService;
         _appStateService = appStateService;
+        _navigationService = navigationService;
         _apiBaseUrl = _settingsService.ApiBaseUrl;
 
         TestConnectionCommand = new Command(
@@ -208,7 +212,7 @@ public sealed class AccueilViewModel : BaseViewModel
             {
                 _appStateService.CurrentTourneeId = activeTournee.Id;
                 _appStateService.SelectedLigneId = 0;
-                await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+                await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
                 return;
             }
         }
@@ -254,7 +258,7 @@ public sealed class AccueilViewModel : BaseViewModel
         _appStateService.CurrentTourneeId = _tourneeLocaleActive.Id;
         _appStateService.SelectedLigneId = 0;
 
-        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+        await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
     private void SaveApiUrl()
@@ -392,7 +396,7 @@ public sealed class AccueilViewModel : BaseViewModel
                     "Rechargez les tournées du jour depuis l'API.";
             }
 
-            await Shell.Current.GoToAsync(nameof(IdentificationLivreurPage));
+            await _navigationService.GoToAsync(nameof(IdentificationLivreurPage));
         }
         catch (Exception exception)
         {

@@ -4,6 +4,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -12,6 +13,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
     private readonly LivreursApiService _livreursApiService;
     private readonly AppStateService _appStateService;
     private readonly SettingsService _settingsService;
+    private readonly INavigationService _navigationService;
 
     private string _codeLivreur = string.Empty;
     private string _nomLivreur = string.Empty;
@@ -23,11 +25,13 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
     public IdentificationLivreurViewModel(
         LivreursApiService livreursApiService,
         AppStateService appStateService,
-        SettingsService settingsService)
+        SettingsService settingsService,
+        INavigationService navigationService)
     {
         _livreursApiService = livreursApiService;
         _appStateService = appStateService;
         _settingsService = settingsService;
+        _navigationService = navigationService;
 
         _codeLivreur = _settingsService.LastLivreurCode;
 
@@ -218,7 +222,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
 
         if (_appStateService.CurrentLivreur is not null)
         {
-            await Shell.Current.GoToAsync(nameof(ChoixTourneePage));
+            await _navigationService.GoToAsync(nameof(ChoixTourneePage));
         }
     }
 

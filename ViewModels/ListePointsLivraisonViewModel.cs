@@ -4,6 +4,7 @@ using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Navigation;
 using System.Linq;
 
 namespace MobileSLI.ViewModels;
@@ -24,22 +25,27 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
     private readonly AppStateService _appStateService;
     private readonly DatabaseService _databaseService;
+    private readonly INavigationService _navigationService;
 
     private string _currentFilter = FiltreTous;
     private LocalTournee? _tournee;
     private bool _hasClosedClients;
 
-    public ListePointsLivraisonViewModel(AppStateService appStateService, DatabaseService databaseService)
+    public ListePointsLivraisonViewModel(
+        AppStateService appStateService,
+        DatabaseService databaseService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
+        _navigationService = navigationService;
 
         Lignes = new ObservableCollection<LigneListItemViewModel>();
 
         OpenDetailCommand = new Command<LigneListItemViewModel>(async item => await OpenDetailAsync(item));
         SetFilterCommand = new Command<string>(async filter => await SetFilterAsync(filter));
-        GoDechargementCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(DechargementPage)));
-        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)));
+        GoDechargementCommand = new Command(async () => await _navigationService.GoToAsync(nameof(DechargementPage)));
+        GoRecapCommand = new Command(async () => await _navigationService.GoToAsync(nameof(RecapitulatifTourneePage)));
     }
 
     public ObservableCollection<LigneListItemViewModel> Lignes { get; }
@@ -148,6 +154,6 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
         }
 
         _appStateService.SelectedLigneId = item.Id;
-        await Shell.Current.GoToAsync(nameof(DetailPointLivraisonPage));
+        await _navigationService.GoToAsync(nameof(DetailPointLivraisonPage));
     }
 }

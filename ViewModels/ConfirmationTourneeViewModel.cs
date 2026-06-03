@@ -5,6 +5,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -21,6 +22,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     private readonly AppStateService _appStateService;
     private readonly TourneesApiService _tourneesApiService;
     private readonly DatabaseService _databaseService;
+    private readonly INavigationService _navigationService;
 
     private LocalTournee? _activeTourneeEnConflit;
     private TourneeResumeDto? _selectedTourneeEnConflit;
@@ -32,25 +34,27 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     public ConfirmationTourneeViewModel(
         AppStateService appStateService,
         TourneesApiService tourneesApiService,
-        DatabaseService databaseService)
+        DatabaseService databaseService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _tourneesApiService = tourneesApiService;
         _databaseService = databaseService;
+        _navigationService = navigationService;
 
         LoadTourneeCommand = new Command(
             async () => await LoadTourneeAsync(),
             () => !IsBusy);
 
         BackCommand = new Command(
-            async () => await Shell.Current.GoToAsync(".."));
+            async () => await _navigationService.GoBackAsync());
 
         ReprendreTourneeExistanteCommand = new Command(
             async () => await ReprendreTourneeExistanteAsync(),
             () => !IsBusy && _activeTourneeEnConflit is not null);
 
         RetourListeTourneesCommand = new Command(
-            async () => await Shell.Current.GoToAsync(".."),
+            async () => await _navigationService.GoBackAsync(),
             () => !IsBusy);
 
         AbandonnerEtChargerTourneeCommand = new Command(
@@ -181,7 +185,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
                     _appStateService.CurrentTourneeId = activeTournee.Id;
                     _appStateService.SelectedLigneId = 0;
                     LoadMessage = "Tournée déjà chargée localement. Ouverture de la reprise.";
-                    await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+                    await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
                     return;
                 }
 
@@ -247,7 +251,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         _appStateService.CurrentTourneeId = _activeTourneeEnConflit.Id;
         _appStateService.SelectedLigneId = 0;
 
-        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+        await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
     private async Task AbandonnerEtChargerTourneeAsync()
@@ -336,7 +340,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         LoadMessage = "Tournée chargée localement.";
 
-        await Shell.Current.GoToAsync(nameof(ListePointsLivraisonPage));
+        await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
     }
 
     private static bool IsSameTournee(LocalTournee activeTournee, TourneeResumeDto selectedTournee)

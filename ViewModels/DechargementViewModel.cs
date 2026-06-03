@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MobileSLI.Pages;
 using MobileSLI.Services;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -10,14 +11,20 @@ public sealed class DechargementViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
     private readonly DatabaseService _databaseService;
+    private readonly INavigationService _navigationService;
 
-    public DechargementViewModel(AppStateService appStateService, DatabaseService databaseService)
+    public DechargementViewModel(
+        AppStateService appStateService,
+        DatabaseService databaseService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
+        _navigationService = navigationService;
+
         Items = new ObservableCollection<DechargementItemViewModel>();
-        GoRecapCommand = new Command(async () => await Shell.Current.GoToAsync(nameof(RecapitulatifTourneePage)));
-        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        GoRecapCommand = new Command(async () => await _navigationService.GoToAsync(nameof(RecapitulatifTourneePage)));
+        BackCommand = new Command(async () => await _navigationService.GoBackAsync());
     }
 
     public ObservableCollection<DechargementItemViewModel> Items { get; }

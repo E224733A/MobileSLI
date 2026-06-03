@@ -5,6 +5,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -18,6 +19,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
     private readonly AppStateService _appStateService;
     private readonly TourneesApiService _tourneesApiService;
     private readonly DatabaseService _databaseService;
+    private readonly INavigationService _navigationService;
 
     // Source mémoire des tournées chargées pour la journée. Elle est filtrée localement
     // dans ApplyTourneesFilter() pour éviter de rappeler l'API à chaque modification du texte de recherche.
@@ -29,11 +31,13 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
     public ChoixTourneeViewModel(
         AppStateService appStateService,
         TourneesApiService tourneesApiService,
-        DatabaseService databaseService)
+        DatabaseService databaseService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _tourneesApiService = tourneesApiService;
         _databaseService = databaseService;
+        _navigationService = navigationService;
 
         Tournees = new ObservableCollection<TourneeListItemViewModel>();
 
@@ -48,7 +52,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
             () => !IsBusy);
 
         BackCommand = new Command(
-            async () => await Shell.Current.GoToAsync(".."));
+            async () => await _navigationService.GoBackAsync());
     }
 
     /// <summary>
@@ -240,7 +244,7 @@ public sealed class ChoixTourneeViewModel : BaseViewModel
         _appStateService.SelectedTournee = SelectedTournee.Dto;
         _appStateService.DateTourneeAutorisee = SelectedTournee.Dto.DateTournee.Date;
 
-        await Shell.Current.GoToAsync(nameof(ConfirmationTourneePage));
+        await _navigationService.GoToAsync(nameof(ConfirmationTourneePage));
     }
 
     private void RefreshCommandStates()

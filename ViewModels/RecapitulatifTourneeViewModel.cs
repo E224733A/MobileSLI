@@ -5,6 +5,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -14,6 +15,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     private readonly DatabaseService _databaseService;
     private readonly SynchronisationService _synchronisationService;
     private readonly HealthApiService _healthApiService;
+    private readonly INavigationService _navigationService;
 
     private LocalTournee? _tournee;
     private int _totalClients;
@@ -27,12 +29,14 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         AppStateService appStateService,
         DatabaseService databaseService,
         SynchronisationService synchronisationService,
-        HealthApiService healthApiService)
+        HealthApiService healthApiService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _databaseService = databaseService;
         _synchronisationService = synchronisationService;
         _healthApiService = healthApiService;
+        _navigationService = navigationService;
 
         Articles = new ObservableCollection<RecapArticleViewModel>();
 
@@ -44,7 +48,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             async () => await SendAsync(),
             () => !IsBusy);
 
-        BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        BackCommand = new Command(async () => await _navigationService.GoBackAsync());
     }
 
     public ObservableCollection<RecapArticleViewModel> Articles { get; }
@@ -276,11 +280,11 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
 
             if (result.Success)
             {
-                await Shell.Current.GoToAsync(nameof(SyncResultPage));
+                await _navigationService.GoToAsync(nameof(SyncResultPage));
             }
             else
             {
-                await Shell.Current.GoToAsync(nameof(SyncErrorPage));
+                await _navigationService.GoToAsync(nameof(SyncErrorPage));
             }
         }
         finally

@@ -4,6 +4,7 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
@@ -17,22 +18,25 @@ public sealed class SyncErrorViewModel : BaseViewModel
     private readonly AppStateService _appStateService;
     private readonly SynchronisationService _synchronisationService;
     private readonly HealthApiService _healthApiService;
+    private readonly INavigationService _navigationService;
 
     public SyncErrorViewModel(
         AppStateService appStateService,
         SynchronisationService synchronisationService,
-        HealthApiService healthApiService)
+        HealthApiService healthApiService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
         _synchronisationService = synchronisationService;
         _healthApiService = healthApiService;
+        _navigationService = navigationService;
 
         RetryCommand = new Command(
             async () => await RetryAsync(),
             () => !IsBusy && CanRetry);
 
-        BackHomeCommand = new Command(async () => await Shell.Current.GoToAsync("//AccueilPage"));
-        BackRecapCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        BackHomeCommand = new Command(async () => await _navigationService.GoToAsync("//AccueilPage"));
+        BackRecapCommand = new Command(async () => await _navigationService.GoBackAsync());
     }
 
     public string PageTitle => IsValidationError()
@@ -132,7 +136,7 @@ public sealed class SyncErrorViewModel : BaseViewModel
 
             if (result.Success)
             {
-                await Shell.Current.GoToAsync(nameof(SyncResultPage));
+                await _navigationService.GoToAsync(nameof(SyncResultPage));
             }
             else
             {

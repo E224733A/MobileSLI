@@ -1,16 +1,21 @@
 using Microsoft.Maui.Controls;
 using System.Windows.Input;
 using MobileSLI.Services;
+using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
 public sealed class SyncResultViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
+    private readonly INavigationService _navigationService;
 
-    public SyncResultViewModel(AppStateService appStateService)
+    public SyncResultViewModel(
+        AppStateService appStateService,
+        INavigationService navigationService)
     {
         _appStateService = appStateService;
+        _navigationService = navigationService;
 
         BackHomeCommand = new Command(async () => await BackHomeAsync());
     }
@@ -34,6 +39,6 @@ public sealed class SyncResultViewModel : BaseViewModel
 
     private async Task BackHomeAsync()
     {
-        await Shell.Current.GoToAsync("//AccueilPage");
+        await _navigationService.GoToAsync("//AccueilPage");
     }
 }
