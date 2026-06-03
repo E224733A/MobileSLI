@@ -3,15 +3,17 @@
 public static class AppConfig
 {
     /*
-     * Mode téléphone physique avec adb reverse :
+     * URL finale de l'API MobileSLI sur le réseau interne SLI.
      *
-     * Commande à lancer avant le test :
-     * adb reverse tcp:5000 tcp:5000
+     * Le téléphone doit être connecté au Wi-Fi / réseau autorisé de l'entreprise.
      *
-     * URL dans l'application :
+     * API :
+     * http://srvapi1.sli.local:5000
+     *
+     * Cette URL remplace le mode de test local avec adb reverse :
      * http://127.0.0.1:5000
      */
-    public const string ApiBaseUrl = "http://127.0.0.1:5000";
+    public const string ApiBaseUrl = "http://srvapi1.sli.local:5000";
 
     /*
      * Version officielle du contrat JSON mobile/API.
@@ -22,15 +24,15 @@ public static class AppConfig
     public const string SchemaVersion = "1.2";
 
     /*
-     * Exemples pour plus tard :
+     * Exemples pour développement uniquement :
      *
-     * Téléphone sans adb reverse, accès direct au PC ou à la VM :
-     * public const string ApiBaseUrl = "http://192.168.1.66:5000";
+     * Téléphone physique avec adb reverse :
+     * public const string ApiBaseUrl = "http://127.0.0.1:5000";
      *
      * Émulateur Android :
      * public const string ApiBaseUrl = "http://10.0.2.2:5000";
      *
-     * API installée sur une VM avec nom DNS interne :
-     * public const string ApiBaseUrl = "https://api-mobile-sli.local";
+     * Accès direct temporaire par IP :
+     * public const string ApiBaseUrl = "http://192.168.1.233:5000";
      */
 }
