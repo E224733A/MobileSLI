@@ -1,13 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Maui.Storage;
 using MobileSLI.Configuration;
 using MobileSLI.Models;
+using MobileSLI.Services.Diagnostics;
 using SQLite;
-
-#if ANDROID
-using Android.Content;
-using Android.Provider;
-#endif
 
 namespace MobileSLI.Services;
 
@@ -18,10 +19,17 @@ public sealed class DatabaseService
 
     private SQLiteAsyncConnection? _database;
     private readonly SettingsService _settings;
+    private readonly DatabaseExportService _databaseExportService;
 
-    public DatabaseService(SettingsService settings)
+    public DatabaseService(SettingsService settings, DatabaseExportService databaseExportService)
     {
         _settings = settings;
+        _databaseExportService = databaseExportService;
+    }
+
+    public DatabaseService(SettingsService settings)
+        : this(settings, new DatabaseExportService())
+    {
     }
 
     private static string DatabasePath => Path.Combine(FileSystem.AppDataDirectory, DatabaseFileName);
@@ -120,85 +128,8 @@ public sealed class DatabaseService
             _database = null;
         }
 
-        if (!File.Exists(DatabasePath))
-        {
-            throw new FileNotFoundException("La base SQLite locale est introuvable.", DatabasePath);
-        }
-
-        var exportFileName = $"mobile_sli_{DateTime.Now:yyyyMMdd_HHmmss}.db3";
-
-#if ANDROID
-        return await ExportDatabaseToAndroidDownloadsAsync(DatabasePath, exportFileName);
-#else
-        var downloadsDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Downloads");
-
-        Directory.CreateDirectory(downloadsDirectory);
-
-        var destinationPath = Path.Combine(downloadsDirectory, exportFileName);
-        File.Copy(DatabasePath, destinationPath, overwrite: true);
-
-        return destinationPath;
-#endif
+        return await _databaseExportService.ExportDatabaseToDownloadsAsync(DatabasePath);
     }
-
-#if ANDROID
-    private static Task<string> ExportDatabaseToAndroidDownloadsAsync(
-        string sourcePath,
-        string exportFileName)
-    {
-        var context = Android.App.Application.Context
-            ?? throw new InvalidOperationException("Contexte Android indisponible.");
-
-        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q)
-        {
-            var values = new ContentValues();
-            values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, exportFileName);
-            values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "application/x-sqlite3");
-            values.Put(Android.Provider.MediaStore.IMediaColumns.RelativePath, Android.OS.Environment.DirectoryDownloads);
-            values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 1);
-
-            var resolver = context.ContentResolver
-                ?? throw new InvalidOperationException("ContentResolver Android indisponible.");
-
-            var destinationUri = resolver.Insert(Android.Provider.MediaStore.Downloads.ExternalContentUri, values)
-                ?? throw new InvalidOperationException("Impossible de créer le fichier d'export dans Téléchargements.");
-
-            try
-            {
-                using var input = File.OpenRead(sourcePath);
-                using var output = resolver.OpenOutputStream(destinationUri)
-                    ?? throw new InvalidOperationException("Impossible d'ouvrir le flux d'écriture Android.");
-
-                input.CopyTo(output);
-            }
-            catch
-            {
-                resolver.Delete(destinationUri, null, null);
-                throw;
-            }
-            finally
-            {
-                values.Clear();
-                values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, 0);
-                resolver.Update(destinationUri, values, null, null);
-            }
-
-            return Task.FromResult($"Téléchargements/{exportFileName}");
-        }
-
-        var downloadsDirectory = Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDownloads)
-            ?? throw new InvalidOperationException("Dossier Téléchargements Android indisponible.");
-
-        Directory.CreateDirectory(downloadsDirectory.AbsolutePath);
-
-        var destinationPath = Path.Combine(downloadsDirectory.AbsolutePath, exportFileName);
-        File.Copy(sourcePath, destinationPath, overwrite: true);
-
-        return Task.FromResult(destinationPath);
-    }
-#endif
 
     public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
     {
@@ -453,16 +384,6 @@ public sealed class DatabaseService
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Retourne la tournée locale active correspondant au code tournée et à la date
-    /// spécifiés, si elle existe. Cette tournée doit être non synchronisée,
-    /// non abandonnée, non expirée et non verrouillée. Les tournées sont
-    /// triées par date de chargement décroissante pour privilégier la plus
-    /// récente.
-    /// </summary>
-    /// <param name="codeTournee">Code de la tournée recherchée.</param>
-    /// <param name="dateTournee">Date de la tournée recherchée.</param>
-    /// <returns>La tournée locale correspondante ou null si aucune ne correspond.</returns>
     public async Task<LocalTournee?> GetActiveTourneeByCodeAndDateAsync(string codeTournee, DateTime dateTournee)
     {
         var db = await GetDatabaseAsync();
@@ -517,7 +438,6 @@ public sealed class DatabaseService
         }
 
         var cutoff = DateTime.Now.AddDays(-retentionDays);
-
         var tournees = await db.Table<LocalTournee>()
             .Where(t => t.EstVerrouillee)
             .ToListAsync();

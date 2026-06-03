@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Diagnostics;
 using MobileSLI.Services.Navigation;
 using MobileSLI.ViewModels;
 
@@ -38,6 +39,7 @@ public static class MauiProgram
     {
         services.AddSingleton<AppStateService>();
         services.AddSingleton<SettingsService>();
+        services.AddSingleton<DatabaseExportService>();
         services.AddSingleton<DatabaseService>();
         services.AddSingleton<DemoDataService>();
         services.AddSingleton<ConnectivityService>();
