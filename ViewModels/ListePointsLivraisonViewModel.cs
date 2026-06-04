@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using MobileSLI.Models;
@@ -11,17 +12,17 @@ namespace MobileSLI.ViewModels;
 
 /*
  * ViewModel de la page listant les points de livraison (lignes) pour une tournée.
- * Cette version modifie la manière dont les items "LigneListItemViewModel" sont instanciés dans la méthode LoadAsync :
- * chaque item reçoit une action asynchrone lui permettant d'ouvrir son détail via sa propre commande OpenCommand.
- * Ainsi, le XAML peut binder directement sur OpenCommand sans passer par RelativeSource.
+ * Cette version ajoute uniquement le filtre métier "Commentaires exceptionnels".
+ * Les commentaires sont déjà présents dans les lignes locales et déjà affichés sur les bandeaux clients.
  */
-
 public sealed class ListePointsLivraisonViewModel : BaseViewModel
 {
     private const string FiltreTous = "TOUS";
     private const string FiltreAFaire = "A_FAIRE";
     private const string FiltreFait = "FAIT";
     private const string FiltreFerme = "FERME";
+
+    public const string FiltreCommentairesExceptionnels = "COMMENTAIRES_EXCEPTIONNELS";
 
     private readonly AppStateService _appStateService;
     private readonly DatabaseService _databaseService;
@@ -30,6 +31,7 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
     private string _currentFilter = FiltreTous;
     private LocalTournee? _tournee;
     private bool _hasClosedClients;
+    private bool _hasCommentairesExceptionnels;
 
     public ListePointsLivraisonViewModel(
         AppStateService appStateService,
@@ -70,10 +72,24 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
         private set => SetProperty(ref _hasClosedClients, value);
     }
 
+    public bool HasCommentairesExceptionnels
+    {
+        get => _hasCommentairesExceptionnels;
+        private set => SetProperty(ref _hasCommentairesExceptionnels, value);
+    }
+
     public ICommand OpenDetailCommand { get; }
     public ICommand SetFilterCommand { get; }
     public ICommand GoDechargementCommand { get; }
     public ICommand GoRecapCommand { get; }
+
+    public void ApplyNavigationFilter(string? filter)
+    {
+        if (string.Equals(filter, FiltreCommentairesExceptionnels, StringComparison.OrdinalIgnoreCase))
+        {
+            CurrentFilter = FiltreCommentairesExceptionnels;
+        }
+    }
 
     public async Task LoadAsync()
     {
@@ -101,8 +117,15 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
         var lignes = await _databaseService.GetLignesAsync(_appStateService.CurrentTourneeId);
 
         HasClosedClients = lignes.Any(ligne => ligne.EstFerme);
+        HasCommentairesExceptionnels = lignes.Any(ligne =>
+            !string.IsNullOrWhiteSpace(ligne.CommentaireExceptionnel));
 
         if (!HasClosedClients && CurrentFilter == FiltreFerme)
+        {
+            CurrentFilter = FiltreTous;
+        }
+
+        if (!HasCommentairesExceptionnels && CurrentFilter == FiltreCommentairesExceptionnels)
         {
             CurrentFilter = FiltreTous;
         }
@@ -119,6 +142,9 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
             FiltreFerme => lignes.Where(ligne => ligne.EstFerme),
 
+            FiltreCommentairesExceptionnels => lignes.Where(ligne =>
+                !string.IsNullOrWhiteSpace(ligne.CommentaireExceptionnel)),
+
             _ => lignes
         };
 
@@ -126,7 +152,6 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
 
         foreach (var ligne in filtered.OrderBy(ligne => ligne.OrdreArret))
         {
-            // Passe une action asynchrone d'ouverture à chaque item pour disposer d'une commande spécifique.
             Lignes.Add(new LigneListItemViewModel(ligne, async item => await OpenDetailAsync(item)));
         }
     }
@@ -138,6 +163,11 @@ public sealed class ListePointsLivraisonViewModel : BaseViewModel
             : filter;
 
         if (requestedFilter == FiltreFerme && !HasClosedClients)
+        {
+            return;
+        }
+
+        if (requestedFilter == FiltreCommentairesExceptionnels && !HasCommentairesExceptionnels)
         {
             return;
         }

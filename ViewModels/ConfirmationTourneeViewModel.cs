@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls;
 using System;
+using System.Linq;
 using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
@@ -11,12 +12,11 @@ namespace MobileSLI.ViewModels;
 
 /*
  * ViewModel de la page de confirmation de tournée.
- * Cette version ajoute la propriété NombrePointsText, qui expose le nombre de points/clients de la tournée
- * sélectionnée sous forme de chaîne prête à afficher. Si le nombre de points n'est pas renseigné ou est
- * inférieur ou égal à zéro, la propriété renvoie une chaîne vide pour ne pas afficher la ligne correspondante
- * dans le XAML.
+ * Cette version conserve le chargement existant et ajoute uniquement une information terrain :
+ * après sauvegarde locale d'une tournée reçue depuis l'API, une fenêtre est affichée si au moins
+ * un client possède un commentaire exceptionnel. Le livreur peut alors ouvrir directement la liste
+ * filtrée sur les clients concernés.
  */
-
 public sealed class ConfirmationTourneeViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -83,19 +83,14 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     {
         get
         {
-            // On récupère le nombre de points à partir de la tournée sélectionnée.
-            // Le champ NombrePoints est un entier (non nullable) mais la tournée peut être nulle.
-            // S'il est <= 0, on considère que l'information n'est pas renseignée et on masque l'affichage.
             var nombrePoints = _appStateService.SelectedTournee?.NombrePoints ?? 0;
             if (nombrePoints > 0)
             {
-                // Pluralisation basique : "1 point" ou "n points" pour n > 1.
                 return nombrePoints == 1
                     ? "1 point"
                     : $"{nombrePoints} points";
             }
 
-            // Aucun point renseigné : on ne retourne pas de texte pour ne pas afficher la ligne.
             return string.Empty;
         }
     }
@@ -339,6 +334,32 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         _appStateService.SelectedLigneId = 0;
 
         LoadMessage = "Tournée chargée localement.";
+
+        var lignes = await _databaseService.GetLignesAsync(tourneeId);
+        var nombreCommentairesExceptionnels = lignes.Count(ligne =>
+            !string.IsNullOrWhiteSpace(ligne.CommentaireExceptionnel));
+
+        if (nombreCommentairesExceptionnels > 0)
+        {
+            var commentaireText = nombreCommentairesExceptionnels == 1
+                ? "1 client a un commentaire exceptionnel."
+                : $"{nombreCommentairesExceptionnels} clients ont un commentaire exceptionnel.";
+
+            var voirCommentaires = await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Commentaires exceptionnels",
+                $"{commentaireText}\n\nVoulez-vous afficher les clients concernés ?",
+                "Voir les clients concernés",
+                "Voir plus tard");
+
+            if (voirCommentaires)
+            {
+                await _navigationService.GoToAsync(
+                    $"{nameof(ListePointsLivraisonPage)}?filtre={ListePointsLivraisonViewModel.FiltreCommentairesExceptionnels}");
+                return;
+            }
+
+            LoadMessage = commentaireText;
+        }
 
         await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
     }

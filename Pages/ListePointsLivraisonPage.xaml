@@ -17,12 +17,55 @@
             <Label Text="{Binding SubtitleText}" Style="{StaticResource MutedText}" />
         </VerticalStackLayout>
 
-        <HorizontalStackLayout Grid.Row="1" Spacing="6" Margin="0,10,0,10">
-            <Button Text="Tous" Command="{Binding SetFilterCommand}" CommandParameter="TOUS" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="70" />
-            <Button Text="À faire" Command="{Binding SetFilterCommand}" CommandParameter="A_FAIRE" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="86" />
-            <Button Text="Fait" Command="{Binding SetFilterCommand}" CommandParameter="FAIT" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="70" />
-            <Button Text="Fermés" Command="{Binding SetFilterCommand}" CommandParameter="FERME" IsVisible="{Binding HasClosedClients}" Style="{StaticResource SecondaryButton}" HeightRequest="34" WidthRequest="86" />
-        </HorizontalStackLayout>
+        <ScrollView
+            Grid.Row="1"
+            Orientation="Horizontal"
+            HorizontalScrollBarVisibility="Never"
+            Margin="0,10,0,10">
+            <HorizontalStackLayout Spacing="6">
+                <Button
+                    Text="Tous"
+                    Command="{Binding SetFilterCommand}"
+                    CommandParameter="TOUS"
+                    Style="{StaticResource SecondaryButton}"
+                    HeightRequest="34"
+                    WidthRequest="70" />
+
+                <Button
+                    Text="À faire"
+                    Command="{Binding SetFilterCommand}"
+                    CommandParameter="A_FAIRE"
+                    Style="{StaticResource SecondaryButton}"
+                    HeightRequest="34"
+                    WidthRequest="86" />
+
+                <Button
+                    Text="Fait"
+                    Command="{Binding SetFilterCommand}"
+                    CommandParameter="FAIT"
+                    Style="{StaticResource SecondaryButton}"
+                    HeightRequest="34"
+                    WidthRequest="70" />
+
+                <Button
+                    Text="Fermés"
+                    Command="{Binding SetFilterCommand}"
+                    CommandParameter="FERME"
+                    IsVisible="{Binding HasClosedClients}"
+                    Style="{StaticResource SecondaryButton}"
+                    HeightRequest="34"
+                    WidthRequest="86" />
+
+                <Button
+                    Text="Commentaires"
+                    Command="{Binding SetFilterCommand}"
+                    CommandParameter="COMMENTAIRES_EXCEPTIONNELS"
+                    IsVisible="{Binding HasCommentairesExceptionnels}"
+                    Style="{StaticResource SecondaryButton}"
+                    HeightRequest="34"
+                    WidthRequest="130" />
+            </HorizontalStackLayout>
+        </ScrollView>
 
         <CollectionView
             Grid.Row="2"
