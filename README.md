@@ -4,6 +4,27 @@
 
 L’application mobile **MobileSLI** a pour objectif de remplacer progressivement la fiche papier utilisée par les livreurs pour les tournées quotidiennes.
 
+## Documentation choix camion / trajet mobile 1.3
+
+Le flux camion / trajet mobile 1.3 est documenté dans les fichiers suivants :
+
+| Fichier | Rôle |
+|---|---|
+| `docs/00-prompts/lot-0-tests-documentation-mobile-1.3.md` | Prompt corrigé du LOT 0, strictement limité au dépôt mobile |
+| `docs/04-tests/Mobile/matrice-tests-camion-trajet-mobile-1.3.md` | Matrice de tests mobile pour les scénarios `MOB-CAM-001` à `MOB-CAM-021` |
+| `docs/04-tests/Mobile/rapport-lot-0-camion-trajet-1.3.md` | Rapport d’inspection et de correction du LOT 0 |
+
+Décision contractuelle mobile :
+
+```text
+schemaVersion = "1.3" uniquement
+schemaVersion = "1.2" refusé côté mobile
+```
+
+Ce cadrage concerne uniquement le dépôt mobile **MobileSLI**.
+
+Aucune modification serveur API ASP.NET Core, SQL Server, route serveur ou DTO serveur n’est incluse dans ce lot.
+
 ## Configuration réseau
 
 L’application communique uniquement avec l’API ASP.NET Core.
@@ -121,7 +142,6 @@ public const string ApiBaseUrl = "http://IP_DU_PC:5000";
 
 Si le téléphone ne peut pas accéder à l’IP du PC, revenir au mode `adb reverse`.
 
-
 ## Commandes rapides à retenir
 
 ### Lancer l’API pour test téléphone avec ADB reverse
@@ -173,4 +193,3 @@ dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
 cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe uninstall fr.sli.mobiletournee
 ```
-

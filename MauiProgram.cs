@@ -48,6 +48,7 @@ public static class MauiProgram
         services.AddSingleton<ApiClient>();
         services.AddSingleton<HealthApiService>();
         services.AddSingleton<LivreursApiService>();
+        services.AddSingleton<CamionsApiService>();
         services.AddSingleton<TourneesApiService>();
         services.AddSingleton<SynchronisationsApiService>();
 
