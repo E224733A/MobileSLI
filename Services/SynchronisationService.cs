@@ -1,3 +1,5 @@
+using System.Globalization;
+using MobileSLI.Configuration;
 using MobileSLI.Models;
 using MobileSLI.Services.Api;
 
@@ -10,13 +12,16 @@ public sealed class SynchronisationService
 
     private readonly DatabaseService _databaseService;
     private readonly SynchronisationsApiService _synchronisationsApiService;
+    private readonly AppStateService _appStateService;
 
     public SynchronisationService(
         DatabaseService databaseService,
-        SynchronisationsApiService synchronisationsApiService)
+        SynchronisationsApiService synchronisationsApiService,
+        AppStateService appStateService)
     {
         _databaseService = databaseService;
         _synchronisationsApiService = synchronisationsApiService;
+        _appStateService = appStateService;
     }
 
     public async Task<OperationResult> SynchroniserAsync(int idTourneeLocale)
@@ -52,34 +57,34 @@ public sealed class SynchronisationService
                 code: tournee.StatutLocal);
         }
 
-        /*
-         * Les clients fermés sont des cas métier particuliers : ils ne sont pas
-         * à traiter manuellement par le livreur, mais ils doivent être présents
-         * dans le JSON final comme NON_FAIT avec le commentaire "Client fermé".
-         * Cette normalisation protège aussi les anciennes bases SQLite déjà chargées.
-         */
         await _databaseService.NormalizeClosedLinesAsync(idTourneeLocale);
+        await _databaseService.RestaurerTrajetDansAppStateAsync(idTourneeLocale, _appStateService);
 
         var lignes = await _databaseService.GetLignesAsync(idTourneeLocale);
         var validation = await ValidateBeforeSendAsync(lignes);
 
         if (!validation.Success)
         {
-            /*
-             * Une tournée incomplète n'est pas une erreur technique de synchronisation.
-             * On ne marque donc pas la tournée en ERREUR_SYNCHRONISATION : elle reste
-             * corrigeable localement par l'utilisateur.
-             */
             return validation;
         }
 
+        var trajetValidation = await ValidateTrajetBeforeSendAsync(idTourneeLocale);
+        if (!trajetValidation.Success)
+        {
+            return trajetValidation;
+        }
+
         var request = await _databaseService.BuildSynchronisationRequestAsync(idTourneeLocale);
+        request.SchemaVersion = AppConfig.SchemaVersion;
+
+        var trajet = BuildTrajetRequest();
+        var request13 = SynchronisationTourneeAvecTrajetRequest.From(request, trajet);
 
         OperationResult result;
 
         try
         {
-            result = await _synchronisationsApiService.PostSynchronisationAsync(request);
+            result = await _synchronisationsApiService.PostSynchronisationAsync(request13);
         }
         catch (HttpRequestException exception)
         {
@@ -236,6 +241,90 @@ public sealed class SynchronisationService
         return Success("Validation locale réussie.");
     }
 
+    private async Task<OperationResult> ValidateTrajetBeforeSendAsync(int idTourneeLocale)
+    {
+        var persistedValidationMessage = await _databaseService.GetTrajetBlockingValidationMessageAsync(idTourneeLocale);
+        if (!string.IsNullOrWhiteSpace(persistedValidationMessage))
+        {
+            return Failure(persistedValidationMessage, code: "VALIDATION_ERROR");
+        }
+
+        await _databaseService.RestaurerTrajetDansAppStateAsync(idTourneeLocale, _appStateService);
+
+        var camion = _appStateService.CurrentCamion;
+        if (camion is null)
+        {
+            return Failure("Camion manquant. Revenez au choix camion avant d’envoyer la tournée.", code: "VALIDATION_ERROR");
+        }
+
+        if (string.IsNullOrWhiteSpace(camion.IdCamion))
+        {
+            return Failure("Identifiant camion manquant. Rechargez les camions puis recommencez.", code: "VALIDATION_ERROR");
+        }
+
+        if (string.IsNullOrWhiteSpace(camion.CodeCamion))
+        {
+            return Failure("Code camion manquant. Rechargez les camions puis recommencez.", code: "VALIDATION_ERROR");
+        }
+
+        if (!_appStateService.KilometrageDepart.HasValue)
+        {
+            return Failure("Kilométrage départ manquant. Revenez au choix camion avant d’envoyer la tournée.", code: "VALIDATION_ERROR");
+        }
+
+        if (!_appStateService.KilometrageArrivee.HasValue)
+        {
+            return Failure("Kilométrage arrivée manquant. Saisissez le kilométrage arrivée avant d’envoyer la tournée.", code: "VALIDATION_ERROR");
+        }
+
+        if (!_appStateService.DateDepartMobile.HasValue)
+        {
+            return Failure("Date départ mobile manquante. Revenez au choix camion avant d’envoyer la tournée.", code: "VALIDATION_ERROR");
+        }
+
+        if (!_appStateService.DateArriveeMobile.HasValue)
+        {
+            return Failure("Date arrivée mobile manquante. Saisissez le kilométrage arrivée avant d’envoyer la tournée.", code: "VALIDATION_ERROR");
+        }
+
+        if (_appStateService.KilometrageDepart.Value < 0)
+        {
+            return Failure("Le kilométrage départ ne peut pas être négatif.", code: "VALIDATION_ERROR");
+        }
+
+        if (_appStateService.KilometrageArrivee.Value < 0)
+        {
+            return Failure("Le kilométrage arrivée ne peut pas être négatif.", code: "VALIDATION_ERROR");
+        }
+
+        if (_appStateService.KilometrageArrivee.Value < _appStateService.KilometrageDepart.Value)
+        {
+            return Failure("Le kilométrage arrivée doit être supérieur ou égal au kilométrage départ.", code: "VALIDATION_ERROR");
+        }
+
+        return Success("Validation trajet réussie.");
+    }
+
+    private SynchronisationTrajetRequest BuildTrajetRequest()
+    {
+        var camion = _appStateService.CurrentCamion!;
+
+        return new SynchronisationTrajetRequest
+        {
+            Camion = new SynchronisationCamionRequest
+            {
+                IdCamion = camion.IdCamion.Trim(),
+                CodeCamion = camion.CodeCamion.Trim(),
+                LibelleCamion = camion.LibelleCamion?.Trim() ?? string.Empty,
+                Immatriculation = camion.Immatriculation?.Trim() ?? string.Empty
+            },
+            KilometrageDepart = _appStateService.KilometrageDepart!.Value,
+            KilometrageArrivee = _appStateService.KilometrageArrivee!.Value,
+            DateDepartMobile = FormatDateTime(_appStateService.DateDepartMobile!.Value),
+            DateArriveeMobile = FormatDateTime(_appStateService.DateArriveeMobile!.Value)
+        };
+    }
+
     private static bool IsAlreadySentCode(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -277,6 +366,15 @@ public sealed class SynchronisationService
         return !string.IsNullOrWhiteSpace(value)
                && (value.Contains(DateTourneeNonAutoriseeCode, StringComparison.OrdinalIgnoreCase)
                    || value.Contains(DateTourneeExpireeCode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string FormatDateTime(DateTime value)
+    {
+        var local = value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Local)
+            : value.ToLocalTime();
+
+        return new DateTimeOffset(local).ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
     }
 
     private static OperationResult Success(string message)

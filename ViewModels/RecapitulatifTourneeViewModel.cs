@@ -1,5 +1,6 @@
 using Microsoft.Maui.Controls;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Pages;
@@ -24,6 +25,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     private int _anomalies;
     private string _commentaireGlobal = string.Empty;
     private string _connectionMessage = string.Empty;
+    private string _kilometrageArriveeText = string.Empty;
 
     public RecapitulatifTourneeViewModel(
         AppStateService appStateService,
@@ -57,6 +59,56 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     public string DateText => _tournee is null ? string.Empty : _tournee.DateTournee.ToString("dd/MM/yyyy");
     public string LivreurText => _tournee?.NomLivreur ?? string.Empty;
 
+    public string CamionText
+    {
+        get
+        {
+            var camion = _appStateService.CurrentCamion;
+            if (camion is null)
+            {
+                return "Camion : non renseigné";
+            }
+
+            var immatriculation = camion.Immatriculation?.Trim() ?? string.Empty;
+            var libelle = camion.LibelleCamion?.Trim() ?? string.Empty;
+            var code = camion.CodeCamion?.Trim() ?? string.Empty;
+
+            var identifiant = !string.IsNullOrWhiteSpace(immatriculation)
+                ? immatriculation
+                : code;
+
+            if (!string.IsNullOrWhiteSpace(identifiant)
+                && !string.IsNullOrWhiteSpace(libelle)
+                && !string.Equals(identifiant, libelle, StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Camion : {identifiant} - {libelle}";
+            }
+
+            return string.IsNullOrWhiteSpace(identifiant)
+                ? "Camion : non renseigné"
+                : $"Camion : {identifiant}";
+        }
+    }
+
+    public string KilometrageDepartText => _appStateService.KilometrageDepart.HasValue
+        ? $"Départ : {_appStateService.KilometrageDepart.Value} km"
+        : "Départ : non renseigné";
+
+    public string DateDepartMobileText => _appStateService.DateDepartMobile.HasValue
+        ? $"Départ mobile : {_appStateService.DateDepartMobile.Value:dd/MM/yyyy HH:mm}"
+        : "Départ mobile : non renseigné";
+
+    public bool HasDateDepartMobile => _appStateService.DateDepartMobile.HasValue;
+
+    public bool HasTrajetDepartIncomplet =>
+        _appStateService.CurrentCamion is null
+        || !_appStateService.KilometrageDepart.HasValue
+        || !_appStateService.DateDepartMobile.HasValue;
+
+    public string TrajetDepartErreurText => HasTrajetDepartIncomplet
+        ? "Camion ou kilométrage départ manquant. Revenez au choix camion avant d’envoyer la tournée."
+        : string.Empty;
+
     public int TotalClients
     {
         get => _totalClients;
@@ -87,6 +139,12 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         set => SetProperty(ref _commentaireGlobal, value);
     }
 
+    public string KilometrageArriveeText
+    {
+        get => _kilometrageArriveeText;
+        set => SetProperty(ref _kilometrageArriveeText, value);
+    }
+
     public string ConnectionMessage
     {
         get => _connectionMessage;
@@ -108,7 +166,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     public async Task LoadAsync()
     {
         ErrorMessage = string.Empty;
-        LoadingMessage = "Préparation du récapitulatif...";
+        LoadingMessage = "Préparation du récapitulatif en cours";
 
         _tournee = await _databaseService.GetTourneeAsync(_appStateService.CurrentTourneeId);
         if (_tournee is null)
@@ -117,10 +175,13 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
-        /*
-         * Corrige les clients fermés avant le calcul du récapitulatif :
-         * ils doivent être comptés comme traités, en NON_FAIT avec commentaire automatique.
-         */
+        await _databaseService.RestaurerTrajetDansAppStateAsync(_tournee.Id, _appStateService);
+
+        if (_appStateService.KilometrageArrivee.HasValue && string.IsNullOrWhiteSpace(KilometrageArriveeText))
+        {
+            KilometrageArriveeText = _appStateService.KilometrageArrivee.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
         await _databaseService.NormalizeClosedLinesAsync(_tournee.Id);
 
         var lignes = await _databaseService.GetLignesAsync(_tournee.Id);
@@ -157,6 +218,12 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         OnPropertyChanged(nameof(ResumeText));
         OnPropertyChanged(nameof(DateText));
         OnPropertyChanged(nameof(LivreurText));
+        OnPropertyChanged(nameof(CamionText));
+        OnPropertyChanged(nameof(KilometrageDepartText));
+        OnPropertyChanged(nameof(DateDepartMobileText));
+        OnPropertyChanged(nameof(HasDateDepartMobile));
+        OnPropertyChanged(nameof(HasTrajetDepartIncomplet));
+        OnPropertyChanged(nameof(TrajetDepartErreurText));
     }
 
     private async Task<bool> TestConnectionAsync(bool showAlert)
@@ -168,7 +235,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Test de la connexion au dépôt...";
+            LoadingMessage = "Test de la connexion au dépôt en cours";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
@@ -241,6 +308,18 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
+        if (!TryValidateKilometrageArrivee(out var kilometrageArrivee, out var trajetValidationMessage))
+        {
+            ErrorMessage = trajetValidationMessage;
+
+            await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Trajet incomplet",
+                trajetValidationMessage,
+                "OK");
+
+            return;
+        }
+
         var apiDisponible = await TestConnectionAsync(showAlert: false);
 
         if (!apiDisponible)
@@ -266,8 +345,16 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Envoi de la tournée...";
+            LoadingMessage = "Envoi de la tournée en cours";
             SetBusy(true);
+
+            _appStateService.KilometrageArrivee = kilometrageArrivee;
+            _appStateService.DateArriveeMobile = DateTime.Now;
+
+            await _databaseService.PersistTrajetArriveeAsync(
+                _appStateService.CurrentTourneeId,
+                kilometrageArrivee,
+                _appStateService.DateArriveeMobile.Value);
 
             await _databaseService.UpdateCommentaireGlobalAsync(
                 _appStateService.CurrentTourneeId,
@@ -291,6 +378,60 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         {
             SetBusy(false);
         }
+    }
+
+    private bool TryValidateKilometrageArrivee(out int kilometrageArrivee, out string validationMessage)
+    {
+        kilometrageArrivee = 0;
+        validationMessage = string.Empty;
+
+        if (_appStateService.CurrentCamion is null)
+        {
+            validationMessage = "Camion manquant. Revenez au choix camion avant d’envoyer la tournée.";
+            return false;
+        }
+
+        if (!_appStateService.KilometrageDepart.HasValue)
+        {
+            validationMessage = "Kilométrage départ manquant. Revenez au choix camion avant d’envoyer la tournée.";
+            return false;
+        }
+
+        if (!_appStateService.DateDepartMobile.HasValue)
+        {
+            validationMessage = "Date départ mobile manquante. Revenez au choix camion avant d’envoyer la tournée.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(KilometrageArriveeText))
+        {
+            validationMessage = "Le kilométrage arrivée est obligatoire avant l’envoi.";
+            return false;
+        }
+
+        if (!int.TryParse(
+                KilometrageArriveeText.Trim(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out kilometrageArrivee))
+        {
+            validationMessage = "Le kilométrage arrivée doit être un nombre entier.";
+            return false;
+        }
+
+        if (kilometrageArrivee < 0)
+        {
+            validationMessage = "Le kilométrage arrivée ne peut pas être négatif.";
+            return false;
+        }
+
+        if (kilometrageArrivee < _appStateService.KilometrageDepart.Value)
+        {
+            validationMessage = "Le kilométrage arrivée doit être supérieur ou égal au kilométrage départ.";
+            return false;
+        }
+
+        return true;
     }
 
     private async Task<string?> GetLocalBlockingValidationMessageAsync()

@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="MobileSLI.Pages.ChoixCamionPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MobileSLI.ViewModels"
+    x:DataType="vm:ChoixCamionViewModel"
+    BackgroundColor="{StaticResource PageBackground}">
+
+    <Grid
+        Padding="20"
+        RowDefinitions="*,Auto"
+        BackgroundColor="{StaticResource PageBackground}">
+        <ScrollView
+            Grid.Row="0"
+            BackgroundColor="{StaticResource PageBackground}">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Choix du camion" Style="{StaticResource PageTitle}" />
+                <Label Text="{Binding LivreurText}" Style="{StaticResource PageSubtitle}" />
+
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource InfoBackground}"
+                    BorderColor="{StaticResource InfoBorder}">
+                    <VerticalStackLayout Spacing="4">
+                        <Label
+                            Text="Sélection camion et départ"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="12" />
+                        <Label
+                            Text="{Binding HelpText}"
+                            TextColor="{StaticResource InfoText}"
+                            FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Button
+                    Text="Recharger les camions depuis l'API"
+                    Command="{Binding LoadCamionsCommand}"
+                    Style="{StaticResource SecondaryButton}" />
+
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label Text="Camions disponibles" Style="{StaticResource SectionTitle}" />
+                    <Label
+                        Grid.Column="1"
+                        Text="{Binding CountText}"
+                        TextColor="{StaticResource Primary}"
+                        FontSize="12" />
+                </Grid>
+
+                <CollectionView
+                    ItemsSource="{Binding Camions}"
+                    SelectionMode="None"
+                    HeightRequest="320"
+                    BackgroundColor="{StaticResource PageBackground}">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout Padding="12" Spacing="4">
+                            <Label
+                                Text="Aucun camion disponible."
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource TextMain}" />
+                            <Label
+                                Text="Vérifiez que l'API est accessible et que la route camions retourne au moins un camion actif."
+                                FontSize="13"
+                                TextColor="{StaticResource TextMuted}" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CamionItemViewModel">
+                            <Frame
+                                BackgroundColor="{Binding CardBackgroundColor}"
+                                BorderColor="{Binding CardBorderColor}"
+                                CornerRadius="18"
+                                HasShadow="False"
+                                Padding="14"
+                                Margin="0,0,0,10">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SelectCommand}" />
+                                </Frame.GestureRecognizers>
+
+                                <VerticalStackLayout Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                            <Label
+                                                Text="{Binding ImmatriculationText}"
+                                                TextColor="{StaticResource TextMain}"
+                                                FontAttributes="Bold"
+                                                FontSize="16" />
+                                            <Label
+                                                Text="{Binding LibelleText}"
+                                                TextColor="{StaticResource TextMuted}"
+                                                FontSize="13" />
+                                            <Label
+                                                Text="{Binding CodeText}"
+                                                TextColor="{StaticResource TextMuted}"
+                                                FontSize="12" />
+                                        </VerticalStackLayout>
+
+                                        <Button
+                                            Grid.Column="1"
+                                            Text="{Binding ButtonText}"
+                                            Command="{Binding SelectCommand}"
+                                            BackgroundColor="{Binding ButtonBackgroundColor}"
+                                            TextColor="{Binding ButtonTextColor}"
+                                            BorderColor="{Binding CardBorderColor}"
+                                            BorderWidth="1"
+                                            CornerRadius="10"
+                                            HeightRequest="38"
+                                            WidthRequest="104"
+                                            FontAttributes="Bold"
+                                            FontSize="12" />
+                                    </Grid>
+
+                                    <Label
+                                        Text="{Binding SelectionText}"
+                                        TextColor="{Binding SelectionTextColor}"
+                                        FontSize="12" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Kilométrage départ" Style="{StaticResource SectionTitle}" />
+                        <Label
+                            Text="Saisissez le kilométrage compteur au départ de la tournée."
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="13" />
+                        <Entry
+                            Text="{Binding KilometrageDepartText}"
+                            Placeholder="Exemple : 128100"
+                            Keyboard="Numeric"
+                            Style="{StaticResource Input}" />
+                        <Label
+                            Text="{Binding KilometrageDepartResumeText}"
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="12"
+                            IsVisible="{Binding HasKilometrageDepart}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Label
+                    Text="{Binding SelectedCamionText}"
+                    TextColor="{StaticResource TextMain}"
+                    FontAttributes="Bold"
+                    FontSize="13"
+                    IsVisible="{Binding HasSelectedCamion}" />
+
+                <Label
+                    Text="{Binding ErrorMessage}"
+                    TextColor="{StaticResource DangerText}"
+                    FontSize="13"
+                    IsVisible="{Binding HasErrorMessage}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button
+            Grid.Row="1"
+            Text="Continuer vers les tournées"
+            Command="{Binding ContinueCommand}"
+            Style="{StaticResource PrimaryButton}"
+            Margin="0,14,0,0" />
+
+        <Grid
+            Grid.RowSpan="2"
+            IsVisible="{Binding IsBusy}"
+            BackgroundColor="#CC020617"
+            InputTransparent="False"
+            ZIndex="99">
+            <Frame
+                Padding="24"
+                CornerRadius="18"
+                HasShadow="False"
+                BackgroundColor="{StaticResource CardBackground}"
+                BorderColor="{StaticResource BorderColor}"
+                HorizontalOptions="Center"
+                VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator
+                        IsRunning="{Binding IsBusy}"
+                        Color="{StaticResource Primary}"
+                        WidthRequest="42"
+                        HeightRequest="42" />
+                    <Label
+                        Text="{Binding LoadingMessage}"
+                        TextColor="{StaticResource TextMain}"
+                        FontAttributes="Bold"
+                        HorizontalTextAlignment="Center" />
+                    <Label
+                        Text="Veuillez patienter."
+                        TextColor="{StaticResource TextMuted}"
+                        FontSize="13"
+                        HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+
+    </Grid>
+</ContentPage>

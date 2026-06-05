@@ -222,7 +222,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
 
         if (_appStateService.CurrentLivreur is not null)
         {
-            await _navigationService.GoToAsync(nameof(ChoixTourneePage));
+            await _navigationService.GoToAsync(nameof(ChoixCamionPage));
         }
     }
 
@@ -253,6 +253,7 @@ public sealed class IdentificationLivreurViewModel : BaseViewModel
         IsLivreurRecognized = false;
         NomLivreur = string.Empty;
         _appStateService.CurrentLivreur = null;
+        _appStateService.ClearTrajet();
         _appStateService.SelectedTournee = null;
         _appStateService.CurrentTourneeId = 0;
         _appStateService.SelectedLigneId = 0;

@@ -25,6 +25,19 @@ public sealed class LocalTournee
     public string IdSynchronisation { get; set; } = Guid.NewGuid().ToString();
     public bool EstVerrouillee { get; set; }
     public string? CommentaireGlobal { get; set; }
+
+    /*
+     * LOT 7 — trajet camion persisté localement.
+     * Ces champs restent null pour les anciennes tournées déjà présentes dans SQLite.
+     */
+    public string? IdCamion { get; set; }
+    public string? CodeCamion { get; set; }
+    public string? LibelleCamion { get; set; }
+    public string? Immatriculation { get; set; }
+    public int? KilometrageDepart { get; set; }
+    public int? KilometrageArrivee { get; set; }
+    public DateTime? DateDepartMobile { get; set; }
+    public DateTime? DateArriveeMobile { get; set; }
 }
 
 public sealed class LocalTourneeLigne

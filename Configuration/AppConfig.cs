@@ -18,10 +18,10 @@ public static class AppConfig
     /*
      * Version officielle du contrat JSON mobile/API.
      *
-     * Cette constante évite de garder des "1.1" en dur dans les DTO,
-     * dans le stockage SQLite ou dans le POST de synchronisation.
+     * Le passage à 1.3 est fait uniquement après validation API serveur 1.3.
+     * Le payload mobile final contient désormais la section trajet obligatoire.
      */
-    public const string SchemaVersion = "1.2";
+    public const string SchemaVersion = "1.3";
 
     /*
      * Exemples pour développement uniquement :

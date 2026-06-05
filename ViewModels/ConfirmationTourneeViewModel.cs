@@ -44,7 +44,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         LoadTourneeCommand = new Command(
             async () => await LoadTourneeAsync(),
-            () => !IsBusy);
+            () => !IsBusy && CanLoadSelectedTournee);
 
         BackCommand = new Command(
             async () => await _navigationService.GoBackAsync());
@@ -60,6 +60,8 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         AbandonnerEtChargerTourneeCommand = new Command(
             async () => await AbandonnerEtChargerTourneeAsync(),
             () => !IsBusy && _activeTourneeEnConflit is not null && _selectedTourneeEnConflit is not null);
+
+        RefreshTrajetDisplayProperties();
     }
 
     public string LivreurText =>
@@ -95,6 +97,57 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         }
     }
 
+    public string CamionText
+    {
+        get
+        {
+            var camion = _appStateService.CurrentCamion;
+            if (camion is null)
+            {
+                return "Camion : non renseigné";
+            }
+
+            var nomAffiche = camion.NomAffiche?.Trim();
+            if (!string.IsNullOrWhiteSpace(nomAffiche))
+            {
+                return $"Camion : {nomAffiche}";
+            }
+
+            var code = FirstNonEmpty(camion.Immatriculation, camion.CodeCamion, camion.IdCamion);
+            var libelle = camion.LibelleCamion?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(libelle))
+            {
+                return $"Camion : {code} - {libelle}";
+            }
+
+            return string.IsNullOrWhiteSpace(code)
+                ? "Camion : non renseigné"
+                : $"Camion : {code}";
+        }
+    }
+
+    public string KilometrageDepartText =>
+        _appStateService.KilometrageDepart.HasValue
+            ? $"Départ : {_appStateService.KilometrageDepart.Value} km"
+            : "Départ : non renseigné";
+
+    public string DateDepartMobileText =>
+        _appStateService.DateDepartMobile.HasValue
+            ? $"Départ mobile : {_appStateService.DateDepartMobile.Value:dd/MM/yyyy HH:mm}"
+            : string.Empty;
+
+    public bool HasCamionSelectionne => _appStateService.CurrentCamion is not null;
+
+    public bool HasKilometrageDepart => _appStateService.KilometrageDepart.HasValue;
+
+    public bool HasDateDepartMobile => _appStateService.DateDepartMobile.HasValue;
+
+    public bool HasTrajetIncomplet => !HasCamionSelectionne || !HasKilometrageDepart || !HasDateDepartMobile;
+
+    public string TrajetErreurText =>
+        "Camion, kilométrage départ ou date départ mobile manquant. Revenez au choix camion.";
+
     public bool HasExistingActiveTournee
     {
         get => _hasExistingActiveTournee;
@@ -103,11 +156,12 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             if (SetProperty(ref _hasExistingActiveTournee, value))
             {
                 OnPropertyChanged(nameof(CanLoadSelectedTournee));
+                RefreshCommandStates();
             }
         }
     }
 
-    public bool CanLoadSelectedTournee => !HasExistingActiveTournee;
+    public bool CanLoadSelectedTournee => !HasExistingActiveTournee && !HasTrajetIncomplet;
 
     public string ExistingActiveTourneeText
     {
@@ -144,6 +198,16 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
             return;
         }
 
+        RefreshTrajetDisplayProperties();
+
+        if (HasTrajetIncomplet)
+        {
+            ErrorMessage = TrajetErreurText;
+            LoadMessage = TrajetErreurText;
+            RefreshCommandStates();
+            return;
+        }
+
         if (_appStateService.CurrentLivreur is null || _appStateService.SelectedTournee is null)
         {
             ErrorMessage = "Livreur ou tournée manquant.";
@@ -152,7 +216,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Vérification des données locales...";
+            LoadingMessage = "Vérification des données locales en cours";
             SetBusy(true);
 
             ErrorMessage = string.Empty;
@@ -179,6 +243,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
                 {
                     _appStateService.CurrentTourneeId = activeTournee.Id;
                     _appStateService.SelectedLigneId = 0;
+                    await _databaseService.RestaurerTrajetDansAppStateAsync(activeTournee.Id, _appStateService);
                     LoadMessage = "Tournée déjà chargée localement. Ouverture de la reprise.";
                     await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
                     return;
@@ -245,6 +310,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         _appStateService.CurrentTourneeId = _activeTourneeEnConflit.Id;
         _appStateService.SelectedLigneId = 0;
+        await _databaseService.RestaurerTrajetDansAppStateAsync(_activeTourneeEnConflit.Id, _appStateService);
 
         await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
     }
@@ -271,7 +337,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         try
         {
-            LoadingMessage = "Chargement de la nouvelle tournée...";
+            LoadingMessage = "Chargement de la nouvelle tournée en cours";
             SetBusy(true);
             ErrorMessage = string.Empty;
 
@@ -312,7 +378,7 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
     private async Task LoadSelectedTourneeFromApiAsync(TourneeResumeDto selectedTournee)
     {
-        LoadingMessage = "Chargement de la tournée depuis l'API...";
+        LoadingMessage = "Chargement de la tournée depuis l'API en cours";
         LoadMessage = "Chargement depuis l'API…";
 
         /*
@@ -330,10 +396,16 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
 
         var tourneeId = await _databaseService.SaveTourneeAsync(dto);
 
+        await _databaseService.PersistTrajetDepartAsync(
+            tourneeId,
+            _appStateService.CurrentCamion!,
+            _appStateService.KilometrageDepart!.Value,
+            _appStateService.DateDepartMobile!.Value);
+
         _appStateService.CurrentTourneeId = tourneeId;
         _appStateService.SelectedLigneId = 0;
 
-        LoadMessage = "Tournée chargée localement.";
+        LoadMessage = "Tournée chargée localement avec camion et kilométrage départ.";
 
         var lignes = await _databaseService.GetLignesAsync(tourneeId);
         var nombreCommentairesExceptionnels = lignes.Count(ligne =>
@@ -383,7 +455,21 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
     private void SetBusy(bool value)
     {
         IsBusy = value;
+        OnPropertyChanged(nameof(CanLoadSelectedTournee));
         RefreshCommandStates();
+    }
+
+    private void RefreshTrajetDisplayProperties()
+    {
+        OnPropertyChanged(nameof(CamionText));
+        OnPropertyChanged(nameof(KilometrageDepartText));
+        OnPropertyChanged(nameof(DateDepartMobileText));
+        OnPropertyChanged(nameof(HasCamionSelectionne));
+        OnPropertyChanged(nameof(HasKilometrageDepart));
+        OnPropertyChanged(nameof(HasDateDepartMobile));
+        OnPropertyChanged(nameof(HasTrajetIncomplet));
+        OnPropertyChanged(nameof(TrajetErreurText));
+        OnPropertyChanged(nameof(CanLoadSelectedTournee));
     }
 
     private void RefreshCommandStates()
@@ -407,5 +493,18 @@ public sealed class ConfirmationTourneeViewModel : BaseViewModel
         {
             abandonnerCommand.ChangeCanExecute();
         }
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
     }
 }

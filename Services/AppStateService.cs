@@ -29,23 +29,54 @@ public sealed class AppStateService
     private LivreurDto? _currentLivreur;
 
     /// <summary>
-    /// Livreur actuellement sélectionné. Changer le code livreur invalide le cache des tournées.
+    /// Livreur actuellement sélectionné. Changer le code livreur invalide le cache des tournées
+    /// et réinitialise le camion/trajet courant pour éviter de mélanger deux flux livreur.
     /// </summary>
     public LivreurDto? CurrentLivreur
     {
         get => _currentLivreur;
         set
         {
-            // Si le code livreur change, invalider le cache des tournées pour éviter de mélanger les données.
             var oldCode = _currentLivreur?.CodeLivreur;
             var newCode = value?.CodeLivreur;
+
             if (!string.Equals(oldCode, newCode, StringComparison.OrdinalIgnoreCase))
             {
                 ClearTourneesDisponiblesCache();
+                ClearTrajet();
+                SelectedTournee = null;
+                CurrentTourneeId = 0;
+                SelectedLigneId = 0;
             }
+
             _currentLivreur = value;
         }
     }
+
+    /// <summary>
+    /// Camion sélectionné pour le flux courant.
+    /// </summary>
+    public CamionDto? CurrentCamion { get; set; }
+
+    /// <summary>
+    /// Kilométrage départ saisi côté mobile. La validation stricte est prévue au lot 3.
+    /// </summary>
+    public int? KilometrageDepart { get; set; }
+
+    /// <summary>
+    /// Date de validation du départ mobile. Elle sera alimentée dans un lot ultérieur.
+    /// </summary>
+    public DateTime? DateDepartMobile { get; set; }
+
+    /// <summary>
+    /// Kilométrage arrivée saisi côté mobile. La validation stricte est prévue au lot 5.
+    /// </summary>
+    public int? KilometrageArrivee { get; set; }
+
+    /// <summary>
+    /// Date de validation de l'arrivée mobile. Elle sera alimentée dans un lot ultérieur.
+    /// </summary>
+    public DateTime? DateArriveeMobile { get; set; }
 
     /// <summary>
     /// Tournée résumée actuellement sélectionnée.
@@ -84,6 +115,53 @@ public sealed class AppStateService
      * ce cas.
      */
     public bool HasCheckedActiveTourneeOnStartup { get; set; }
+
+    /// <summary>
+    /// Réinitialise les données camion/trajet temporaires du flux courant.
+    /// Cette méthode ne touche ni à SQLite ni à la synchronisation finale.
+    /// </summary>
+    public void ClearTrajet()
+    {
+        CurrentCamion = null;
+        KilometrageDepart = null;
+        DateDepartMobile = null;
+        KilometrageArrivee = null;
+        DateArriveeMobile = null;
+    }
+
+
+
+    /// <summary>
+    /// Recharge les données trajet persistées dans une tournée SQLite locale.
+    /// Cette méthode ne modifie pas le livreur, la tournée sélectionnée ni les lignes.
+    /// </summary>
+    public void ApplyTrajetFromTournee(LocalTournee tournee)
+    {
+        ArgumentNullException.ThrowIfNull(tournee);
+
+        CurrentCamion = HasPersistedCamion(tournee)
+            ? new CamionDto
+            {
+                IdCamion = tournee.IdCamion?.Trim() ?? string.Empty,
+                CodeCamion = tournee.CodeCamion?.Trim() ?? string.Empty,
+                LibelleCamion = tournee.LibelleCamion?.Trim() ?? string.Empty,
+                Immatriculation = tournee.Immatriculation?.Trim() ?? string.Empty,
+                EstActif = true
+            }
+            : null;
+
+        KilometrageDepart = tournee.KilometrageDepart;
+        KilometrageArrivee = tournee.KilometrageArrivee;
+        DateDepartMobile = tournee.DateDepartMobile;
+        DateArriveeMobile = tournee.DateArriveeMobile;
+    }
+
+    private static bool HasPersistedCamion(LocalTournee tournee)
+    {
+        return !string.IsNullOrWhiteSpace(tournee.IdCamion)
+               || !string.IsNullOrWhiteSpace(tournee.CodeCamion)
+               || !string.IsNullOrWhiteSpace(tournee.Immatriculation);
+    }
 
     /// <summary>
     /// Détermine si un cache de tournées disponibles est présent pour le livreur spécifié

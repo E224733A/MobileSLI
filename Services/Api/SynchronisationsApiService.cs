@@ -15,15 +15,35 @@ public sealed class SynchronisationsApiService
         _apiClient = apiClient;
     }
 
-    public async Task<OperationResult> PostSynchronisationAsync(
+    public Task<OperationResult> PostSynchronisationAsync(
         SynchronisationTourneeRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request is null)
-        {
-            throw new ArgumentNullException(nameof(request));
-        }
+        ArgumentNullException.ThrowIfNull(request);
 
+        return PostSynchronisationPayloadAsync(
+            request,
+            request.Lignes.Count,
+            cancellationToken);
+    }
+
+    public Task<OperationResult> PostSynchronisationAsync(
+        SynchronisationTourneeAvecTrajetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return PostSynchronisationPayloadAsync(
+            request,
+            request.Lignes.Count,
+            cancellationToken);
+    }
+
+    private async Task<OperationResult> PostSynchronisationPayloadAsync<TRequest>(
+        TRequest request,
+        int lignesEnvoyees,
+        CancellationToken cancellationToken)
+    {
         const string route = "/api/synchronisations";
 
         var response = await _apiClient.PostAsJsonAsync(
@@ -42,7 +62,7 @@ public sealed class SynchronisationsApiService
                 Success = true,
                 Code = string.IsNullOrWhiteSpace(code) ? "SUCCESS" : code,
                 Message = GetMessage(apiResult) ?? "Synchronisation envoyée avec succès.",
-                LignesEnvoyees = request.Lignes.Count
+                LignesEnvoyees = lignesEnvoyees
             };
         }
 
@@ -137,7 +157,6 @@ public sealed class SynchronisationsApiService
 
         return result?.Statut?.Trim() ?? string.Empty;
     }
-
 
     private static string? GetMessage(ApiSynchronisationResult? result)
     {

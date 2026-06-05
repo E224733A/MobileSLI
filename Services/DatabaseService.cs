@@ -50,6 +50,7 @@ public sealed class DatabaseService
         await _database.CreateTableAsync<LocalTourneeLigneQuantite>();
 
         await EnsureSchemaV12Async(_database);
+        await EnsureSchemaV13TrajetAsync(_database);
 
         return _database;
     }
@@ -77,6 +78,18 @@ public sealed class DatabaseService
         await TryAddColumnAsync(db, "LocalTourneeLigne", "PrecisionLivreur TEXT");
 
         await TryAddColumnAsync(db, "LocalTourneeLigneQuantite", "QuantiteLivreePrevue INTEGER");
+    }
+
+    private static async Task EnsureSchemaV13TrajetAsync(SQLiteAsyncConnection db)
+    {
+        await TryAddColumnAsync(db, "LocalTournee", "IdCamion TEXT");
+        await TryAddColumnAsync(db, "LocalTournee", "CodeCamion TEXT");
+        await TryAddColumnAsync(db, "LocalTournee", "LibelleCamion TEXT");
+        await TryAddColumnAsync(db, "LocalTournee", "Immatriculation TEXT");
+        await TryAddColumnAsync(db, "LocalTournee", "KilometrageDepart INTEGER");
+        await TryAddColumnAsync(db, "LocalTournee", "KilometrageArrivee INTEGER");
+        await TryAddColumnAsync(db, "LocalTournee", "DateDepartMobile DATETIME");
+        await TryAddColumnAsync(db, "LocalTournee", "DateArriveeMobile DATETIME");
     }
 
     private static async Task TryAddColumnAsync(
@@ -108,14 +121,6 @@ public sealed class DatabaseService
 
         try
         {
-            /*
-             * Le checkpoint essaye de recopier les écritures WAL dans le fichier
-             * principal avant export. Sur certains téléphones Android, SQLite peut
-             * renvoyer une exception au libellé trompeur "not an error".
-             * Pour un export de diagnostic, ce checkpoint ne doit jamais bloquer
-             * l'utilisateur : on ferme ensuite la connexion pour stabiliser la base
-             * avant la copie.
-             */
             await db.ExecuteAsync("PRAGMA wal_checkpoint(TRUNCATE)");
         }
         catch
@@ -279,7 +284,6 @@ public sealed class DatabaseService
             foreach (var quantite in BuildQuantitesForLocalStorage(ligneDto, dto.ArticlesSaisissables))
             {
                 ApplyClosedQuantiteDefaults(ligne.EstFerme, quantite);
-
                 await InsertQuantiteAsync(db, ligne.Id, quantite);
             }
         }
@@ -692,6 +696,153 @@ public sealed class DatabaseService
         }
     }
 
+    public async Task PersistTrajetDepartAsync(
+        int tourneeId,
+        CamionDto camion,
+        int kilometrageDepart,
+        DateTime dateDepartMobile)
+    {
+        if (tourneeId <= 0)
+        {
+            throw new InvalidOperationException("Aucune tournée locale n'est sélectionnée pour enregistrer le trajet départ.");
+        }
+
+        if (camion is null)
+        {
+            throw new ArgumentNullException(nameof(camion));
+        }
+
+        if (string.IsNullOrWhiteSpace(camion.IdCamion) || string.IsNullOrWhiteSpace(camion.CodeCamion))
+        {
+            throw new InvalidOperationException("Camion incomplet : idCamion et codeCamion sont obligatoires.");
+        }
+
+        if (kilometrageDepart < 0)
+        {
+            throw new InvalidOperationException("Le kilométrage départ ne peut pas être négatif.");
+        }
+
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId)
+            ?? throw new InvalidOperationException("Tournée locale introuvable pour enregistrer le trajet départ.");
+
+        if (tournee.EstVerrouillee)
+        {
+            return;
+        }
+
+        tournee.IdCamion = camion.IdCamion.Trim();
+        tournee.CodeCamion = camion.CodeCamion.Trim();
+        tournee.LibelleCamion = string.IsNullOrWhiteSpace(camion.LibelleCamion) ? null : camion.LibelleCamion.Trim();
+        tournee.Immatriculation = string.IsNullOrWhiteSpace(camion.Immatriculation) ? null : camion.Immatriculation.Trim();
+        tournee.KilometrageDepart = kilometrageDepart;
+        tournee.DateDepartMobile = dateDepartMobile;
+
+        await db.UpdateAsync(tournee);
+    }
+
+    public async Task PersistTrajetArriveeAsync(
+        int tourneeId,
+        int kilometrageArrivee,
+        DateTime dateArriveeMobile)
+    {
+        if (tourneeId <= 0)
+        {
+            throw new InvalidOperationException("Aucune tournée locale n'est sélectionnée pour enregistrer le trajet arrivée.");
+        }
+
+        if (kilometrageArrivee < 0)
+        {
+            throw new InvalidOperationException("Le kilométrage arrivée ne peut pas être négatif.");
+        }
+
+        var db = await GetDatabaseAsync();
+        var tournee = await GetTourneeAsync(tourneeId)
+            ?? throw new InvalidOperationException("Tournée locale introuvable pour enregistrer le trajet arrivée.");
+
+        if (tournee.KilometrageDepart.HasValue && kilometrageArrivee < tournee.KilometrageDepart.Value)
+        {
+            throw new InvalidOperationException("Le kilométrage arrivée doit être supérieur ou égal au kilométrage départ.");
+        }
+
+        if (tournee.EstVerrouillee)
+        {
+            return;
+        }
+
+        tournee.KilometrageArrivee = kilometrageArrivee;
+        tournee.DateArriveeMobile = dateArriveeMobile;
+
+        await db.UpdateAsync(tournee);
+    }
+
+    public async Task RestaurerTrajetDansAppStateAsync(
+        int tourneeId,
+        AppStateService appStateService)
+    {
+        ArgumentNullException.ThrowIfNull(appStateService);
+
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null)
+        {
+            appStateService.ClearTrajet();
+            return;
+        }
+
+        appStateService.ApplyTrajetFromTournee(tournee);
+    }
+
+    public async Task<string?> GetTrajetBlockingValidationMessageAsync(int tourneeId)
+    {
+        var tournee = await GetTourneeAsync(tourneeId);
+        if (tournee is null)
+        {
+            return "Tournée locale introuvable.";
+        }
+
+        if (string.IsNullOrWhiteSpace(tournee.IdCamion))
+        {
+            return "Camion manquant sur la tournée locale. Revenez au choix camion.";
+        }
+
+        if (string.IsNullOrWhiteSpace(tournee.CodeCamion))
+        {
+            return "Code camion manquant sur la tournée locale. Rechargez les camions puis recommencez.";
+        }
+
+        if (!tournee.KilometrageDepart.HasValue)
+        {
+            return "Kilométrage départ manquant sur la tournée locale. Revenez au choix camion.";
+        }
+
+        if (!tournee.DateDepartMobile.HasValue)
+        {
+            return "Date départ mobile manquante sur la tournée locale. Revenez au choix camion.";
+        }
+
+        if (!tournee.KilometrageArrivee.HasValue)
+        {
+            return "Kilométrage arrivée manquant. Saisissez le kilométrage arrivée avant l'envoi.";
+        }
+
+        if (!tournee.DateArriveeMobile.HasValue)
+        {
+            return "Date arrivée mobile manquante. Saisissez le kilométrage arrivée avant l'envoi.";
+        }
+
+        if (tournee.KilometrageDepart.Value < 0 || tournee.KilometrageArrivee.Value < 0)
+        {
+            return "Les kilométrages trajet ne peuvent pas être négatifs.";
+        }
+
+        if (tournee.KilometrageArrivee.Value < tournee.KilometrageDepart.Value)
+        {
+            return "Le kilométrage arrivée doit être supérieur ou égal au kilométrage départ.";
+        }
+
+        return null;
+    }
+
     public async Task<SynchronisationTourneeRequest> BuildSynchronisationRequestAsync(int tourneeId)
     {
         await NormalizeClosedLinesAsync(tourneeId);
@@ -703,9 +854,7 @@ public sealed class DatabaseService
 
         var request = new SynchronisationTourneeRequest
         {
-            SchemaVersion = string.IsNullOrWhiteSpace(tournee.SchemaVersion)
-                ? AppConfig.SchemaVersion
-                : tournee.SchemaVersion,
+            SchemaVersion = AppConfig.SchemaVersion,
             IdSynchronisation = tournee.IdSynchronisation,
             DateTournee = tournee.DateTournee.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             CodeTournee = tournee.CodeTournee,

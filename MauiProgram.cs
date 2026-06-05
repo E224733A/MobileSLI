@@ -59,6 +59,7 @@ public static class MauiProgram
     {
         services.AddTransient<AccueilViewModel>();
         services.AddTransient<IdentificationLivreurViewModel>();
+        services.AddTransient<ChoixCamionViewModel>();
         services.AddTransient<ChoixTourneeViewModel>();
         services.AddTransient<ConfirmationTourneeViewModel>();
         services.AddTransient<ListePointsLivraisonViewModel>();
@@ -73,6 +74,7 @@ public static class MauiProgram
     {
         services.AddTransient<AccueilPage>();
         services.AddTransient<IdentificationLivreurPage>();
+        services.AddTransient<ChoixCamionPage>();
         services.AddTransient<ChoixTourneePage>();
         services.AddTransient<ConfirmationTourneePage>();
         services.AddTransient<ListePointsLivraisonPage>();

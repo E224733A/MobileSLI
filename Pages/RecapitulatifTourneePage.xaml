@@ -55,6 +55,38 @@
                     </Grid>
                 </Frame>
 
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Trajet" Style="{StaticResource MutedText}" />
+                        <Label Text="{Binding CamionText}" TextColor="{StaticResource TextMain}" FontAttributes="Bold" />
+                        <Label Text="{Binding KilometrageDepartText}" TextColor="{StaticResource TextMain}" FontSize="13" />
+                        <Label
+                            Text="{Binding DateDepartMobileText}"
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="12"
+                            IsVisible="{Binding HasDateDepartMobile}" />
+
+                        <Label
+                            Text="Kilométrage arrivée"
+                            Style="{StaticResource MutedText}"
+                            Margin="0,6,0,0" />
+                        <Entry
+                            Text="{Binding KilometrageArriveeText}"
+                            Placeholder="Exemple : 128450"
+                            Keyboard="Numeric"
+                            Style="{StaticResource Input}" />
+                        <Label
+                            Text="Le kilométrage arrivée est obligatoire avant l’envoi final. Il doit être supérieur ou égal au kilométrage départ."
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="12" />
+                        <Label
+                            Text="{Binding TrajetDepartErreurText}"
+                            TextColor="{StaticResource DangerText}"
+                            FontSize="13"
+                            IsVisible="{Binding HasTrajetDepartIncomplet}" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
                     <Frame Style="{StaticResource Card}" Padding="10" Margin="0">
                         <VerticalStackLayout>
