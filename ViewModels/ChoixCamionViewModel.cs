@@ -196,19 +196,19 @@ public sealed class ChoixCamionViewModel : BaseViewModel
 
         if (_appStateService.CurrentLivreur is null)
         {
-            ErrorMessage = "Aucun livreur sélectionné. Revenez à l'identification.";
+            await RejectAsync("Aucun livreur sélectionné. Revenez à l'identification.");
             return;
         }
 
         if (SelectedCamion is null)
         {
-            ErrorMessage = "Sélectionnez un camion pour continuer.";
+            await RejectAsync("Sélectionnez un camion pour continuer.");
             return;
         }
 
         if (!TryValidateKilometrageDepart(out var kilometrageDepart, out var errorMessage))
         {
-            ErrorMessage = errorMessage;
+            await RejectAsync(errorMessage);
             return;
         }
 
@@ -217,6 +217,19 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         _appStateService.DateDepartMobile = DateTime.Now;
 
         await _navigationService.GoToAsync(nameof(ChoixTourneePage));
+    }
+
+    private async Task RejectAsync(string message)
+    {
+        ErrorMessage = message;
+
+        if (Shell.Current?.CurrentPage is not null)
+        {
+            await Shell.Current.CurrentPage.DisplayAlertAsync(
+                "Action requise",
+                message,
+                "OK");
+        }
     }
 
     private bool TryValidateKilometrageDepart(out int kilometrageDepart, out string errorMessage)

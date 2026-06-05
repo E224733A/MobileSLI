@@ -34,10 +34,55 @@
                     </VerticalStackLayout>
                 </Frame>
 
+                <Frame
+                    Style="{StaticResource Card}"
+                    BackgroundColor="{StaticResource DangerBackground}"
+                    BorderColor="{StaticResource DangerBorder}"
+                    IsVisible="{Binding HasErrorMessage}">
+                    <VerticalStackLayout Spacing="5">
+                        <Label
+                            Text="Action requise"
+                            TextColor="{StaticResource DangerText}"
+                            FontAttributes="Bold"
+                            FontSize="14" />
+                        <Label
+                            Text="{Binding ErrorMessage}"
+                            TextColor="{StaticResource DangerText}"
+                            FontSize="13" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Kilométrage départ" Style="{StaticResource SectionTitle}" />
+                        <Label
+                            Text="Saisissez le kilométrage compteur au départ de la tournée avant de continuer."
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="13" />
+                        <Entry
+                            Text="{Binding KilometrageDepartText}"
+                            Placeholder="Exemple : 128100"
+                            Keyboard="Numeric"
+                            Style="{StaticResource Input}" />
+                        <Label
+                            Text="{Binding KilometrageDepartResumeText}"
+                            TextColor="{StaticResource TextMuted}"
+                            FontSize="12"
+                            IsVisible="{Binding HasKilometrageDepart}" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Button
                     Text="Recharger les camions depuis l'API"
                     Command="{Binding LoadCamionsCommand}"
                     Style="{StaticResource SecondaryButton}" />
+
+                <Label
+                    Text="{Binding SelectedCamionText}"
+                    TextColor="{StaticResource TextMain}"
+                    FontAttributes="Bold"
+                    FontSize="13"
+                    IsVisible="{Binding HasSelectedCamion}" />
 
                 <Grid ColumnDefinitions="*,Auto">
                     <Label Text="Camions disponibles" Style="{StaticResource SectionTitle}" />
@@ -51,7 +96,7 @@
                 <CollectionView
                     ItemsSource="{Binding Camions}"
                     SelectionMode="None"
-                    HeightRequest="320"
+                    HeightRequest="300"
                     BackgroundColor="{StaticResource PageBackground}">
                     <CollectionView.EmptyView>
                         <VerticalStackLayout Padding="12" Spacing="4">
@@ -121,39 +166,6 @@
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
-
-                <Frame Style="{StaticResource Card}">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Kilométrage départ" Style="{StaticResource SectionTitle}" />
-                        <Label
-                            Text="Saisissez le kilométrage compteur au départ de la tournée."
-                            TextColor="{StaticResource TextMuted}"
-                            FontSize="13" />
-                        <Entry
-                            Text="{Binding KilometrageDepartText}"
-                            Placeholder="Exemple : 128100"
-                            Keyboard="Numeric"
-                            Style="{StaticResource Input}" />
-                        <Label
-                            Text="{Binding KilometrageDepartResumeText}"
-                            TextColor="{StaticResource TextMuted}"
-                            FontSize="12"
-                            IsVisible="{Binding HasKilometrageDepart}" />
-                    </VerticalStackLayout>
-                </Frame>
-
-                <Label
-                    Text="{Binding SelectedCamionText}"
-                    TextColor="{StaticResource TextMain}"
-                    FontAttributes="Bold"
-                    FontSize="13"
-                    IsVisible="{Binding HasSelectedCamion}" />
-
-                <Label
-                    Text="{Binding ErrorMessage}"
-                    TextColor="{StaticResource DangerText}"
-                    FontSize="13"
-                    IsVisible="{Binding HasErrorMessage}" />
             </VerticalStackLayout>
         </ScrollView>
 
