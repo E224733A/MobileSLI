@@ -73,6 +73,21 @@
                     </VerticalStackLayout>
                 </Frame>
 
+                <Frame
+                    Style="{StaticResource Card}"
+                    IsVisible="{Binding HasLienAdresseLivraison}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label
+                            Text="Adresse de livraison"
+                            Style="{StaticResource MutedText}" />
+                        <Button
+                            Text="{Binding LienAdresseLivraisonText}"
+                            Command="{Binding OuvrirAdresseLivraisonCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            HeightRequest="42" />
+                    </VerticalStackLayout>
+                </Frame>
+
                 <Frame Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,90,90">

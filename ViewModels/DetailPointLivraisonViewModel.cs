@@ -1,3 +1,4 @@
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using System.Collections.ObjectModel;
@@ -32,6 +33,9 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         SetStatutCommand = new Command<string>(SetStatut);
         ValidateCommand = new Command(async () => await ValidateAsync());
         BackCommand = new Command(async () => await _navigationService.GoBackAsync());
+        OuvrirAdresseLivraisonCommand = new Command(
+            async () => await OuvrirAdresseLivraisonAsync(),
+            () => HasLienAdresseLivraison);
     }
 
     public ObservableCollection<QuantiteSaisieViewModel> Quantites { get; }
@@ -63,6 +67,12 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public string CommentaireExceptionnelText => _ligne?.CommentaireExceptionnel ?? string.Empty;
 
     public bool HasInformationsLivreur => HasInstructions || HasCommentaireExceptionnel;
+
+    public bool HasLienAdresseLivraison => TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out _);
+
+    public string LienAdresseLivraisonText => HasLienAdresseLivraison
+        ? "Ouvrir dans Maps"
+        : string.Empty;
 
     public string SelectedStatut
     {
@@ -103,6 +113,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public ICommand SetStatutCommand { get; }
     public ICommand ValidateCommand { get; }
     public ICommand BackCommand { get; }
+    public ICommand OuvrirAdresseLivraisonCommand { get; }
 
     public async Task LoadAsync()
     {
@@ -114,6 +125,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         if (_ligne is null)
         {
             ErrorMessage = "Point de livraison introuvable.";
+            RefreshLienAdresseLivraisonState();
             return;
         }
 
@@ -141,6 +153,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         OnPropertyChanged(nameof(HasCommentaireExceptionnel));
         OnPropertyChanged(nameof(CommentaireExceptionnelText));
         OnPropertyChanged(nameof(HasInformationsLivreur));
+        RefreshLienAdresseLivraisonState();
     }
 
     private void SetStatut(string? statut)
@@ -151,6 +164,30 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         }
 
         SelectedStatut = statut;
+    }
+
+    private async Task OuvrirAdresseLivraisonAsync()
+    {
+        ErrorMessage = string.Empty;
+        InfoText = string.Empty;
+
+        if (!TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out var uri))
+        {
+            await DisplayMessageAsync(
+                "Lien adresse non disponible",
+                "Le lien d'adresse de livraison est absent ou invalide pour ce point de livraison.");
+            return;
+        }
+
+        try
+        {
+            await Launcher.OpenAsync(uri);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = $"Impossible d'ouvrir le lien adresse : {exception.Message}";
+            await DisplayMessageAsync("Ouverture impossible", "Impossible d'ouvrir le lien d'adresse de livraison.");
+        }
     }
 
     private async Task ValidateAsync()
@@ -194,6 +231,77 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         await _databaseService.SaveLigneAsync(_ligne, Quantites.Select(q => q.Entity));
 
         await _navigationService.GoBackAsync();
+    }
+
+    private static bool TryCreateAdresseLivraisonUri(string? lien, out Uri uri)
+    {
+        uri = null!;
+
+        if (string.IsNullOrWhiteSpace(lien))
+        {
+            return false;
+        }
+
+        var trimmed = lien.Trim();
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var candidate))
+        {
+            return false;
+        }
+
+        if (string.Equals(candidate.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return IsAllowedHttpsMapsUri(candidate, out uri);
+        }
+
+        if (string.Equals(candidate.Scheme, "geo", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(candidate.Scheme, "google.navigation", StringComparison.OrdinalIgnoreCase))
+        {
+            uri = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsAllowedHttpsMapsUri(Uri candidate, out Uri uri)
+    {
+        uri = null!;
+
+        var host = candidate.Host.ToLowerInvariant();
+        var path = candidate.AbsolutePath ?? string.Empty;
+
+        var isAllowed = string.Equals(host, "maps.google.com", StringComparison.OrdinalIgnoreCase)
+            || (string.Equals(host, "www.google.com", StringComparison.OrdinalIgnoreCase)
+                && path.StartsWith("/maps", StringComparison.OrdinalIgnoreCase));
+
+        if (!isAllowed)
+        {
+            return false;
+        }
+
+        uri = candidate;
+        return true;
+    }
+
+    private async Task DisplayMessageAsync(string title, string message)
+    {
+        if (Shell.Current?.CurrentPage is null)
+        {
+            return;
+        }
+
+        await Shell.Current.CurrentPage.DisplayAlertAsync(title, message, "OK");
+    }
+
+    private void RefreshLienAdresseLivraisonState()
+    {
+        OnPropertyChanged(nameof(HasLienAdresseLivraison));
+        OnPropertyChanged(nameof(LienAdresseLivraisonText));
+
+        if (OuvrirAdresseLivraisonCommand is Command command)
+        {
+            command.ChangeCanExecute();
+        }
     }
 
     private bool IsSelectedStatut(string statut)

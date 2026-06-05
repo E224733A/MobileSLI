@@ -155,6 +155,12 @@ public sealed class TourneeLigneDto
         set => PointLivraison.CodePostal = value;
     }
 
+    public string? LienAdresseLivraison
+    {
+        get => PointLivraison.LienAdresseLivraison;
+        set => PointLivraison.LienAdresseLivraison = value;
+    }
+
     public string? Zone
     {
         get => InfosLivreur.Zone;
@@ -220,6 +226,8 @@ public sealed class PointLivraisonDto
     public string? Ville { get; set; }
 
     public string? CodePostal { get; set; }
+
+    public string? LienAdresseLivraison { get; set; }
 }
 
 public sealed class TourneeInfoDto

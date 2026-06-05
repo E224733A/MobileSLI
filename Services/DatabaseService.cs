@@ -76,6 +76,7 @@ public sealed class DatabaseService
         await TryAddColumnAsync(db, "LocalTourneeLigne", "Cle TEXT");
         await TryAddColumnAsync(db, "LocalTourneeLigne", "CommentaireExceptionnel TEXT");
         await TryAddColumnAsync(db, "LocalTourneeLigne", "PrecisionLivreur TEXT");
+        await TryAddColumnAsync(db, "LocalTourneeLigne", "LienAdresseLivraison TEXT");
 
         await TryAddColumnAsync(db, "LocalTourneeLigneQuantite", "QuantiteLivreePrevue INTEGER");
     }
@@ -244,6 +245,7 @@ public sealed class DatabaseService
                 AdresseLigne3 = pointLivraison.AdresseLigne3,
                 Ville = pointLivraison.Ville,
                 CodePostal = pointLivraison.CodePostal,
+                LienAdresseLivraison = NormalizeOptionalText(pointLivraison.LienAdresseLivraison),
 
                 CodeTournee = tourneeInfo.CodeTournee,
                 LibelleTournee = tourneeInfo.LibelleTournee,
@@ -1095,6 +1097,13 @@ public sealed class DatabaseService
         {
             await db.DeleteAsync(tournee);
         }
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
     }
 
     private static string FormatDateTime(DateTime value)

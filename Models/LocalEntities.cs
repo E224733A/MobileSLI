@@ -66,6 +66,12 @@ public sealed class LocalTourneeLigne
     public string? Ville { get; set; }
     public string? CodePostal { get; set; }
 
+    /*
+     * Lien optionnel vers l'adresse de livraison.
+     * Le champ est persisté pour rester disponible hors connexion après chargement de tournée.
+     */
+    public string? LienAdresseLivraison { get; set; }
+
     public string? CodeTournee { get; set; }
     public string? LibelleTournee { get; set; }
     public int? JourTournee { get; set; }

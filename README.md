@@ -193,3 +193,4 @@ dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
 cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe uninstall fr.sli.mobiletournee
 ```
+
