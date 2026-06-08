@@ -159,7 +159,7 @@ cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 ### Compiler et lancer l’application mobile
 
 ```powershell
-cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
 
 Select-String -Path ".\Configuration\AppConfig.cs" -Pattern "ApiBaseUrl"
 

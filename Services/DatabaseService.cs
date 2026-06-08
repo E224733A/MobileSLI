@@ -77,8 +77,6 @@ public sealed class DatabaseService
         await TryAddColumnAsync(db, "LocalTourneeLigne", "CommentaireExceptionnel TEXT");
         await TryAddColumnAsync(db, "LocalTourneeLigne", "PrecisionLivreur TEXT");
         await TryAddColumnAsync(db, "LocalTourneeLigne", "LienAdresseLivraison TEXT");
-        await TryAddColumnAsync(db, "LocalTourneeLigne", "LatitudeLivraison REAL");
-        await TryAddColumnAsync(db, "LocalTourneeLigne", "LongitudeLivraison REAL");
 
         await TryAddColumnAsync(db, "LocalTourneeLigneQuantite", "QuantiteLivreePrevue INTEGER");
     }
@@ -247,8 +245,6 @@ public sealed class DatabaseService
                 AdresseLigne3 = pointLivraison.AdresseLigne3,
                 Ville = pointLivraison.Ville,
                 CodePostal = pointLivraison.CodePostal,
-                LatitudeLivraison = pointLivraison.LatitudeLivraison,
-                LongitudeLivraison = pointLivraison.LongitudeLivraison,
                 LienAdresseLivraison = NormalizeOptionalText(pointLivraison.LienAdresseLivraison),
 
                 CodeTournee = tourneeInfo.CodeTournee,

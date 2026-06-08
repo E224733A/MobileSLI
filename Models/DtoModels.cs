@@ -155,17 +155,6 @@ public sealed class TourneeLigneDto
         set => PointLivraison.CodePostal = value;
     }
 
-    public double? LatitudeLivraison
-    {
-        get => PointLivraison.LatitudeLivraison;
-        set => PointLivraison.LatitudeLivraison = value;
-    }
-
-    public double? LongitudeLivraison
-    {
-        get => PointLivraison.LongitudeLivraison;
-        set => PointLivraison.LongitudeLivraison = value;
-    }
 
     public string? LienAdresseLivraison
     {
@@ -240,15 +229,8 @@ public sealed class PointLivraisonDto
     public string? CodePostal { get; set; }
 
     /*
-     * Coordonnées GPS WGS84 optionnelles.
-     * Le mobile les utilise en priorité pour générer l'itinéraire Google Maps.
-     */
-    public double? LatitudeLivraison { get; set; }
-
-    public double? LongitudeLivraison { get; set; }
-
-    /*
-     * Fallback conservé pour compatibilité avec les réponses API déjà préparées.
+     * Lien Google Maps optionnel fourni par l'API.
+     * Le mobile ne construit pas l'itinéraire à partir de coordonnées GPS dans cette version.
      */
     public string? LienAdresseLivraison { get; set; }
 }

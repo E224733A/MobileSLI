@@ -67,15 +67,8 @@ public sealed class LocalTourneeLigne
     public string? CodePostal { get; set; }
 
     /*
-     * Coordonnées GPS WGS84 optionnelles du point de livraison.
-     * Le mobile génère l'URL Google Maps au clic pour éviter de stocker une URL comme donnée métier principale.
-     */
-    public double? LatitudeLivraison { get; set; }
-    public double? LongitudeLivraison { get; set; }
-
-    /*
      * Lien optionnel vers l'adresse de livraison.
-     * Conservé comme fallback pour rester compatible avec les anciennes réponses API.
+     * L'API construit directement ce lien Google Maps à partir de la vue PDL/adresse livraison.
      */
     public string? LienAdresseLivraison { get; set; }
 

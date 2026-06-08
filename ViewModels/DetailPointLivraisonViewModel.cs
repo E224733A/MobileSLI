@@ -2,7 +2,6 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows.Input;
 using MobileSLI.Models;
 using MobileSLI.Services;
@@ -69,9 +68,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
 
     public bool HasInformationsLivreur => HasInstructions || HasCommentaireExceptionnel;
 
-    public bool HasLienAdresseLivraison =>
-        HasValidGpsCoordinates(_ligne?.LatitudeLivraison, _ligne?.LongitudeLivraison)
-        || TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out _);
+    public bool HasLienAdresseLivraison => TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out _);
 
     public string LienAdresseLivraisonText => HasLienAdresseLivraison
         ? "Ouvrir dans Maps"
@@ -174,19 +171,11 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         ErrorMessage = string.Empty;
         InfoText = string.Empty;
 
-        Uri? uri = null;
-
-        if (HasValidGpsCoordinates(_ligne?.LatitudeLivraison, _ligne?.LongitudeLivraison))
-        {
-            uri = BuildGoogleMapsDirectionsUri(
-                _ligne!.LatitudeLivraison!.Value,
-                _ligne.LongitudeLivraison!.Value);
-        }
-        else if (!TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out uri))
+        if (!TryCreateAdresseLivraisonUri(_ligne?.LienAdresseLivraison, out var uri))
         {
             await DisplayMessageAsync(
-                "Adresse non disponible",
-                "Aucune coordonnée GPS valide n'est disponible pour ce point de livraison.");
+                "Lien adresse non disponible",
+                "Le lien d'adresse de livraison est absent ou invalide pour ce point de livraison.");
             return;
         }
 
@@ -196,8 +185,8 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
-            ErrorMessage = $"Impossible d'ouvrir Maps : {exception.Message}";
-            await DisplayMessageAsync("Ouverture impossible", "Impossible d'ouvrir l'adresse dans Maps.");
+            ErrorMessage = $"Impossible d'ouvrir le lien adresse : {exception.Message}";
+            await DisplayMessageAsync("Ouverture impossible", "Impossible d'ouvrir le lien d'adresse de livraison.");
         }
     }
 
@@ -244,35 +233,6 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         await _navigationService.GoBackAsync();
     }
 
-    private static bool HasValidGpsCoordinates(double? latitude, double? longitude)
-    {
-        if (!latitude.HasValue || !longitude.HasValue)
-        {
-            return false;
-        }
-
-        if (double.IsNaN(latitude.Value)
-            || double.IsInfinity(latitude.Value)
-            || double.IsNaN(longitude.Value)
-            || double.IsInfinity(longitude.Value))
-        {
-            return false;
-        }
-
-        return latitude.Value >= -90
-            && latitude.Value <= 90
-            && longitude.Value >= -180
-            && longitude.Value <= 180
-            && !(latitude.Value == 0 && longitude.Value == 0);
-    }
-
-    private static Uri BuildGoogleMapsDirectionsUri(double latitude, double longitude)
-    {
-        var latitudeText = latitude.ToString(CultureInfo.InvariantCulture);
-        var longitudeText = longitude.ToString(CultureInfo.InvariantCulture);
-
-        return new Uri($"https://www.google.com/maps/dir/?api=1&destination={latitudeText},{longitudeText}&travelmode=driving");
-    }
 
     private static bool TryCreateAdresseLivraisonUri(string? lien, out Uri uri)
     {
