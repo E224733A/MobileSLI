@@ -142,23 +142,7 @@ public const string ApiBaseUrl = "http://IP_DU_PC:5000";
 
 Si le téléphone ne peut pas accéder à l’IP du PC, revenir au mode `adb reverse`.
 
-## Commandes rapides à retenir
 
-### Lancer l’API pour test téléphone avec ADB reverse
-
-```powershell
-cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core"
-dotnet run --urls "http://127.0.0.1:5000"
-```
-
-### Vérifier l’API depuis le PC
-
-```powershell
-curl.exe "http://127.0.0.1:5000/api/health"
-curl.exe "http://127.0.0.1:5000/api/livreurs"
-curl.exe "http://127.0.0.1:5000/api/tournees/disponibles?dateTournee=2026-05-07&codeLivreur=2"
-curl.exe "http://127.0.0.1:5000/api/tournees/jour?dateTournee=2026-05-07&codeTournee=4006&codeLivreur=2"
-```
 
 ### Vérifier le téléphone et activer ADB reverse
 
@@ -172,19 +156,22 @@ cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe reverse --list
 ```
 
-### Tester l’API depuis le téléphone
-
-```powershell
-.\adb.exe shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:5000/api/health"
-```
-
 ### Compiler et lancer l’application mobile
 
 ```powershell
 cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\MobileSLI"
+
+Select-String -Path ".\Configuration\AppConfig.cs" -Pattern "ApiBaseUrl"
+
 dotnet restore
 dotnet build -f net10.0-android
-dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
+dotnet publish -f net10.0-android -c Debug -p:AndroidPackageFormat=apk
+
+$apk = Get-ChildItem ".\bin\Debug\net10.0-android\publish" -Filter "*.apk" -Recurse |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1 -ExpandProperty FullName
+
+$apk
 ```
 
 ### Nettoyer l’installation mobile si la base SQLite locale pose problème
@@ -193,4 +180,12 @@ dotnet run -f net10.0-android -c Debug -p:AdbTarget=-d
 cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe uninstall fr.sli.mobiletournee
 ```
+
+### Installer : 
+
+```powershell
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+.\adb.exe install -r $apk
+```
+
 

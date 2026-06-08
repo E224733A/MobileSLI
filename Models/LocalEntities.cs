@@ -67,8 +67,15 @@ public sealed class LocalTourneeLigne
     public string? CodePostal { get; set; }
 
     /*
+     * Coordonnées GPS WGS84 optionnelles du point de livraison.
+     * Le mobile génère l'URL Google Maps au clic pour éviter de stocker une URL comme donnée métier principale.
+     */
+    public double? LatitudeLivraison { get; set; }
+    public double? LongitudeLivraison { get; set; }
+
+    /*
      * Lien optionnel vers l'adresse de livraison.
-     * Le champ est persisté pour rester disponible hors connexion après chargement de tournée.
+     * Conservé comme fallback pour rester compatible avec les anciennes réponses API.
      */
     public string? LienAdresseLivraison { get; set; }
 
