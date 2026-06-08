@@ -11,15 +11,26 @@ public sealed class SettingsService
     private const string LastLivreurCodeKey = "last_livreur_code";
 
     /*
+     * Ancienne URL de production HTTP utilisée avant la préparation HTTPS.
+     *
+     * Objectif : éviter qu'un téléphone déjà installé continue à appeler
+     * automatiquement l'ancien endpoint stocké dans Preferences après mise à jour.
+     *
+     * Si un test HTTP de secours est nécessaire, il reste possible de ressaisir
+     * explicitement http://srvapi1.sli.local:5000 dans l'application.
+     */
+    private const string LegacyHttpApiBaseUrl = "http://srvapi1.sli.local:5000";
+
+    /*
      * L'URL par défaut est centralisée dans :
      *
      * Configuration/AppConfig.cs
      *
-     * Mode actuel téléphone physique + adb reverse :
-     * http://127.0.0.1:5000
+     * URL cible HTTPS :
+     * https://srvapi1.sli.local
      *
-     * Commande à lancer avant le test :
-     * adb reverse tcp:5000 tcp:5000
+     * La CA publique Android doit être présente localement dans :
+     * Platforms/Android/Resources/raw/mobilesli_root_ca.crt
      */
     public string DefaultApiBaseUrl => NormalizeBaseUrl(AppConfig.ApiBaseUrl);
 
@@ -28,7 +39,15 @@ public sealed class SettingsService
         get
         {
             var savedValue = Preferences.Default.Get(ApiBaseUrlKey, DefaultApiBaseUrl);
-            return NormalizeBaseUrl(savedValue);
+            var normalized = NormalizeBaseUrl(savedValue);
+
+            if (ShouldMigrateLegacyHttpUrl(normalized))
+            {
+                Preferences.Default.Set(ApiBaseUrlKey, DefaultApiBaseUrl);
+                return DefaultApiBaseUrl;
+            }
+
+            return normalized;
         }
         set
         {
@@ -74,6 +93,12 @@ public sealed class SettingsService
         ResetLastLivreurCode();
     }
 
+    private static bool ShouldMigrateLegacyHttpUrl(string normalizedUrl)
+    {
+        return string.Equals(normalizedUrl, LegacyHttpApiBaseUrl, StringComparison.OrdinalIgnoreCase)
+            && AppConfig.ApiBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string NormalizeBaseUrl(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -86,10 +111,17 @@ public sealed class SettingsService
         if (!normalized.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             && !normalized.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            normalized = "http://" + normalized;
+            normalized = GetDefaultScheme() + normalized;
         }
 
         return normalized;
+    }
+
+    private static string GetDefaultScheme()
+    {
+        return AppConfig.ApiBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            ? "https://"
+            : "http://";
     }
 
     private static string NormalizeLivreurCode(string? value)

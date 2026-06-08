@@ -7,3 +7,16 @@ obj/
 *.sqlite
 *.sqlite3
 local.properties
+
+# Fichiers locaux / certificats à ne jamais versionner.
+# La CA publique Android doit être copiée localement avant build, mais ne doit pas être commitée.
+_certificats-locaux-ne-pas-commit/
+certificats/
+Platforms/Android/Resources/raw/mobilesli_root_ca.crt
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.pem
+*.csr
