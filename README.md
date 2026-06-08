@@ -31,23 +31,7 @@ L’application communique uniquement avec l’API ASP.NET Core.
 
 Elle ne communique jamais directement avec SQL Server.
 
-### Mode actuel recommandé en développement
 
-Dans l’environnement de test actuel, le téléphone n’arrive pas toujours à joindre directement le PC par son IP locale.
-
-La solution temporaire retenue pour le développement est donc :
-
-```powershell
-adb reverse tcp:5000 tcp:5000
-```
-
-Puis dans l’application :
-
-```text
-http://127.0.0.1:5000
-```
-
-Dans ce mode, `127.0.0.1` côté téléphone est redirigé vers le port `5000` du PC grâce à ADB.
 
 ### Pourquoi ne pas utiliser l’IP du PC dans ce cas ?
 
@@ -114,34 +98,18 @@ Lancer l’API sur toutes les interfaces réseau :
 cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\backend\API-ASP.NET-Core"
 ```
 
-```powershell
-dotnet run --urls "http://0.0.0.0:5000"
-```
-
-Trouver l’IP du PC :
-
-```powershell
-ipconfig
-```
-
-Tester depuis le PC :
-
-```powershell
-curl.exe "http://127.0.0.1:5000/api/health"
-```
-
-```powershell
-curl.exe "http://IP_DU_PC:5000/api/health"
-```
 
 Dans `Configuration/AppConfig.cs`, utiliser :
 
 ```csharp
-public const string ApiBaseUrl = "http://IP_DU_PC:5000";
+public const string ApiBaseUrl = "http://NOM_DNS:5000";
 ```
 
-Si le téléphone ne peut pas accéder à l’IP du PC, revenir au mode `adb reverse`.
+Puis en HTTPS : 
 
+```csharp
+public const string ApiBaseUrl = "https://NOM_DNS";
+```
 
 
 ### Vérifier le téléphone et activer ADB reverse
