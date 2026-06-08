@@ -5,15 +5,16 @@ using MobileSLI.Models;
 using MobileSLI.Pages;
 using MobileSLI.Services;
 using MobileSLI.Services.Api;
+using MobileSLI.Services.Diagnostics;
 using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
 /// <summary>
 /// ViewModel de la page d'accueil.
-/// Cette version propose la reprise d'une tournée locale active via une carte et rend
-/// l'outil d'export SQLite visible en Release comme en Debug. Elle met également en cache
-/// certaines données pour améliorer la stabilité terrain.
+/// Cette version garde le comportement existant, mais sécurise le démarrage afin
+/// qu'une erreur SQLite, purge locale ou reprise tournée ne ferme pas brutalement
+/// l'application Android.
 /// </summary>
 public sealed class AccueilViewModel : BaseViewModel
 {
@@ -136,23 +137,13 @@ public sealed class AccueilViewModel : BaseViewModel
 
     /// <summary>
     /// Vérifie au démarrage si une tournée locale active existe et propose éventuellement une reprise.
+    /// Cette méthode est volontairement défensive : elle ne doit jamais faire fermer l'application.
     /// </summary>
     public async Task CheckActiveTourneeOnStartupAsync()
     {
-        /*
-         * La reprise automatique doit être proposée uniquement au démarrage
-         * réel de l'application, par exemple après fermeture depuis les
-         * applications récentes puis réouverture.
-         *
-         * Une tournée locale ancienne ne doit jamais être proposée à la reprise.
-         * Elle est verrouillée localement avec le statut EXPIREE. Cela empêche
-         * toute modification accidentelle sans ajouter de route API ni bloquer
-         * les validations ligne par ligne pendant une tournée du jour.
-         */
         if (_appStateService.HasCheckedActiveTourneeOnStartup || IsBusy)
         {
-            // Même si la vérification a déjà eu lieu, charge la tournée locale active pour l'affichage de la carte.
-            await LoadActiveTourneeLocaleAsync();
+            await LoadActiveTourneeLocaleSafeAsync("startup déjà contrôlé");
             return;
         }
 
@@ -164,17 +155,25 @@ public sealed class AccueilViewModel : BaseViewModel
             SetBusy(true);
             ErrorMessage = string.Empty;
 
-            // Vide le cache API journalier à l'ouverture afin de ne pas réutiliser des listes obsolètes
+            // Vide le cache API journalier à l'ouverture afin de ne pas réutiliser des listes obsolètes.
             _appStateService.ClearDailyApiCacheIfNeeded();
 
-            // Charge la tournée locale pour l'affichage initial de la carte
-            await LoadActiveTourneeLocaleAsync();
+            // Charge la tournée locale pour l'affichage initial de la carte.
+            await LoadActiveTourneeLocaleSafeAsync("chargement initial tournée active");
 
-            var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
-            var deletedCount = await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
-            var abandonedDeletedCount = await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
+            var expiredCount = await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.ExpireOldActiveTourneesAsync(),
+                "expiration anciennes tournées actives");
 
-            var activeTournee = await _databaseService.GetActiveTourneeAsync();
+            var deletedCount = await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7),
+                "purge anciennes tournées synchronisées");
+
+            var abandonedDeletedCount = await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30),
+                "purge tournées abandonnées");
+
+            var activeTournee = await GetActiveTourneeSafeAsync("lecture tournée active après nettoyage");
             if (activeTournee is null)
             {
                 if (expiredCount > 0)
@@ -213,35 +212,91 @@ public sealed class AccueilViewModel : BaseViewModel
                 _appStateService.CurrentTourneeId = activeTournee.Id;
                 _appStateService.SelectedLigneId = 0;
                 await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
-                return;
             }
         }
         catch (Exception exception)
         {
+            AppCrashLogger.Log(exception, "AccueilViewModel.CheckActiveTourneeOnStartupAsync");
+
             ErrorMessage = $"Impossible de vérifier la tournée locale : {exception.Message}";
             ConnectionTitle = "Vérification locale impossible";
             ConnectionMessage = ErrorMessage;
+            DiagnosticMessage =
+                $"Erreur démarrage capturée sans fermeture de l'application. Log local : {AppCrashLogger.LogPath}";
         }
         finally
         {
             SetBusy(false);
-            // Recharge la tournée locale pour mettre à jour l'affichage de la carte après les interactions
-            await LoadActiveTourneeLocaleAsync();
+            await LoadActiveTourneeLocaleSafeAsync("rechargement final affichage accueil");
+        }
+    }
+
+    private async Task<int> ExecuteDatabaseStartupStepAsync(Func<Task<int>> action, string context)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (Exception exception)
+        {
+            AppCrashLogger.Log(exception, $"AccueilViewModel startup database step - {context}");
+
+            ErrorMessage = $"Diagnostic local : {exception.Message}";
+            DiagnosticMessage =
+                $"Une étape locale a échoué ({context}). L'application reste ouverte. Log : {AppCrashLogger.LogPath}";
+
+            return 0;
+        }
+    }
+
+    private async Task<LocalTournee?> GetActiveTourneeSafeAsync(string context)
+    {
+        try
+        {
+            return await _databaseService.GetActiveTourneeAsync();
+        }
+        catch (Exception exception)
+        {
+            AppCrashLogger.Log(exception, $"AccueilViewModel.GetActiveTourneeSafeAsync - {context}");
+
+            ErrorMessage = $"Lecture de la tournée locale impossible : {exception.Message}";
+            DiagnosticMessage =
+                $"Erreur SQLite locale capturée. Log : {AppCrashLogger.LogPath}";
+
+            return null;
         }
     }
 
     /// <summary>
     /// Charge la tournée locale active en base et met à jour les propriétés de reprise.
+    /// Cette version ne laisse pas remonter d'exception vers OnAppearing.
     /// </summary>
-    private async Task LoadActiveTourneeLocaleAsync()
+    private async Task LoadActiveTourneeLocaleSafeAsync(string context)
     {
-        _tourneeLocaleActive = await _databaseService.GetActiveTourneeAsync();
-        OnPropertyChanged(nameof(HasTourneeLocaleActive));
-        OnPropertyChanged(nameof(TourneeLocaleActiveText));
-
-        if (ReprendreTourneeLocaleCommand is Command repriseCommand)
+        try
         {
-            repriseCommand.ChangeCanExecute();
+            _tourneeLocaleActive = await _databaseService.GetActiveTourneeAsync();
+        }
+        catch (Exception exception)
+        {
+            AppCrashLogger.Log(exception, $"AccueilViewModel.LoadActiveTourneeLocaleSafeAsync - {context}");
+
+            _tourneeLocaleActive = null;
+            ErrorMessage = $"Impossible de lire la tournée locale : {exception.Message}";
+            ConnectionTitle = "Base locale indisponible";
+            ConnectionMessage = ErrorMessage;
+            DiagnosticMessage =
+                $"Erreur SQLite locale capturée sans fermeture de l'application. Log : {AppCrashLogger.LogPath}";
+        }
+        finally
+        {
+            OnPropertyChanged(nameof(HasTourneeLocaleActive));
+            OnPropertyChanged(nameof(TourneeLocaleActiveText));
+
+            if (ReprendreTourneeLocaleCommand is Command repriseCommand)
+            {
+                repriseCommand.ChangeCanExecute();
+            }
         }
     }
 
@@ -255,10 +310,20 @@ public sealed class AccueilViewModel : BaseViewModel
             return;
         }
 
-        _appStateService.CurrentTourneeId = _tourneeLocaleActive.Id;
-        _appStateService.SelectedLigneId = 0;
+        try
+        {
+            _appStateService.CurrentTourneeId = _tourneeLocaleActive.Id;
+            _appStateService.SelectedLigneId = 0;
 
-        await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
+            await _navigationService.GoToAsync(nameof(ListePointsLivraisonPage));
+        }
+        catch (Exception exception)
+        {
+            AppCrashLogger.Log(exception, "AccueilViewModel.ReprendreTourneeLocaleAsync");
+            ErrorMessage = $"Impossible de reprendre la tournée : {exception.Message}";
+            ConnectionTitle = "Reprise impossible";
+            ConnectionMessage = ErrorMessage;
+        }
     }
 
     private void SaveApiUrl()
@@ -304,10 +369,13 @@ public sealed class AccueilViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
+            AppCrashLogger.Log(exception, "AccueilViewModel.TestConnectionAsync");
+
             IsConnected = false;
             ConnectionTitle = "Erreur lors du test";
             ConnectionMessage = exception.Message;
             ErrorMessage = exception.Message;
+            DiagnosticMessage = $"Erreur API capturée. Log : {AppCrashLogger.LogPath}";
         }
         finally
         {
@@ -346,6 +414,8 @@ public sealed class AccueilViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
+            AppCrashLogger.Log(exception, "AccueilViewModel.ExportDatabaseAsync");
+
             ErrorMessage = $"Impossible d'exporter la base SQLite : {exception.Message}";
             DiagnosticMessage = ErrorMessage;
 
@@ -384,9 +454,17 @@ public sealed class AccueilViewModel : BaseViewModel
              * bloque le chargement du jour. On ne propose jamais de reprendre
              * une tournée expirée depuis le bouton Continuer.
              */
-            var expiredCount = await _databaseService.ExpireOldActiveTourneesAsync();
-            await _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7);
-            await _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30);
+            var expiredCount = await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.ExpireOldActiveTourneesAsync(),
+                "expiration anciennes tournées depuis Continuer");
+
+            await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.PurgeOldSynchronizedTourneesAsync(retentionDays: 7),
+                "purge anciennes synchronisées depuis Continuer");
+
+            await ExecuteDatabaseStartupStepAsync(
+                () => _databaseService.PurgeOldAbandonedTourneesAsync(retentionDays: 30),
+                "purge abandonnées depuis Continuer");
 
             if (expiredCount > 0)
             {
@@ -400,9 +478,12 @@ public sealed class AccueilViewModel : BaseViewModel
         }
         catch (Exception exception)
         {
+            AppCrashLogger.Log(exception, "AccueilViewModel.ContinueAsync");
+
             ErrorMessage = $"Impossible d'ouvrir l'écran suivant : {exception.Message}";
             ConnectionTitle = "Navigation impossible";
             ConnectionMessage = ErrorMessage;
+            DiagnosticMessage = $"Erreur navigation capturée. Log : {AppCrashLogger.LogPath}";
 
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {

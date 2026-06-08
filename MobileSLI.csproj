@@ -27,6 +27,14 @@
 		<AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
 		<JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
 		<RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
+		<!--
+			Obligatoire pour le protocole de test actuel :
+			dotnet publish -c Debug -p:AndroidPackageFormat=apk puis adb install -r.
+			Sans cela, Android/Mono peut chercher les assemblies dans .__override__
+			et crasher avant l'exécution du code .NET.
+		-->
+		<EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+		<AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
 	</PropertyGroup>
 
 	<ItemGroup>
