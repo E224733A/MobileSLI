@@ -2,33 +2,47 @@
 
 ## Objectif
 
-Valider le comportement attendu du futur flux camion / trajet côté application mobile **MobileSLI**.
+Valider le comportement attendu du flux camion / trajet côté application mobile **MobileSLI** en contrat strict :
 
-Cette matrice prépare les lots de développement suivants sans modifier le code applicatif.
+```text
+schemaVersion = "1.3" uniquement
+```
+
+Cette matrice reflète l'état du code inspecté après le tag :
+
+```text
+v1.3-mobile-https-final
+```
 
 ## Périmètre
 
 Cette matrice concerne uniquement le dépôt mobile **MobileSLI**.
 
-Elle ne modifie pas :
+Elle ne couvre pas :
 
-- l’API serveur ASP.NET Core ;
+- l'API serveur ASP.NET Core ;
 - les routes serveur ;
 - les DTO serveur ;
 - les scripts SQL serveur ;
 - la base SQL Server ;
-- le contrat serveur ;
-- le code C# mobile ;
-- le XAML mobile.
+- ServeWeb.
 
-## Règle contractuelle stricte
+## Faits vérifiés par inspection du code
 
-```text
-schemaVersion = "1.3" uniquement
-schemaVersion = "1.2" refusé côté mobile
-```
-
-Le mobile ne doit plus accepter `schemaVersion: "1.2"` pour la liste des camions.
+| Élément | Fichier inspecté | État |
+|---|---|---|
+| Version mobile officielle | `Configuration/AppConfig.cs` | `SchemaVersion = "1.3"` |
+| Chargement camions | `Services/Api/CamionsApiService.cs` | `GET /api/camions/disponibles` |
+| Version camion attendue | `Services/Api/CamionsApiService.cs` | `ExpectedSchemaVersion = "1.3"` |
+| Refus version camion différente | `Services/Api/CamionsApiService.cs` | exception si version différente de `1.3` |
+| Filtrage camions actifs | `Services/Api/CamionsApiService.cs` | filtre `EstActif`, `IdCamion`, `CodeCamion` |
+| Choix camion UI/ViewModel | `ViewModels/ChoixCamionViewModel.cs` | présent |
+| Kilométrage départ obligatoire | `ViewModels/ChoixCamionViewModel.cs` | présent |
+| Persistance trajet départ | `Services/DatabaseService.cs` | `PersistTrajetDepartAsync` |
+| Persistance trajet arrivée | `Services/DatabaseService.cs` | `PersistTrajetArriveeAsync` |
+| Restauration trajet local | `Services/DatabaseService.cs` | `RestaurerTrajetDansAppStateAsync` |
+| Validation trajet avant envoi | `Services/SynchronisationService.cs` | présente |
+| Payload final avec trajet | `Models/SynchronisationTrajetRequest.cs` et `Services/SynchronisationService.cs` | présent |
 
 ## Données de référence
 
@@ -94,83 +108,59 @@ Version du contrat camion incompatible. Version attendue : 1.3.
 
 ## Matrice
 
-| ID | Lot cible | Catégorie | Précondition | Action | Résultat attendu | Statut LOT 0 |
-|---|---:|---|---|---|---|---|
-| MOB-CAM-001 | 1 | Liste camions | API disponible | Charger `GET /api/camions/disponibles` | La réponse JSON est parseable côté mobile | Documenté |
-| MOB-CAM-002 | 1 | Liste camions | Réponse `schemaVersion: "1.3"` | Charger la liste camions | Le mobile accepte la réponse | Documenté |
-| MOB-CAM-003 | 1 | Liste camions | Réponse `schemaVersion: "1.2"` | Charger la liste camions | Le mobile refuse la réponse avec un message clair | Documenté |
-| MOB-CAM-004 | 1 | Liste camions | Réponse avec version différente de `1.3` | Charger la liste camions | Le mobile refuse la réponse avec un message clair | Documenté |
-| MOB-CAM-005 | 2 | Filtrage camions | Réponse avec `estActif=true` et `estActif=false` | Afficher la liste | Seuls les camions actifs sont affichés | Documenté |
-| MOB-CAM-006 | 2 | Liste vide | Réponse avec `camions: []` | Charger la page choix camion | La progression est bloquée avec un message clair | Documenté |
-| MOB-CAM-007 | 2 | Réseau | API indisponible ou coupure réseau | Charger la page choix camion | Pas de crash, message clair, possibilité de réessayer | Documenté |
-| MOB-CAM-008 | 2 | Choix camion | Aucun camion sélectionné | Continuer | La progression est bloquée | Documenté |
-| MOB-CAM-009 | 3 | Kilométrage départ | Camion sélectionné, champ départ vide | Continuer | La progression est bloquée | Documenté |
-| MOB-CAM-010 | 3 | Kilométrage départ | Camion sélectionné, départ négatif | Continuer | La valeur est refusée | Documenté |
-| MOB-CAM-011 | 3 | Kilométrage départ | Camion sélectionné, départ non numérique | Continuer | La valeur est refusée | Documenté |
-| MOB-CAM-012 | 3 | Kilométrage départ | Camion sélectionné, départ entier `>= 0` | Continuer | Le flux peut continuer | Documenté |
-| MOB-CAM-013 | 3 | Date départ | Camion sélectionné, départ valide | Valider le choix camion | `dateDepartMobile` est renseignée automatiquement | Documenté |
-| MOB-CAM-014 | 2 | État courant | Un livreur A a choisi un camion | Changer de livreur | Le camion sélectionné et le trajet temporaire sont réinitialisés | Documenté |
-| MOB-CAM-015 | 2/7 | État courant | Camion validé | Revenir dans le flux courant | Le camion sélectionné reste disponible pendant le flux de tournée | Documenté |
-| MOB-CAM-016 | 4 | Confirmation | Camion validé | Afficher la page avant “Charger tournée” | Le camion sélectionné est affiché | Documenté |
-| MOB-CAM-017 | 4 | Confirmation | Kilométrage départ validé | Afficher la page avant “Charger tournée” | Le kilométrage départ est affiché | Documenté |
-| MOB-CAM-018 | 4 | Ergonomie | Téléphone à écran étroit | Afficher identification + confirmation | L’affichage reste lisible et non surchargé | Documenté |
-| MOB-CAM-019 | 5 | Kilométrage arrivée | Champ arrivée vide | Envoyer la synchronisation finale | L’envoi est bloqué | Documenté |
-| MOB-CAM-020 | 5 | Kilométrage arrivée | Arrivée négative ou inférieure au départ | Envoyer la synchronisation finale | La valeur est refusée | Documenté |
-| MOB-CAM-021 | 6 | Payload final | Camion + départ + arrivée valides | Envoyer la synchronisation finale | `dateArriveeMobile` est générée automatiquement et le payload 1.3 contient `trajet` complet | Documenté |
+| ID | Catégorie | Précondition | Action | Résultat attendu | État code inspecté | Test manuel |
+|---|---|---|---|---|---|---|
+| MOB-CAM-001 | Liste camions | API disponible | Charger `GET /api/camions/disponibles` | La réponse JSON est parseable côté mobile | Implémenté | À rejouer |
+| MOB-CAM-002 | Liste camions | Réponse `schemaVersion: "1.3"` | Charger la liste camions | Le mobile accepte la réponse | Implémenté | À rejouer |
+| MOB-CAM-003 | Liste camions | Réponse `schemaVersion: "1.2"` | Charger la liste camions | Le mobile refuse la réponse avec un message clair | Implémenté | À rejouer |
+| MOB-CAM-004 | Liste camions | Réponse avec version différente de `1.3` | Charger la liste camions | Le mobile refuse la réponse avec un message clair | Implémenté | À rejouer |
+| MOB-CAM-005 | Filtrage camions | Réponse avec `estActif=true` et `estActif=false` | Afficher la liste | Seuls les camions actifs exploitables sont affichés | Implémenté | À rejouer |
+| MOB-CAM-006 | Liste vide | Réponse avec `camions: []` | Charger la page choix camion | La progression est bloquée avec un message clair | Implémenté | À rejouer |
+| MOB-CAM-007 | Réseau | API indisponible ou coupure réseau | Charger la page choix camion | Pas de crash, message clair, possibilité de réessayer | Implémenté partiellement | À rejouer |
+| MOB-CAM-008 | Choix camion | Aucun camion sélectionné | Continuer | La progression est bloquée | Implémenté | À rejouer |
+| MOB-CAM-009 | Kilométrage départ | Camion sélectionné, champ départ vide | Continuer | La progression est bloquée | Implémenté | À rejouer |
+| MOB-CAM-010 | Kilométrage départ | Camion sélectionné, départ négatif | Continuer | La valeur est refusée | Implémenté | À rejouer |
+| MOB-CAM-011 | Kilométrage départ | Camion sélectionné, départ non numérique | Continuer | La valeur est refusée | Implémenté | À rejouer |
+| MOB-CAM-012 | Kilométrage départ | Camion sélectionné, départ entier `>= 0` | Continuer | Le flux peut continuer | Implémenté | À rejouer |
+| MOB-CAM-013 | Date départ | Camion sélectionné, départ valide | Valider le choix camion | `dateDepartMobile` est renseignée automatiquement | Implémenté | À rejouer |
+| MOB-CAM-014 | Changement livreur | Un livreur A a choisi un camion | Changer de livreur | Le camion sélectionné et le trajet temporaire sont réinitialisés | À vérifier dans le flux réel | À rejouer |
+| MOB-CAM-015 | Reprise flux | Camion validé | Revenir dans le flux courant | Le camion sélectionné reste disponible pendant le flux de tournée | Implémenté via `AppStateService` et persistance locale | À rejouer |
+| MOB-CAM-016 | Confirmation | Camion validé | Afficher la page avant “Charger tournée” | Le camion sélectionné est affiché | Implémenté | À rejouer |
+| MOB-CAM-017 | Confirmation | Kilométrage départ validé | Afficher la page avant “Charger tournée” | Le kilométrage départ est affiché | Implémenté | À rejouer |
+| MOB-CAM-018 | Ergonomie | Téléphone à écran étroit | Afficher identification + confirmation | L'affichage reste lisible et non surchargé | Non vérifié par inspection seule | À rejouer sur téléphone |
+| MOB-CAM-019 | Kilométrage arrivée | Champ arrivée vide | Envoyer la synchronisation finale | L'envoi est bloqué | Implémenté | À rejouer |
+| MOB-CAM-020 | Kilométrage arrivée | Arrivée négative ou inférieure au départ | Envoyer la synchronisation finale | La valeur est refusée | Implémenté | À rejouer |
+| MOB-CAM-021 | Payload final | Camion + départ + arrivée valides | Envoyer la synchronisation finale | `dateArriveeMobile` est générée automatiquement et le payload 1.3 contient `trajet` complet | Implémenté | À rejouer |
 
-## Points à vérifier pendant les lots suivants
+## Tests techniques connus
 
-### LOT 1 — DTO camion + client HTTP mobile
+D'après les validations locales communiquées avant cette mise à jour documentaire :
 
-- Les DTO mobiles acceptent uniquement `schemaVersion: "1.3"`.
-- Le client HTTP mobile appelle uniquement `GET /api/camions/disponibles`.
-- Aucun code serveur n’est modifié.
+| Test | État |
+|---|---|
+| `dotnet clean` | OK localement |
+| `dotnet restore` | OK localement |
+| `dotnet build -f net10.0-android -c Release` | OK localement avec avertissement XA0141 |
+| `dotnet publish -f net10.0-android -c Release` | OK localement |
+| APK Release installé | OK localement |
+| `Verify-MobileSLI-AndroidHttps.ps1 -FinalHttpsOnly` | OK localement |
+| `Verify-MobileSLI-AndroidHttps.ps1 -RunAdbChecks` | OK localement |
 
-### LOT 2 — Page choix camion + ViewModel + navigation
+## Tests non exécutés dans cette correction documentaire
 
-- Une page dédiée est ajoutée après identification livreur.
-- La navigation passe par `INavigationService` si présent.
-- Aucun appel HTTP n’est placé dans le code-behind.
+Cette correction documentaire a été faite par inspection GitHub.
 
-### LOT 3 — Validation kilométrage départ
+```text
+dotnet clean : non exécuté
+dotnet restore : non exécuté
+dotnet build -f net10.0-android -c Release : non exécuté
+dotnet publish -f net10.0-android -c Release : non exécuté
+installation APK : non exécuté
+tests fonctionnels téléphone : non exécuté
+```
 
-- Validation dans le ViewModel.
-- Entier obligatoire.
-- Valeur `>= 0`.
-- Date départ générée automatiquement.
+## Risques restants
 
-### LOT 4 — Confirmation avant chargement tournée
-
-- Camion affiché.
-- Kilométrage départ affiché.
-- Écran petit respecté.
-
-### LOT 5 — Kilométrage arrivée avant synchronisation
-
-- Arrivée obligatoire.
-- Arrivée `>= 0`.
-- Arrivée `>= départ`.
-- Blocage de l’envoi en cas d’erreur.
-
-### LOT 6 — Payload mobile final schemaVersion 1.3
-
-- Payload final en `schemaVersion: "1.3"`.
-- Section `trajet` complète.
-- Pas de compatibilité 1.2.
-- Modification à faire uniquement après validation API serveur 1.3.
-
-### LOT 7 — Persistance robuste SQLite mobile
-
-- À faire uniquement si la reprise application exige la conservation camion/trajet.
-- Ne pas mélanger état temporaire et historique métier.
-
-### LOT 8 — Audit final avant tag
-
-- Build Release.
-- Tests manuels téléphone.
-- Vérification qu’aucun fichier serveur n’a été modifié.
-- Vérification que le contrat 1.3 est strict.
-
-## Statut des tests
-
-tests non exécutés
+- Les tests fonctionnels camion / trajet doivent être rejoués sur téléphone réel après installation de l'APK Release.
+- L'avertissement XA0141 Android 16 reste à traiter.
+- L'écran d'accueil conserve des éléments de maintenance visibles : adresse API, test connexion, diagnostic et export SQLite.
