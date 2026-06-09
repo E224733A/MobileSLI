@@ -142,6 +142,7 @@ $apk = Get-ChildItem ".\bin\Debug\net10.0-android\publish" -Filter "*.apk" -Recu
 $apk
 ```
 
+
 ### Nettoyer l’installation mobile si la base SQLite locale pose problème
 
 ```powershell
@@ -154,6 +155,30 @@ cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 ```powershell
 cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe install -r $apk
+```
+
+
+## En Production : 
+```powershell
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
+
+dotnet restore
+dotnet build -f net10.0-android -c Release
+dotnet publish -f net10.0-android -c Release
+
+Get-ChildItem ".\bin\Release\net10.0-android" -Recurse -Filter "*.apk" |
+Sort-Object LastWriteTime -Descending |
+Select-Object -First 5 FullName, LastWriteTime
+
+$apk = Get-ChildItem ".\bin\Release\net10.0-android" -Recurse -Filter "*.apk" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1 -ExpandProperty FullName
+
+$apk
+
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+.\adb.exe install -r $apk
+
 ```
 
 
