@@ -19,7 +19,7 @@ public sealed class SettingsService
      * Si un test HTTP de secours est nécessaire, il reste possible de ressaisir
      * explicitement http://srvapi1.sli.local:5000 dans l'application.
      */
-    private const string LegacyHttpApiBaseUrl = "http://srvapi1.sli.local:5000";
+    private const string LegacyHttpApiBaseUrl = AppConfig.ApiBaseUrl;
 
     /*
      * L'URL par défaut est centralisée dans :
