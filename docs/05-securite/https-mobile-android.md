@@ -1,76 +1,101 @@
-# Préparation HTTPS Android — MobileSLI
+# HTTPS Android final — MobileSLI
 
 ## Objectif
 
-Préparer l'application mobile MobileSLI pour appeler l'API en HTTPS sur le réseau interne :
+Cette documentation décrit l'état final validé de l'application mobile MobileSLI pour l'accès HTTPS à l'API interne.
+
+URL API officielle :
 
 ```text
 https://srvapi1.sli.local
 ```
 
-Le certificat serveur doit correspondre au nom DNS `srvapi1.sli.local`. Ne pas tester le HTTPS final avec `https://192.168.1.233`, car le certificat ne sera pas prévu pour cette adresse IP.
+Le certificat serveur doit correspondre au nom DNS `srvapi1.sli.local`.
+Ne pas utiliser l'adresse IP pour le HTTPS final.
 
-## Fichiers modifiés ou créés
+## État validé
+
+Tag de référence :
+
+```text
+v1.3-mobile-https-final
+```
+
+Commit de référence :
+
+```text
+32174a91208d55c299d9cee8555da8599f8639bb
+```
+
+Validation locale communiquée :
+
+```text
+Build Release : OK
+Publish Release : OK
+APK Release installé : OK
+Verify-MobileSLI-AndroidHttps.ps1 -FinalHttpsOnly : OK
+Verify-MobileSLI-AndroidHttps.ps1 -RunAdbChecks : OK
+```
+
+Avertissement restant :
+
+```text
+XA0141 Android 16 / SQLitePCLRaw.lib.e_sqlite3.android 2.1.2
+```
+
+## Fichiers concernés
 
 ```text
 Configuration/AppConfig.cs
 Services/SettingsService.cs
+Services/Api/ApiClient.cs
 Platforms/Android/AndroidManifest.xml
 Platforms/Android/Resources/xml/network_security_config.xml
+Platforms/Android/Resources/raw/mobilesli_root_ca.crt
 .gitignore
 scripts/security/copy-android-ca-local.ps1
-docs/05-securite/https-mobile-android.md
 ```
 
-## Ce qui n'est volontairement pas fourni
+## Configuration active
 
-Le zip ne contient aucun certificat et aucune clé.
+Dans `Configuration/AppConfig.cs`, l'URL active doit rester :
 
-Ne jamais ajouter au dépôt :
-
-```text
-mobilesli-root-ca.key
-srvapi1.sli.local.key
-srvapi1.sli.local.pfx
-*.key
-*.pfx
-*.p12
-*.jks
-*.keystore
-*.pem
+```csharp
+public const string ApiBaseUrl = "https://srvapi1.sli.local";
 ```
 
-Le fichier `mobilesli_root_ca.crt` est le certificat public de la CA. Il ne contient normalement pas la clé privée, mais il révèle tout de même une information interne. Pour ce projet, il est donc traité comme un fichier local non versionné.
+La version de contrat mobile doit rester :
 
-## Application du patch
-
-Depuis ta machine, extraire le zip à la racine du dépôt mobile :
-
-```powershell
-cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
+```csharp
+public const string SchemaVersion = "1.3";
 ```
 
-Puis copier les fichiers du zip en écrasant les fichiers existants.
+Les anciennes URL HTTP peuvent être conservées uniquement comme commentaires de développement ou comme historique contrôlé. Elles ne doivent pas redevenir la valeur active de `ApiBaseUrl`.
 
-Vérifier ensuite :
+## Configuration Android finale
 
-```powershell
-git status --short
+Dans `Platforms/Android/AndroidManifest.xml`, l'application doit rester configurée ainsi :
+
+```xml
+android:usesCleartextTraffic="false"
+android:networkSecurityConfig="@xml/network_security_config"
 ```
 
-Résultat attendu avant ajout du certificat local :
+Dans `Platforms/Android/Resources/xml/network_security_config.xml`, le domaine doit rester configuré sans trafic clair :
 
-```text
- M .gitignore
- M Configuration/AppConfig.cs
- M Platforms/Android/AndroidManifest.xml
- M Services/SettingsService.cs
-?? Platforms/Android/Resources/xml/network_security_config.xml
-?? docs/05-securite/https-mobile-android.md
-?? scripts/security/copy-android-ca-local.ps1
+```xml
+<domain-config cleartextTrafficPermitted="False">
+    <domain includeSubdomains="false">srvapi1.sli.local</domain>
 ```
 
-## Ajout local de la CA Android avant build
+La configuration doit référencer les certificats système et la CA Android intégrée localement :
+
+```xml
+<certificates src="system" />
+<certificates src="@raw/mobilesli_root_ca" />
+```
+
+## CA Android locale
 
 Le fichier attendu localement est :
 
@@ -78,44 +103,14 @@ Le fichier attendu localement est :
 Platforms/Android/Resources/raw/mobilesli_root_ca.crt
 ```
 
-Source locale prévue :
+Ce fichier est nécessaire pour compiler et tester l'application, mais il ne doit pas être versionné dans Git.
 
-```text
-C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\_certificats-locaux-ne-pas-commit\android\mobilesli_root_ca.crt
-```
-
-Commande directe :
+Vérifier qu'il est bien ignoré :
 
 ```powershell
 cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
-
-New-Item -ItemType Directory -Path ".\Platforms\Android\Resources\raw" -Force
-
-Copy-Item `
-  -Path "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\_certificats-locaux-ne-pas-commit\android\mobilesli_root_ca.crt" `
-  -Destination ".\Platforms\Android\Resources\raw\mobilesli_root_ca.crt" `
-  -Force
-```
-
-Commande avec script fourni :
-
-```powershell
-cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
-Set-ExecutionPolicy -Scope Process Bypass -Force
-.\scripts\security\copy-android-ca-local.ps1
-```
-
-## Vérifier que le certificat ne sera pas push
-
-Après copie du certificat :
-
-```powershell
 git check-ignore -v -- "Platforms/Android/Resources/raw/mobilesli_root_ca.crt"
 ```
-
-Résultat attendu : une ligne qui indique que `.gitignore` ignore bien le fichier.
-
-Si la commande ne retourne rien, ne pas faire de commit. Corriger `.gitignore` avant de continuer.
 
 Vérifier aussi l'état Git :
 
@@ -125,136 +120,104 @@ git status --short --ignored
 
 Le certificat doit apparaître en ignoré, pas en fichier à commiter.
 
-## Ajout Git recommandé
+## Contrôle HTTPS final
 
-Ne pas utiliser `git add .` dans cette étape.
-
-Utiliser explicitement :
+Depuis le dossier maintenance mobile :
 
 ```powershell
-git add .gitignore
-
-git add Configuration/AppConfig.cs
-
-git add Services/SettingsService.cs
-
-git add Platforms/Android/AndroidManifest.xml
-
-git add Platforms/Android/Resources/xml/network_security_config.xml
-
-git add docs/05-securite/https-mobile-android.md
-
-git add scripts/security/copy-android-ca-local.ps1
+cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\maintenance\Mobile"
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\Verify-MobileSLI-AndroidHttps.ps1 -FinalHttpsOnly
+.\Verify-MobileSLI-AndroidHttps.ps1 -RunAdbChecks
 ```
 
-Puis contrôler ce qui est préparé :
-
-```powershell
-git diff --cached --name-only
-```
-
-La liste ne doit pas contenir :
+Résultat attendu :
 
 ```text
-Platforms/Android/Resources/raw/mobilesli_root_ca.crt
-*.key
-*.pfx
-*.p12
-*.jks
-*.keystore
-*.pem
+[OK] Verification HTTPS Android terminee.
 ```
 
-## Build local
+Le contrôle final doit confirmer :
 
-Le build Android échouera si `Platforms/Android/Resources/raw/mobilesli_root_ca.crt` n'existe pas localement, car `network_security_config.xml` référence `@raw/mobilesli_root_ca`.
+```text
+CA Android présente
+AppConfig.cs contient l'URL HTTPS cible active
+network_security_config.xml ne permet pas le trafic clair pour le domaine configuré
+AndroidManifest.xml ne permet pas le trafic clair globalement
+aucun fichier sensible interdit détecté
+aucun contournement TLS connu détecté
+aucune référence API active interdite détectée
+```
 
-Commandes :
+## Build Release
+
+Depuis le dépôt mobile :
 
 ```powershell
 cd "C:\Users\Logistique\Downloads\Stage\ProjetMobileTournee\mobile\MobileSLI"
 
 dotnet clean
-
 dotnet restore
-
 dotnet build -f net10.0-android -c Release
-
 dotnet publish -f net10.0-android -c Release
 ```
 
-## Installation téléphone
-
-Trouver l'APK :
+Trouver l'APK Release :
 
 ```powershell
 Get-ChildItem ".\bin\Release\net10.0-android" -Recurse -Filter "*.apk" |
-  Sort-Object LastWriteTime -Descending |
-  Select-Object -First 5 FullName, LastWriteTime
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 5 FullName, LastWriteTime
 ```
 
-Installer :
+Installer l'APK :
 
 ```powershell
-cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+$apk = Get-ChildItem ".\bin\Release\net10.0-android" -Recurse -Filter "*.apk" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1 -ExpandProperty FullName
 
+cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
 .\adb.exe devices -l
-.\adb.exe uninstall fr.sli.mobiletournee
-.\adb.exe install -r "CHEMIN_COMPLET_DE_L_APK.apk"
+.\adb.exe install -r $apk
 ```
 
-Si tu ne désinstalles pas l'application, la correction `SettingsService` migre automatiquement l'ancienne URL enregistrée `http://srvapi1.sli.local:5000` vers `https://srvapi1.sli.local`.
+## Tests fonctionnels à rejouer
 
-## Test fonctionnel
-
-Sur le téléphone :
+Après installation de l'APK, tester dans l'application :
 
 ```text
-URL API = https://srvapi1.sli.local
+ouverture de l'application
+connexion API
+chargement tournée
+choix camion
+choix tournée
+kilométrage départ
+liste des points de livraison
+détail point de livraison
+lien adresse livraison
+client fermé
+ROLLS_VIDES
+kilométrage arrivée
+synchronisation finale
+comportement Wi-Fi coupé
+comportement API indisponible
 ```
 
-Tester la connexion depuis l'écran d'accueil.
+## Règles à conserver
 
-Logs utiles si échec :
+Ne pas réactiver le mode HTTP transition.
 
-```powershell
-cd "C:\Program Files (x86)\Android\android-sdk\platform-tools"
+Ne pas remplacer `srvapi1.sli.local` par une adresse IP.
 
-.\adb.exe logcat -c
-.\adb.exe logcat | findstr /i "SSLHandshake CertPathValidator Trust anchor MobileSLI NetworkSecurity"
-```
+Ne pas ajouter de contournement TLS.
 
-Erreur typique si la CA n'est pas chargée :
+Ne pas versionner le certificat Android local.
 
-```text
-Trust anchor for certification path not found
-```
+Ne pas utiliser `git add .` pour les opérations de maintenance sensible.
 
-## Phase de transition
+## Statut documentaire
 
-La configuration fournie garde temporairement :
+Ce fichier remplace l'ancienne documentation de transition HTTPS Android.
 
-```text
-android:usesCleartextTraffic="true"
-cleartextTrafficPermitted="true"
-```
-
-Raison : conserver un secours HTTP explicite pendant les tests terrain, par exemple :
-
-```text
-http://srvapi1.sli.local:5000
-```
-
-Quand les tests HTTPS Android sont validés sur téléphone réel, durcir ensuite :
-
-```xml
-<domain-config cleartextTrafficPermitted="false">
-```
-
-Et dans `AndroidManifest.xml` :
-
-```xml
-android:usesCleartextTraffic="false"
-```
-
-Ne pas faire ce durcissement avant validation complète sur téléphone réel.
+Le fichier `docs/05-securite/https-mobile-android-final.md` reste une synthèse courte de l'état final validé.
