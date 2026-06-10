@@ -10,50 +10,49 @@ using MobileSLI.ViewModels;
 namespace MobileSLI;
 
 /// <summary>
-/// Configures and builds the MAUI application. This static class sets up dependency injection
-/// for all services, view models, and pages used throughout the MobileSLI app.
+/// Point de configuration MAUI de l'application mobile.
+/// Ce fichier centralise l'injection de dépendances : état applicatif, SQLite,
+/// services API, navigation, ViewModels et pages.
 /// </summary>
 public static class MauiProgram
 {
     /// <summary>
-    /// Service provider for the built application. Populated during app creation.
+    /// Fournisseur de services construit au démarrage.
+    /// À utiliser avec prudence : les écrans doivent privilégier l'injection par constructeur.
     /// </summary>
     public static IServiceProvider Services { get; private set; } = default!;
 
     /// <summary>
-    /// Creates and configures the MAUI application.
+    /// Crée l'application MAUI et enregistre les dépendances nécessaires au parcours mobile.
     /// </summary>
-    /// <returns>A fully built <see cref="MauiApp"/> instance.</returns>
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
 
-        // Register the main application class.
         builder
             .UseMauiApp<App>();
 
 #if DEBUG
-        // When debugging, enable debug logging to aid diagnosis.
+        // Journalisation de diagnostic uniquement en debug pour ne pas alourdir la version terrain.
         builder.Logging.AddDebug();
 #endif
 
-        // Register application services, view models and pages with the DI container.
         RegisterServices(builder.Services);
         RegisterViewModels(builder.Services);
         RegisterPages(builder.Services);
 
         var app = builder.Build();
 
-        // Store the service provider for later use.
         Services = app.Services;
 
         return app;
     }
 
     /// <summary>
-    /// Registers singleton services used by the application, including API clients and diagnostic services.
+    /// Enregistre les services partagés de l'application.
+    /// Les services sont en singleton car ils portent l'état courant, l'accès SQLite,
+    /// les clients API et la logique de synchronisation utilisée pendant toute la session mobile.
     /// </summary>
-    /// <param name="services">The service collection to populate.</param>
     private static void RegisterServices(IServiceCollection services)
     {
         services.AddSingleton<AppStateService>();
@@ -75,9 +74,9 @@ public static class MauiProgram
     }
 
     /// <summary>
-    /// Registers view models with transient scope so new instances are created per page instantiation.
+    /// Enregistre les ViewModels en transient afin d'éviter de conserver l'état d'un ancien écran
+    /// lors d'une nouvelle navigation.
     /// </summary>
-    /// <param name="services">The service collection to populate.</param>
     private static void RegisterViewModels(IServiceCollection services)
     {
         services.AddTransient<AccueilViewModel>();
@@ -94,9 +93,8 @@ public static class MauiProgram
     }
 
     /// <summary>
-    /// Registers each page type so it can be resolved by the dependency injection container.
+    /// Enregistre les pages afin qu'elles puissent recevoir leur ViewModel par injection de dépendances.
     /// </summary>
-    /// <param name="services">The service collection to populate.</param>
     private static void RegisterPages(IServiceCollection services)
     {
         services.AddTransient<AccueilPage>();
