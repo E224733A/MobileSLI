@@ -9,11 +9,9 @@ using MobileSLI.Models;
 namespace MobileSLI.Services.Api;
 
 /// <summary>
-/// Service dédié aux appels relatifs aux tournées. Cette version ajuste les
-/// délais d'appel pour la récupération des listes de tournées et des
-/// tournées complètes afin de respecter les nouvelles valeurs de timeout
-/// définies dans ApiTimeouts. Elle n'envoie plus de date de tournée lors des
-/// appels, conformément au contrat de l'API.
+/// Service dédié aux appels API liés aux tournées.
+/// Le mobile ne transmet pas la date métier dans les requêtes : l'API décide elle-même
+/// de la date autorisée afin d'éviter les écarts entre téléphone, serveur et règles d'exploitation.
 /// </summary>
 public sealed class TourneesApiService
 {
@@ -25,19 +23,15 @@ public sealed class TourneesApiService
     }
 
     /// <summary>
-    /// Date de tournée renvoyée par le dernier appel à l'API. Utile pour
-    /// connaître la date métier prise en compte par l'API sans l'envoyer dans
-    /// les requêtes.
+    /// Date de tournée renvoyée par le dernier appel API.
+    /// Elle sert à mémoriser la date métier réellement retenue côté serveur sans l'imposer depuis le mobile.
     /// </summary>
     public DateTime? LastDateTourneeApi { get; private set; }
 
     /// <summary>
-    /// Récupère la liste des tournées disponibles pour un livreur. Ne transmet
-    /// plus de date à l'API. Utilise ApiTimeouts.TourneesDisponibles (120s).
+    /// Récupère les tournées disponibles pour un livreur.
+    /// Le code livreur est le seul filtre envoyé, car la date de tournée est calculée par l'API.
     /// </summary>
-    /// <param name="codeLivreur">Code du livreur</param>
-    /// <param name="cancellationToken">Jeton d'annulation</param>
-    /// <returns>Liste triée des tournées disponibles</returns>
     public async Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
         string codeLivreur,
         CancellationToken cancellationToken = default)
@@ -103,8 +97,8 @@ public sealed class TourneesApiService
     }
 
     /// <summary>
-    /// Surcharge pour compatibilité interne. Le paramètre dateTournee est
-    /// ignoré car l'API calcule la date métier.
+    /// Surcharge de compatibilité : le paramètre dateTournee est volontairement ignoré.
+    /// Cette décision évite que le mobile force une date différente de celle autorisée par l'API.
     /// </summary>
     public Task<IReadOnlyList<TourneeResumeDto>> GetTourneesDuJourAsync(
         DateTime dateTournee,
@@ -114,6 +108,9 @@ public sealed class TourneesApiService
         return GetTourneesDuJourAsync(codeLivreur, cancellationToken);
     }
 
+    /// <summary>
+    /// Alias métier conservé pour les appels existants de chargement de tournées.
+    /// </summary>
     public Task<IReadOnlyList<TourneeResumeDto>> ChargerTourneesDuJourAsync(
         DateTime dateTournee,
         string codeLivreur,
@@ -123,9 +120,9 @@ public sealed class TourneesApiService
     }
 
     /// <summary>
-    /// Récupère la tournée complète du jour pour un code tournée et un livreur. Le
-    /// timeout est défini à ApiTimeouts.ChargementTournee (180s) et une
-    /// tentative supplémentaire sera effectuée après un délai de 1,5s.
+    /// Récupère le détail complet d'une tournée pour un livreur.
+    /// Cet appel utilise un timeout plus long et une tentative supplémentaire, car le chargement complet
+    /// contient toutes les lignes, les articles saisissables et les données nécessaires à la livraison.
     /// </summary>
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string codeTournee,
@@ -173,6 +170,9 @@ public sealed class TourneesApiService
         return tournee;
     }
 
+    /// <summary>
+    /// Surcharge de compatibilité : la date reçue n'est pas envoyée à l'API.
+    /// </summary>
     public Task<TourneeJourDto> GetTourneeJourAsync(
         DateTime dateTournee,
         string codeTournee,
@@ -182,6 +182,10 @@ public sealed class TourneesApiService
         return GetTourneeJourAsync(codeTournee, codeLivreur, cancellationToken);
     }
 
+    /// <summary>
+    /// Surcharge de compatibilité avec les anciens appels qui fournissaient la date sous forme de texte.
+    /// La date est seulement validée pour détecter une erreur d'appel, puis elle n'est pas transmise à l'API.
+    /// </summary>
     public async Task<TourneeJourDto> GetTourneeJourAsync(
         string dateTournee,
         string codeTournee,
@@ -203,6 +207,9 @@ public sealed class TourneesApiService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Alias métier conservé pour le chargement de la tournée du jour.
+    /// </summary>
     public Task<TourneeJourDto> ChargerTourneeDuJourAsync(
         DateTime dateTournee,
         string codeTournee,
@@ -215,6 +222,9 @@ public sealed class TourneesApiService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Alias métier conservé pour les écrans ou services utilisant le nom historique ChargerTourneeAsync.
+    /// </summary>
     public Task<TourneeJourDto> ChargerTourneeAsync(
         DateTime dateTournee,
         string codeTournee,
@@ -227,6 +237,10 @@ public sealed class TourneesApiService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Sécurise le DTO de tournée reçu de l'API en initialisant les sous-objets et collections nulles.
+    /// Cette normalisation évite des contrôles défensifs répétés dans les ViewModels et dans les pages MAUI.
+    /// </summary>
     private static void NormalizeTournee(TourneeJourDto tournee)
     {
         tournee.Livreur ??= new LivreurDto();
@@ -246,6 +260,10 @@ public sealed class TourneesApiService
         }
     }
 
+    /// <summary>
+    /// Convertit un code tournée en entier pour obtenir un tri naturel lorsque les codes sont numériques.
+    /// Les codes non numériques sont placés en fin de liste plutôt que de bloquer le chargement.
+    /// </summary>
     private static int TryParseInt(string? value)
     {
         return int.TryParse(
