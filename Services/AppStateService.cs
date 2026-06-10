@@ -5,15 +5,13 @@ using MobileSLI.Models;
 namespace MobileSLI.Services;
 
 /// <summary>
-/// Service qui centralise l'état courant de l'application mobile.
-/// Cette version ajoute un cache mémoire journalier pour les tournées disponibles
-/// et invalide ce cache automatiquement lorsque la date du jour change ou lorsque
-/// le livreur sélectionné change. Le cache est uniquement en mémoire et n'est
-/// jamais persistant afin de respecter le schéma SQLite existant.
+/// Service d'état courant conservé en mémoire pendant la session mobile.
+/// Il relie les écrans entre eux : livreur, camion, tournée sélectionnée, ligne courante,
+/// résultat de synchronisation, date métier API et cache journalier des tournées disponibles.
 /// </summary>
 public sealed class AppStateService
 {
-    // Cache des tournées disponibles pour un livreur donné et une journée.
+    // Cache mémoire uniquement : il accélère le retour à la liste des tournées sans modifier SQLite.
     private readonly List<TourneeResumeDto> _tourneesDisponiblesCache = new();
 
     /// <summary>
@@ -22,15 +20,16 @@ public sealed class AppStateService
     public string? TourneesDisponiblesCacheCodeLivreur { get; private set; }
 
     /// <summary>
-    /// Date locale (DateTime.Today) à laquelle le cache des tournées disponibles a été créé.
+    /// Date locale à laquelle le cache des tournées disponibles a été créé.
     /// </summary>
     public DateTime? TourneesDisponiblesCacheDate { get; private set; }
 
     private LivreurDto? _currentLivreur;
 
     /// <summary>
-    /// Livreur actuellement sélectionné. Changer le code livreur invalide le cache des tournées
-    /// et réinitialise le camion/trajet courant pour éviter de mélanger deux flux livreur.
+    /// Livreur actuellement sélectionné.
+    /// Un changement de livreur invalide le cache, le camion, le trajet et la tournée courante
+    /// afin d'éviter de mélanger les données de deux livreurs différents.
     /// </summary>
     public LivreurDto? CurrentLivreur
     {
@@ -54,47 +53,48 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Camion sélectionné pour le flux courant.
+    /// Camion sélectionné pour la tournée courante.
+    /// Cette valeur est aussi restaurable depuis SQLite via ApplyTrajetFromTournee.
     /// </summary>
     public CamionDto? CurrentCamion { get; set; }
 
     /// <summary>
-    /// Kilométrage départ saisi côté mobile. La validation stricte est prévue au lot 3.
+    /// Kilométrage de départ saisi au moment du choix camion.
     /// </summary>
     public int? KilometrageDepart { get; set; }
 
     /// <summary>
-    /// Date de validation du départ mobile. Elle sera alimentée dans un lot ultérieur.
+    /// Date et heure locales de validation du départ.
     /// </summary>
     public DateTime? DateDepartMobile { get; set; }
 
     /// <summary>
-    /// Kilométrage arrivée saisi côté mobile. La validation stricte est prévue au lot 5.
+    /// Kilométrage d'arrivée saisi avant l'envoi de la tournée.
     /// </summary>
     public int? KilometrageArrivee { get; set; }
 
     /// <summary>
-    /// Date de validation de l'arrivée mobile. Elle sera alimentée dans un lot ultérieur.
+    /// Date et heure locales de validation de l'arrivée.
     /// </summary>
     public DateTime? DateArriveeMobile { get; set; }
 
     /// <summary>
-    /// Tournée résumée actuellement sélectionnée.
+    /// Tournée résumée actuellement sélectionnée dans le flux de chargement.
     /// </summary>
     public TourneeResumeDto? SelectedTournee { get; set; }
 
     /// <summary>
-    /// Identifiant interne de la tournée courante chargée en local.
+    /// Identifiant SQLite de la tournée actuellement chargée localement.
     /// </summary>
     public int CurrentTourneeId { get; set; }
 
     /// <summary>
-    /// Identifiant interne de la ligne actuellement sélectionnée.
+    /// Identifiant SQLite de la ligne actuellement ouverte dans l'écran détail.
     /// </summary>
     public int SelectedLigneId { get; set; }
 
     /// <summary>
-    /// Résultat de la dernière synchronisation exécutée.
+    /// Dernier résultat de synchronisation, utilisé par les écrans de résultat ou d'erreur.
     /// </summary>
     public OperationResult? LastSyncResult { get; set; }
 
@@ -117,8 +117,8 @@ public sealed class AppStateService
     public bool HasCheckedActiveTourneeOnStartup { get; set; }
 
     /// <summary>
-    /// Réinitialise les données camion/trajet temporaires du flux courant.
-    /// Cette méthode ne touche ni à SQLite ni à la synchronisation finale.
+    /// Réinitialise uniquement les données camion/trajet du flux courant.
+    /// Cette méthode ne supprime rien dans SQLite : elle nettoie seulement l'état mémoire.
     /// </summary>
     public void ClearTrajet()
     {
@@ -130,8 +130,9 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Recharge les données trajet persistées dans une tournée SQLite locale.
-    /// Cette méthode ne modifie pas le livreur, la tournée sélectionnée ni les lignes.
+    /// Recharge en mémoire les informations de trajet persistées dans une tournée SQLite.
+    /// Cette méthode est utilisée pour reprendre une tournée après navigation ou redémarrage,
+    /// sans perdre le camion et les kilométrages déjà saisis.
     /// </summary>
     public void ApplyTrajetFromTournee(LocalTournee tournee)
     {
@@ -155,9 +156,8 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Determines whether the provided <paramref name="tournee"/> contains persisted truck information.
-    /// It returns <c>true</c> if any of the IdCamion, CodeCamion or Immatriculation properties are non-empty;
-    /// otherwise <c>false</c>.
+    /// Détermine si une tournée locale contient assez d'informations pour reconstituer un camion sélectionné.
+    /// L'immatriculation seule est acceptée pour couvrir certains anciens enregistrements ou données partielles.
     /// </summary>
     private static bool HasPersistedCamion(LocalTournee tournee)
     {
@@ -167,12 +167,8 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Détermine si un cache de tournées disponibles est présent pour le livreur spécifié
-    /// et pour la journée courante. La comparaison de date est effectuée sur DateTime.Today
-    /// afin de ne pas dépendre de l'heure.
+    /// Vérifie si le cache des tournées disponibles correspond au livreur demandé et à la date du jour.
     /// </summary>
-    /// <param name="codeLivreur">Code du livreur.</param>
-    /// <returns>True si un cache valide existe ; sinon false.</returns>
     public bool HasTourneesDisponiblesCacheForToday(string codeLivreur)
     {
         return _tourneesDisponiblesCache.Count > 0
@@ -181,16 +177,14 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Obtient un aperçu en lecture seule du cache des tournées disponibles.
+    /// Retourne le cache mémoire des tournées disponibles en lecture seule.
     /// </summary>
     public IReadOnlyList<TourneeResumeDto> GetTourneesDisponiblesCache() => _tourneesDisponiblesCache;
 
     /// <summary>
-    /// Enregistre dans le cache en mémoire la liste des tournées disponibles pour le livreur indiqué.
-    /// La date est fixée sur DateTime.Today afin de permettre une invalidation automatique le lendemain.
+    /// Enregistre en mémoire la liste des tournées disponibles pour un livreur.
+    /// La date du cache est fixée au jour courant pour éviter une réutilisation le lendemain.
     /// </summary>
-    /// <param name="codeLivreur">Code du livreur.</param>
-    /// <param name="tournees">Liste des tournées à stocker.</param>
     public void SaveTourneesDisponiblesCache(string codeLivreur, IEnumerable<TourneeResumeDto> tournees)
     {
         _tourneesDisponiblesCache.Clear();
@@ -200,7 +194,7 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Vide le cache mémoire des tournées disponibles et réinitialise les métadonnées associées.
+    /// Vide le cache mémoire des tournées disponibles et ses métadonnées.
     /// </summary>
     public void ClearTourneesDisponiblesCache()
     {
@@ -210,8 +204,8 @@ public sealed class AppStateService
     }
 
     /// <summary>
-    /// Supprime automatiquement le cache des appels API journaliers si la date enregistrée n'est pas égale à aujourd'hui.
-    /// Doit être appelé avant d'utiliser le cache afin de garantir que les données ne sont pas réutilisées d'un jour sur l'autre.
+    /// Supprime le cache journalier si la date enregistrée n'est plus la date du jour.
+    /// À appeler avant d'utiliser le cache pour éviter de présenter d'anciennes tournées au livreur.
     /// </summary>
     public void ClearDailyApiCacheIfNeeded()
     {
