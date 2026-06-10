@@ -3,6 +3,11 @@ using MobileSLI.Models;
 
 namespace MobileSLI.Services.Api;
 
+/// <summary>
+/// Service dédié aux endpoints de santé de l'API.
+/// Il permet au mobile de distinguer l'accessibilité générale de l'API,
+/// l'accès à ABSSolute côté serveur et les contrôles spécifiques au module mobile.
+/// </summary>
 public sealed class HealthApiService
 {
     private readonly ApiClient _apiClient;
@@ -12,6 +17,11 @@ public sealed class HealthApiService
         _apiClient = apiClient;
     }
 
+    /// <summary>
+    /// Teste rapidement la disponibilité de l'API principale.
+    /// Cette méthode retourne un <see cref="OperationResult"/> lisible par les écrans,
+    /// au lieu de propager directement les exceptions réseau à l'interface utilisateur.
+    /// </summary>
     public async Task<OperationResult> TestConnectionAsync(
         CancellationToken cancellationToken = default)
     {
@@ -46,6 +56,10 @@ public sealed class HealthApiService
         }
     }
 
+    /// <summary>
+    /// Interroge le health check général de l'API.
+    /// Le corps brut est conservé pour l'affichage ou le diagnostic réseau.
+    /// </summary>
     public async Task<ApiHealthResult> GetHealthAsync(
         CancellationToken cancellationToken = default)
     {
@@ -61,6 +75,10 @@ public sealed class HealthApiService
         };
     }
 
+    /// <summary>
+    /// Interroge le health check ABSSolute exposé par l'API.
+    /// Ce contrôle vérifie indirectement que l'API peut accéder aux données centrales nécessaires au chargement des tournées.
+    /// </summary>
     public async Task<ApiHealthResult> GetAbssoluteHealthAsync(
         CancellationToken cancellationToken = default)
     {
@@ -76,6 +94,10 @@ public sealed class HealthApiService
         };
     }
 
+    /// <summary>
+    /// Interroge le health check propre au module mobile.
+    /// À utiliser pour diagnostiquer spécifiquement la disponibilité des fonctions consommées par l'application Android.
+    /// </summary>
     public async Task<ApiHealthResult> GetMobileHealthAsync(
         CancellationToken cancellationToken = default)
     {
@@ -91,6 +113,10 @@ public sealed class HealthApiService
         };
     }
 
+    /// <summary>
+    /// Exécute les health checks avec un timeout court et sans retry.
+    /// Un health check doit répondre vite : multiplier les tentatives masquerait un vrai problème réseau ou serveur.
+    /// </summary>
     private Task<ApiRawResponse> GetHealthRawAsync(
         string route,
         CancellationToken cancellationToken)
@@ -104,6 +130,10 @@ public sealed class HealthApiService
     }
 }
 
+/// <summary>
+/// Résultat brut d'un contrôle de santé API.
+/// Le corps de réponse n'est pas interprété ici afin de rester compatible avec différents formats de diagnostic serveur.
+/// </summary>
 public sealed class ApiHealthResult
 {
     public bool IsSuccess { get; set; }
