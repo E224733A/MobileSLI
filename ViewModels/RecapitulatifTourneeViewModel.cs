@@ -10,6 +10,11 @@ using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de l'écran récapitulatif avant synchronisation.
+/// Il restaure le trajet camion, calcule les totaux, contrôle les validations locales
+/// et lance l'envoi définitif vers l'API.
+/// </summary>
 public sealed class RecapitulatifTourneeViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -163,6 +168,9 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
     public ICommand SendCommand { get; }
     public ICommand BackCommand { get; }
 
+    /// <summary>
+    /// Charge la tournée locale et prépare les informations affichées avant envoi.
+    /// </summary>
     public async Task LoadAsync()
     {
         ErrorMessage = string.Empty;
@@ -175,6 +183,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             return;
         }
 
+        // Restaure camion, kilométrage départ et éventuelle arrivée déjà saisie après reprise de tournée.
         await _databaseService.RestaurerTrajetDansAppStateAsync(_tournee.Id, _appStateService);
 
         if (_appStateService.KilometrageArrivee.HasValue && string.IsNullOrWhiteSpace(KilometrageArriveeText))
@@ -182,6 +191,7 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
             KilometrageArriveeText = _appStateService.KilometrageArrivee.Value.ToString(CultureInfo.InvariantCulture);
         }
 
+        // Sécurité métier : les clients fermés sont renormalisés avant affichage et avant envoi.
         await _databaseService.NormalizeClosedLinesAsync(_tournee.Id);
 
         var lignes = await _databaseService.GetLignesAsync(_tournee.Id);
@@ -226,6 +236,9 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         OnPropertyChanged(nameof(TrajetDepartErreurText));
     }
 
+    /// <summary>
+    /// Teste l'accès à l'API avant une synchronisation.
+    /// </summary>
     private async Task<bool> TestConnectionAsync(bool showAlert)
     {
         if (IsBusy)
@@ -290,6 +303,9 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Lance la synchronisation définitive après les validations locales, réseau et utilisateur.
+    /// </summary>
     private async Task SendAsync()
     {
         if (IsBusy)
@@ -380,6 +396,9 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Valide le kilométrage arrivée et la présence des informations de départ.
+    /// </summary>
     private bool TryValidateKilometrageArrivee(out int kilometrageArrivee, out string validationMessage)
     {
         kilometrageArrivee = 0;
@@ -434,6 +453,10 @@ public sealed class RecapitulatifTourneeViewModel : BaseViewModel
         return true;
     }
 
+    /// <summary>
+    /// Contrôle les blocages locaux avant envoi : tournée courante, points encore à faire
+    /// et commentaires obligatoires pour Non fait ou Anomalie.
+    /// </summary>
     private async Task<string?> GetLocalBlockingValidationMessageAsync()
     {
         if (_appStateService.CurrentTourneeId <= 0)
