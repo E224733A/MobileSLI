@@ -1,54 +1,54 @@
 namespace MobileSLI.Models;
 
 /// <summary>
-/// Response DTO containing the list of available trucks and the schema version.
+/// Réponse API contenant la liste des camions disponibles et la version du contrat JSON.
 /// </summary>
 public sealed class CamionsDisponiblesResponseDto
 {
     /// <summary>
-    /// Version of the JSON schema used by the API.
+    /// Version du schéma JSON utilisée par l'API pour la liste des camions.
     /// </summary>
     public string SchemaVersion { get; set; } = "1.3";
 
     /// <summary>
-    /// List of available trucks returned from the API.
+    /// Camions actifs disponibles pour rattacher une tournée mobile à un trajet camion.
     /// </summary>
     public List<CamionDto> Camions { get; set; } = new();
 }
 
 /// <summary>
-/// Data Transfer Object representing a truck (camion).
+/// Camion sélectionnable dans le mobile avant le chargement ou la synchronisation de tournée.
 /// </summary>
 public sealed class CamionDto
 {
     /// <summary>
-    /// Unique identifier of the truck.
+    /// Identifiant technique du camion fourni par l'API.
     /// </summary>
     public string IdCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// Company code assigned to the truck.
+    /// Code fonctionnel du camion utilisé dans les échanges avec l'API.
     /// </summary>
     public string CodeCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// Human-readable label for the truck.
+    /// Libellé métier du camion.
     /// </summary>
     public string LibelleCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// License plate number.
+    /// Immatriculation affichée en priorité à l'utilisateur lorsqu'elle est disponible.
     /// </summary>
     public string Immatriculation { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indicates whether the truck is active and available.
+    /// Indique si le camion peut être proposé dans la liste de sélection mobile.
     /// </summary>
     public bool EstActif { get; set; }
 
     /// <summary>
-    /// Derived display name for the truck. Prefers showing both immatriculation and libelle when both are present
-    /// and distinct. Otherwise falls back to immatriculation, libelle, code, or finally the identifier.
+    /// Libellé d'affichage robuste pour l'écran de choix camion.
+    /// Priorité : immatriculation + libellé, puis immatriculation, libellé, code, identifiant.
     /// </summary>
     public string NomAffiche
     {
