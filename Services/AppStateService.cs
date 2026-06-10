@@ -129,8 +129,6 @@ public sealed class AppStateService
         DateArriveeMobile = null;
     }
 
-
-
     /// <summary>
     /// Recharge les données trajet persistées dans une tournée SQLite locale.
     /// Cette méthode ne modifie pas le livreur, la tournée sélectionnée ni les lignes.
@@ -156,6 +154,11 @@ public sealed class AppStateService
         DateArriveeMobile = tournee.DateArriveeMobile;
     }
 
+    /// <summary>
+    /// Determines whether the provided <paramref name="tournee"/> contains persisted truck information.
+    /// It returns <c>true</c> if any of the IdCamion, CodeCamion or Immatriculation properties are non-empty;
+    /// otherwise <c>false</c>.
+    /// </summary>
     private static bool HasPersistedCamion(LocalTournee tournee)
     {
         return !string.IsNullOrWhiteSpace(tournee.IdCamion)
