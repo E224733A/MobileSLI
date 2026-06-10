@@ -1,32 +1,33 @@
 namespace MobileSLI.Models;
 
 /// <summary>
-/// Defines constants representing the status of a delivery attempt (statut de passage).
+/// Codes de statut de passage utilisés pour qualifier le résultat d'un arrêt de tournée.
+/// Ces valeurs sont envoyées à l'API lors de la synchronisation.
 /// </summary>
 public static class StatutPassageConstants
 {
     /// <summary>
-    /// Status indicating the stop is still to be done (à faire).
+    /// Arrêt pas encore traité par le livreur.
     /// </summary>
     public const string AFaire = "A_FAIRE";
 
     /// <summary>
-    /// Status indicating the stop has been completed (fait).
+    /// Arrêt réalisé normalement.
     /// </summary>
     public const string Fait = "FAIT";
 
     /// <summary>
-    /// Status indicating the stop was not performed (non fait).
+    /// Arrêt non réalisé, par exemple dans le cas d'un client fermé.
     /// </summary>
     public const string NonFait = "NON_FAIT";
 
     /// <summary>
-    /// Status indicating an anomaly occurred.
+    /// Arrêt réalisé avec anomalie ou situation particulière.
     /// </summary>
     public const string Anomalie = "ANOMALIE";
 
     /// <summary>
-    /// Collection of all possible passage statuses. Useful for validation or enumeration.
+    /// Liste des statuts autorisés pour les validations locales.
     /// </summary>
     public static readonly string[] All =
     {
@@ -38,41 +39,48 @@ public static class StatutPassageConstants
 }
 
 /// <summary>
-/// Represents the possible local states of a delivery tour (tournée) on the device.
-/// These values track the lifecycle of a tour from not loaded to synchronized or abandoned.
+/// États locaux d'une tournée stockée sur le téléphone.
+/// Ils décrivent le cycle de vie local : chargement, saisie, synchronisation, erreur ou abandon.
 /// </summary>
 public static class TourneeLocalStatus
 {
     /// <summary>
-    /// Tour has not been loaded yet.
+    /// Tournée pas encore chargée sur le téléphone.
     /// </summary>
     public const string NonChargee = "NON_CHARGEE";
+
     /// <summary>
-    /// Tour has been loaded onto the device.
+    /// Tournée chargée localement mais pas encore commencée.
     /// </summary>
     public const string Chargee = "CHARGEE";
+
     /// <summary>
-    /// Tour is currently in progress.
+    /// Tournée en cours de saisie sur le téléphone.
     /// </summary>
     public const string EnCours = "EN_COURS";
+
     /// <summary>
-    /// Tour is finished locally and ready to be synchronized with the server.
+    /// Tournée terminée localement et prête à être envoyée à l'API.
     /// </summary>
     public const string PreteASynchroniser = "PRETE_A_SYNCHRONISER";
+
     /// <summary>
-    /// Tour has been successfully synchronized with the server.
+    /// Tournée envoyée et acceptée par l'API.
     /// </summary>
     public const string Synchronisee = "SYNCHRONISEE";
+
     /// <summary>
-    /// An error occurred during synchronization.
+    /// Tournée en erreur après une tentative de synchronisation.
     /// </summary>
     public const string ErreurSynchronisation = "ERREUR_SYNCHRONISATION";
+
     /// <summary>
-    /// Tour was already synchronized previously.
+    /// Tournée déjà connue comme synchronisée côté API.
     /// </summary>
     public const string DejaSynchronisee = "DEJA_SYNCHRONISEE";
+
     /// <summary>
-    /// Tour has expired and is no longer valid.
+    /// Tournée expirée ou refusée car elle ne correspond plus à la date autorisée par l'API.
     /// </summary>
     public const string Expiree = "EXPIREE";
 
@@ -85,20 +93,22 @@ public static class TourneeLocalStatus
 }
 
 /// <summary>
-/// Defines codes representing different types of articles/items handled during deliveries.
+/// Codes articles manipulés par le mobile pour les quantités livrées et récupérées.
 /// </summary>
 public static class ArticleCodes
 {
     /// <summary>
-    /// Code for rolls (chariots).
+    /// Code des chariots.
     /// </summary>
     public const string Rolls = "ROLLS";
+
     /// <summary>
-    /// Code for conveyor belts (tapis).
+    /// Code des tapis.
     /// </summary>
     public const string Tapis = "TAPIS";
+
     /// <summary>
-    /// Code for bags (sacs).
+    /// Code des sacs.
     /// </summary>
     public const string Sacs = "SACS";
 
