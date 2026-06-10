@@ -2,8 +2,19 @@ using MobileSLI.Models;
 
 namespace MobileSLI.Services;
 
+/// <summary>
+/// Simple in-memory service that supplies hard-coded demo data. It is used during
+/// development or testing to simulate API responses without hitting a backend.
+/// The data returned here should not be used in production.
+/// </summary>
 public sealed class DemoDataService
 {
+    /// <summary>
+    /// Returns a demo <see cref="LivreurDto"/> when the supplied code matches one of the
+    /// hard-coded values. Codes are trimmed and compared as strings. Returns
+    /// <c>null</c> for unrecognized codes.
+    /// </summary>
+    /// <param name="codeLivreur">Livreur code entered by the user.</param>
     public LivreurDto? FindLivreurByCode(string codeLivreur)
     {
         var normalized = (codeLivreur ?? string.Empty).Trim();
@@ -16,6 +27,10 @@ public sealed class DemoDataService
         };
     }
 
+    /// <summary>
+    /// Gets a list of summary data for available tournées. This collection is static
+    /// and intended solely for demo purposes.
+    /// </summary>
     public List<TourneeResumeDto> GetTourneesDisponibles()
     {
         return new List<TourneeResumeDto>
@@ -26,6 +41,13 @@ public sealed class DemoDataService
         };
     }
 
+    /// <summary>
+    /// Builds a complete demo <see cref="TourneeJourDto"/> instance for a given tour and driver.
+    /// The returned object contains static article definitions and a list of sample lines.
+    /// </summary>
+    /// <param name="tournee">The summary of the tour to build details for.</param>
+    /// <param name="livreur">The driver assigned to this tour.</param>
+    /// <returns>A fully populated demo tour with lines for the current date.</returns>
     public TourneeJourDto BuildTourneeJour(TourneeResumeDto tournee, LivreurDto livreur)
     {
         var date = DateTime.Today;
