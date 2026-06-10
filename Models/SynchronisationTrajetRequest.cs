@@ -1,72 +1,72 @@
 namespace MobileSLI.Models;
 
 /// <summary>
-/// Represents a synchronization request for an entire tour along with the associated trip (trajet).
-/// Combines the general tour information with driver, device, trip details, and the list of delivery lines.
+/// Contrat de synchronisation complet incluant la tournée et le trajet camion.
+/// Ce payload est utilisé lorsque l'API attend les informations de camion et de kilométrage
+/// en plus des lignes de livraison saisies par le livreur.
 /// </summary>
 public sealed class SynchronisationTourneeAvecTrajetRequest
 {
     /// <summary>
-    /// Version of the JSON schema used by the API.
+    /// Version du contrat JSON attendue par l'API.
     /// </summary>
     public string SchemaVersion { get; set; } = "1.3";
 
     /// <summary>
-    /// Unique identifier for the synchronization request.
+    /// Identifiant unique de la synchronisation.
     /// </summary>
     public string IdSynchronisation { get; set; } = string.Empty;
 
     /// <summary>
-    /// Date of the tour being synchronized.
+    /// Date métier de la tournée envoyée à l'API au format attendu par le contrat mobile.
     /// </summary>
     public string DateTournee { get; set; } = string.Empty;
 
     /// <summary>
-    /// Code identifying the tour.
+    /// Code de la tournée synchronisée.
     /// </summary>
     public string CodeTournee { get; set; } = string.Empty;
 
     /// <summary>
-    /// Human-readable label for the tour.
+    /// Libellé de la tournée synchronisée.
     /// </summary>
     public string LibelleTournee { get; set; } = string.Empty;
 
     /// <summary>
-    /// Status of the synchronization request.
+    /// Statut envoyé à l'API pour indiquer que la synchronisation est transmise par le mobile.
     /// </summary>
     public string StatutSynchronisation { get; set; } = "ENVOYEE";
 
     /// <summary>
-    /// Driver information included in the request.
+    /// Informations du livreur associées à la tournée.
     /// </summary>
     public SynchronisationLivreurRequest Livreur { get; set; } = new();
 
     /// <summary>
-    /// Device information included in the request.
+    /// Informations du téléphone et de l'application au moment de l'envoi.
     /// </summary>
     public SynchronisationMobileRequest Mobile { get; set; } = new();
 
     /// <summary>
-    /// Trip details such as mileage and dates.
+    /// Informations du camion et des kilométrages de départ et d'arrivée.
     /// </summary>
     public SynchronisationTrajetRequest Trajet { get; set; } = new();
 
     /// <summary>
-    /// Optional global comment for the synchronization.
+    /// Commentaire global optionnel associé à la synchronisation.
     /// </summary>
     public string? CommentaireGlobal { get; set; }
 
     /// <summary>
-    /// Collection of line-level synchronization requests included in the tour.
+    /// Lignes de tournée avec les saisies finales du livreur.
     /// </summary>
     public List<SynchronisationLigneRequest> Lignes { get; set; } = new();
 
     /// <summary>
-    /// Creates a new request by combining an existing tour synchronization request with trip details.
+    /// Construit le nouveau contrat avec trajet à partir du contrat de tournée existant.
+    /// Cette méthode évite de dupliquer tout le mapping des lignes et limite le risque d'écart
+    /// entre les deux formats de synchronisation.
     /// </summary>
-    /// <param name="request">Base tour synchronization request.</param>
-    /// <param name="trajet">Trip details to include.</param>
-    /// <returns>A new <see cref="SynchronisationTourneeAvecTrajetRequest"/>.</returns>
     public static SynchronisationTourneeAvecTrajetRequest From(
         SynchronisationTourneeRequest request,
         SynchronisationTrajetRequest trajet)
@@ -92,59 +92,59 @@ public sealed class SynchronisationTourneeAvecTrajetRequest
 }
 
 /// <summary>
-/// Contains trip-level information included in a synchronization request.
-/// Records the truck used and the starting/ending mileage and dates.
+/// Informations de trajet envoyées lors de la synchronisation.
+/// Elles permettent de rattacher la tournée à un camion et aux kilométrages saisis sur le mobile.
 /// </summary>
 public sealed class SynchronisationTrajetRequest
 {
     /// <summary>
-    /// Information about the truck used for the trip.
+    /// Camion sélectionné pour la tournée.
     /// </summary>
     public SynchronisationCamionRequest Camion { get; set; } = new();
 
     /// <summary>
-    /// Starting odometer reading.
+    /// Kilométrage saisi au départ de la tournée.
     /// </summary>
     public int KilometrageDepart { get; set; }
 
     /// <summary>
-    /// Ending odometer reading.
+    /// Kilométrage saisi à l'arrivée de la tournée.
     /// </summary>
     public int KilometrageArrivee { get; set; }
 
     /// <summary>
-    /// Departure date recorded on the mobile device.
+    /// Date et heure de départ enregistrées par le mobile.
     /// </summary>
     public string DateDepartMobile { get; set; } = string.Empty;
 
     /// <summary>
-    /// Arrival date recorded on the mobile device.
+    /// Date et heure d'arrivée enregistrées par le mobile.
     /// </summary>
     public string DateArriveeMobile { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Represents the truck information included in a synchronization request.
+/// Informations camion incluses dans le contrat de synchronisation.
 /// </summary>
 public sealed class SynchronisationCamionRequest
 {
     /// <summary>
-    /// Unique identifier of the truck.
+    /// Identifiant technique du camion.
     /// </summary>
     public string IdCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// Code assigned to the truck.
+    /// Code fonctionnel du camion.
     /// </summary>
     public string CodeCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// Human-readable label for the truck.
+    /// Libellé métier du camion.
     /// </summary>
     public string LibelleCamion { get; set; } = string.Empty;
 
     /// <summary>
-    /// License plate number of the truck.
+    /// Immatriculation du camion.
     /// </summary>
     public string Immatriculation { get; set; } = string.Empty;
 }
