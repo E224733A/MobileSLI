@@ -8,6 +8,11 @@ using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de l'écran d'erreur de synchronisation.
+/// Il distingue les erreurs corrigeables, les erreurs de validation, les refus de date
+/// et les cas déjà synchronisés pour éviter les renvois dangereux.
+/// </summary>
 public sealed class SyncErrorViewModel : BaseViewModel
 {
     private const string DateTourneeNonAutoriseeCode = "DATE_TOURNEE_NON_AUTORISEE";
@@ -76,6 +81,10 @@ public sealed class SyncErrorViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Autorise une nouvelle tentative uniquement pour les erreurs potentiellement temporaires.
+    /// Les validations, dates expirées et déjà synchronisés sont volontairement non rejouables.
+    /// </summary>
     public bool CanRetry => _appStateService.LastSyncResult?.AlreadySynchronized != true
                             && !IsValidationError()
                             && !IsDateTourneeNonAutorisee()
@@ -87,6 +96,9 @@ public sealed class SyncErrorViewModel : BaseViewModel
 
     public ICommand BackRecapCommand { get; }
 
+    /// <summary>
+    /// Rafraîchit l'affichage après modification du dernier résultat de synchronisation.
+    /// </summary>
     public void Refresh()
     {
         OnPropertyChanged(nameof(PageTitle));
@@ -102,6 +114,10 @@ public sealed class SyncErrorViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Retente l'envoi après vérification de l'accès API.
+    /// La tentative n'est pas lancée si l'erreur précédente est fonctionnellement bloquante.
+    /// </summary>
     private async Task RetryAsync()
     {
         if (IsBusy || !CanRetry)
@@ -160,6 +176,10 @@ public sealed class SyncErrorViewModel : BaseViewModel
         return string.Equals(result.Code, ValidationErrorCode, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Détecte un refus de date métier retourné par l'API.
+    /// Ce cas ne doit pas être rejoué : il faut recharger les tournées du jour.
+    /// </summary>
     private bool IsDateTourneeNonAutorisee()
     {
         var result = _appStateService.LastSyncResult;
@@ -174,6 +194,10 @@ public sealed class SyncErrorViewModel : BaseViewModel
                || ContainsDateTourneeNonAutorisee(result.TechnicalDetail);
     }
 
+    /// <summary>
+    /// Détecte une tournée expirée localement.
+    /// Ce cas indique que le payload local ne correspond plus à la journée autorisée.
+    /// </summary>
     private bool IsTourneeLocaleExpiree()
     {
         var result = _appStateService.LastSyncResult;
