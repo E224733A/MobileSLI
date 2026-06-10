@@ -3,28 +3,27 @@ using System;
 namespace MobileSLI.Domain.Rules;
 
 /// <summary>
-/// Provides helper methods for handling deliveries when the client is closed (client fermé).
-/// Contains constants for statuses and methods to normalize delivery line and quantity states.
+/// Règles métier appliquées lorsqu'un client est signalé fermé.
+/// Cette classe centralise la logique pour éviter que DatabaseService, les ViewModels
+/// ou la synchronisation appliquent des variantes différentes de la même règle.
 /// </summary>
 public static class ClientFermeRules
 {
     /// <summary>
-    /// Status used when a closed client was not visited.
+    /// Statut obligatoire pour une ligne client fermé.
     /// </summary>
     public const string StatutPassageClientFerme = "NON_FAIT";
 
     /// <summary>
-    /// Automatic comment inserted by the delivery person when the client is closed.
+    /// Commentaire standard appliqué automatiquement sur une ligne client fermé.
     /// </summary>
     public const string CommentaireLivreurAutomatique = "Client fermé";
 
     /// <summary>
-    /// Returns a normalized line state when the client is closed. If the client is not closed, the original state is returned.
-    /// When closed, this method updates the status, marks the line as validated, sets the validation time, and applies a default comment.
+    /// Normalise l'état d'une ligne lorsque le client est fermé.
+    /// Règle métier : statut NON_FAIT, ligne validée, heure de validation présente
+    /// et commentaire livreur standard. Si le client n'est pas fermé, l'état est conservé.
     /// </summary>
-    /// <param name="ligne">Current state of the delivery line.</param>
-    /// <param name="now">Optional override for the current time. Used for testing.</param>
-    /// <returns>The normalized line state.</returns>
     public static ClientFermeLineState NormalizeLine(
         ClientFermeLineState ligne,
         DateTime? now = null)
@@ -44,12 +43,10 @@ public static class ClientFermeRules
     }
 
     /// <summary>
-    /// Returns a normalized quantity state when the client is closed. If the client is not closed, the original state is returned.
-    /// When closed, both delivered and recovered quantities are set to zero.
+    /// Normalise les quantités d'une ligne client fermé.
+    /// Règle métier : aucune quantité livrée ou récupérée ne doit être envoyée pour un client fermé.
+    /// Si le client n'est pas fermé, les quantités sont conservées.
     /// </summary>
-    /// <param name="quantite">Current quantity state.</param>
-    /// <param name="estFerme">Whether the client is closed.</param>
-    /// <returns>The normalized quantity state.</returns>
     public static ClientFermeQuantiteState NormalizeQuantite(
         ClientFermeQuantiteState quantite,
         bool estFerme)
@@ -68,13 +65,13 @@ public static class ClientFermeRules
 }
 
 /// <summary>
-/// Represents the state of a delivery line for a client.
+/// État minimal d'une ligne nécessaire pour appliquer la règle client fermé.
 /// </summary>
-/// <param name="EstFerme">Indicates if the client is closed.</param>
-/// <param name="StatutPassage">Delivery status code.</param>
-/// <param name="EstValidee">Whether the delivery is validated.</param>
-/// <param name="HeureValidation">Time of validation.</param>
-/// <param name="CommentaireLivreur">Comment left by the delivery person.</param>
+/// <param name="EstFerme">Indique si le client est fermé.</param>
+/// <param name="StatutPassage">Statut de passage courant.</param>
+/// <param name="EstValidee">Indique si la ligne est validée.</param>
+/// <param name="HeureValidation">Heure de validation de la ligne.</param>
+/// <param name="CommentaireLivreur">Commentaire saisi ou appliqué pour le livreur.</param>
 public readonly record struct ClientFermeLineState(
     bool EstFerme,
     string? StatutPassage,
@@ -83,10 +80,10 @@ public readonly record struct ClientFermeLineState(
     string? CommentaireLivreur);
 
 /// <summary>
-/// Represents the quantities delivered and recovered for a client.
+/// État minimal des quantités nécessaire pour appliquer la règle client fermé.
 /// </summary>
-/// <param name="QuantiteLivree">Delivered quantity.</param>
-/// <param name="QuantiteRecuperee">Recovered quantity.</param>
+/// <param name="QuantiteLivree">Quantité livrée.</param>
+/// <param name="QuantiteRecuperee">Quantité récupérée.</param>
 public readonly record struct ClientFermeQuantiteState(
     int QuantiteLivree,
     int QuantiteRecuperee);
