@@ -1,52 +1,51 @@
 namespace MobileSLI.Models;
 
 /// <summary>
-/// Represents the result of an operation such as a synchronization or API call.
-/// Contains success state, any relevant codes or messages, and contextual details.
+/// Résultat applicatif commun pour les opérations métier : appel API, synchronisation,
+/// contrôle de connexion ou traitement local.
+/// Cette classe évite de faire remonter directement les exceptions techniques jusqu'aux écrans.
 /// </summary>
 public sealed class OperationResult
 {
     /// <summary>
-    /// Indicates whether the operation succeeded.
+    /// Indique si l'opération s'est terminée correctement.
     /// </summary>
     public bool Success { get; init; }
 
     /// <summary>
-    /// Indicates whether the operation had already been synchronized previously.
+    /// Indique que l'échec correspond à une tournée déjà synchronisée côté API.
+    /// Ce cas est traité différemment d'une erreur réseau ou d'une erreur de validation.
     /// </summary>
     public bool AlreadySynchronized { get; init; }
 
     /// <summary>
-    /// Optional code describing the result or error.
+    /// Code fonctionnel ou technique retourné par l'API ou par le traitement local.
     /// </summary>
     public string Code { get; init; } = string.Empty;
 
     /// <summary>
-    /// User-facing message describing the outcome.
+    /// Message affichable à l'utilisateur ou utilisé dans l'écran de résultat.
     /// </summary>
     public string Message { get; init; } = string.Empty;
 
     /// <summary>
-    /// Technical details for debugging or logging purposes.
+    /// Détail technique conservé pour le diagnostic, sans être nécessairement affiché au livreur.
     /// </summary>
     public string TechnicalDetail { get; init; } = string.Empty;
 
     /// <summary>
-    /// Timestamp at which the result was produced.
+    /// Date locale de production du résultat.
     /// </summary>
     public DateTime DateResult { get; init; } = DateTime.Now;
 
     /// <summary>
-    /// Number of lines (records) that were sent during the operation.
+    /// Nombre de lignes envoyées lors d'une synchronisation réussie.
     /// </summary>
     public int LignesEnvoyees { get; init; }
 
     /// <summary>
-    /// Factory method to create a successful result.
+    /// Construit un résultat de succès standard.
     /// </summary>
-    /// <param name="message">Success message to include.</param>
-    /// <param name="lignesEnvoyees">Number of lines sent.</param>
-    /// <returns>A new successful <see cref="OperationResult"/>.</returns>
     public static OperationResult Ok(string message, int lignesEnvoyees) => new()
     {
         Success = true,
@@ -57,13 +56,8 @@ public sealed class OperationResult
     };
 
     /// <summary>
-    /// Factory method to create a failed result.
+    /// Construit un résultat d'échec standard en conservant le détail technique utile au diagnostic.
     /// </summary>
-    /// <param name="message">Error message to include.</param>
-    /// <param name="technicalDetail">Optional technical detail.</param>
-    /// <param name="alreadySynchronized">Whether the operation failed because it was already synchronized.</param>
-    /// <param name="code">Optional error code.</param>
-    /// <returns>A new failed <see cref="OperationResult"/>.</returns>
     public static OperationResult Fail(
         string message,
         string technicalDetail = "",
