@@ -1,24 +1,21 @@
 namespace MobileSLI;
 
 /// <summary>
-/// Entry point of the MobileSLI application. This partial class derives from the MAUI Application class.
-/// It is responsible for initializing application components and creating the initial window.
+/// Point d'entrée de l'application mobile MobileSLI.
+/// Cette classe reste volontairement minimale : l'initialisation visuelle est faite par MAUI,
+/// tandis que les routes de navigation sont centralisées dans AppShell.
 /// </summary>
 public partial class App : Application
 {
-    /// <summary>
-    /// Constructs the application and initializes its components.
-    /// </summary>
     public App()
     {
         InitializeComponent();
     }
 
     /// <summary>
-    /// Overrides CreateWindow to create and return the main application window using AppShell.
+    /// Crée la fenêtre principale en utilisant le Shell de l'application.
+    /// Le Shell porte ensuite les règles de navigation, notamment le blocage du bouton retour Android.
     /// </summary>
-    /// <param name="activationState">Activation state provided by the MAUI framework.</param>
-    /// <returns>A new Window instance containing the AppShell.</returns>
     protected override Window CreateWindow(IActivationState? activationState)
     {
         return new Window(new AppShell());
