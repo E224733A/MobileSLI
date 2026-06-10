@@ -3,20 +3,21 @@ using MobileSLI.Models;
 namespace MobileSLI.Services;
 
 /// <summary>
-/// Simple in-memory service that supplies hard-coded demo data. It is used during
-/// development or testing to simulate API responses without hitting a backend.
-/// The data returned here should not be used in production.
+/// Service de données de démonstration utilisé uniquement comme secours de développement ou de test.
+/// Les données sont codées en dur et ne doivent pas être considérées comme une source métier réelle.
+/// En production, les livreurs, tournées, lignes et articles doivent venir de l'API MobileSLI.
 /// </summary>
 public sealed class DemoDataService
 {
     /// <summary>
-    /// Returns a demo <see cref="LivreurDto"/> when the supplied code matches one of the
-    /// hard-coded values. Codes are trimmed and compared as strings. Returns
-    /// <c>null</c> for unrecognized codes.
+    /// Recherche un livreur de démonstration à partir du code saisi.
+    /// Cette méthode ne vérifie que les codes présents dans ce fichier ; elle ne remplace pas l'identification API.
     /// </summary>
-    /// <param name="codeLivreur">Livreur code entered by the user.</param>
+    /// <param name="codeLivreur">Code livreur saisi dans l'écran d'identification.</param>
+    /// <returns>Un livreur de démonstration si le code est connu, sinon <c>null</c>.</returns>
     public LivreurDto? FindLivreurByCode(string codeLivreur)
     {
+        // Normalisation minimale pour éviter qu'un espace saisi par erreur bloque la démonstration.
         var normalized = (codeLivreur ?? string.Empty).Trim();
 
         return normalized switch
@@ -28,8 +29,8 @@ public sealed class DemoDataService
     }
 
     /// <summary>
-    /// Gets a list of summary data for available tournées. This collection is static
-    /// and intended solely for demo purposes.
+    /// Retourne une liste statique de tournées de démonstration.
+    /// Les codes, libellés et nombres de points servent uniquement à simuler l'écran de choix de tournée.
     /// </summary>
     public List<TourneeResumeDto> GetTourneesDisponibles()
     {
@@ -42,34 +43,53 @@ public sealed class DemoDataService
     }
 
     /// <summary>
-    /// Builds a complete demo <see cref="TourneeJourDto"/> instance for a given tour and driver.
-    /// The returned object contains static article definitions and a list of sample lines.
+    /// Construit une tournée complète de démonstration à partir d'un résumé de tournée et d'un livreur.
+    /// La structure produite imite le contrat de chargement API afin de tester les écrans sans serveur,
+    /// mais les valeurs ne doivent pas servir à valider les règles de production.
     /// </summary>
-    /// <param name="tournee">The summary of the tour to build details for.</param>
-    /// <param name="livreur">The driver assigned to this tour.</param>
-    /// <returns>A fully populated demo tour with lines for the current date.</returns>
+    /// <param name="tournee">Résumé de tournée sélectionné dans la démonstration.</param>
+    /// <param name="livreur">Livreur de démonstration associé à la tournée.</param>
+    /// <returns>Une tournée complète prête à être utilisée par les écrans de saisie.</returns>
     public TourneeJourDto BuildTourneeJour(TourneeResumeDto tournee, LivreurDto livreur)
     {
         var date = DateTime.Today;
 
         return new TourneeJourDto
         {
+            /*
+             * Attention : cette version de schéma est historique dans le jeu de démonstration.
+             * Ne pas s'appuyer sur cette valeur pour valider le contrat mobile/API final.
+             */
             SchemaVersion = "1.1",
             DateTournee = date,
             DateModifiable = false,
             CodeTournee = tournee.CodeTournee,
             LibelleTournee = tournee.LibelleTournee,
             Livreur = livreur,
+
+            /*
+             * Articles proposés à la saisie dans le scénario de démonstration.
+             * Le jeu de démonstration ne couvre pas forcément tous les articles autorisés par le contrat réel.
+             */
             ArticlesSaisissables = new List<ArticleSaisissableDto>
             {
                 new() { CodeArticle = "ROLLS", Libelle = "Rolls" },
                 new() { CodeArticle = "TAPIS", Libelle = "Tapis" },
                 new() { CodeArticle = "SACS", Libelle = "Sacs" }
             },
+
+            /*
+             * Lignes volontairement variées pour tester l'affichage :
+             * - instructions présentes ou absentes ;
+             * - zones de déchargement différentes ;
+             * - commentaire fiche présent ou absent ;
+             * - villes et codes postaux différents.
+             */
             Lignes = new List<TourneeLigneDto>
             {
                 new()
                 {
+                    // Identifiant stable de démonstration : date, tournée, client, PDL et ordre d'arrêt.
                     IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|1058|PDL01|1",
                     OrdreArret = 1,
                     NumClient = "1058",
@@ -86,6 +106,7 @@ public sealed class DemoDataService
                 },
                 new()
                 {
+                    // Ligne avec commentaire fiche pour vérifier l'affichage d'une consigne complémentaire.
                     IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|2044|PDL02|2",
                     OrdreArret = 2,
                     NumClient = "2044",
@@ -102,6 +123,7 @@ public sealed class DemoDataService
                 },
                 new()
                 {
+                    // Ligne de démonstration en zone retour pour tester les libellés spécifiques de déchargement.
                     IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|3071|PDL03|3",
                     OrdreArret = 3,
                     NumClient = "3071",
@@ -118,6 +140,7 @@ public sealed class DemoDataService
                 },
                 new()
                 {
+                    // Ligne sans instruction ni commentaire pour vérifier que l'écran reste lisible avec des champs optionnels vides.
                     IdLigneSource = $"{date:yyyy-MM-dd}|{tournee.CodeTournee}|1|4182|PDL04|4",
                     OrdreArret = 4,
                     NumClient = "4182",
