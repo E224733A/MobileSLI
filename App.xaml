@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!--
+    This XAML file defines the root Application for MobileSLI.
+    It merges resource dictionaries containing colors and styles to provide consistent theming across the app.
+-->
 <Application
     x:Class="MobileSLI.App"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -6,6 +10,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Merged dictionaries include color and style resources used throughout the application -->
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
