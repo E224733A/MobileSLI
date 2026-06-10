@@ -4,18 +4,28 @@ using MobileSLI.Configuration;
 
 namespace MobileSLI.Models;
 
+/// <summary>
+/// Livreur renvoyé par l'API et utilisé dans l'écran d'identification mobile.
+/// </summary>
 public sealed class LivreurDto
 {
     public string CodeLivreur { get; set; } = string.Empty;
 
     public string NomLivreur { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Libellé prêt à afficher dans les listes de sélection.
+    /// </summary>
     public string NomAffiche =>
         string.IsNullOrWhiteSpace(NomLivreur)
             ? CodeLivreur
             : $"{CodeLivreur} - {NomLivreur}";
 }
 
+/// <summary>
+/// Enveloppe de réponse API pour la liste des tournées disponibles.
+/// Elle porte la date métier décidée par l'API et la version du contrat JSON.
+/// </summary>
 public sealed class TourneesDisponiblesResponseDto
 {
     public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
@@ -29,6 +39,9 @@ public sealed class TourneesDisponiblesResponseDto
     public List<TourneeResumeDto> Tournees { get; set; } = new();
 }
 
+/// <summary>
+/// Résumé de tournée affiché avant le chargement complet de la tournée.
+/// </summary>
 public sealed class TourneeResumeDto
 {
     public DateTime DateTournee { get; set; } = DateTime.Today;
@@ -43,12 +56,19 @@ public sealed class TourneeResumeDto
 
     public int NombrePoints { get; set; }
 
+    /// <summary>
+    /// Libellé utilisé dans l'écran de choix de tournée.
+    /// </summary>
     public string NomAffiche =>
         string.IsNullOrWhiteSpace(LibelleTournee)
             ? CodeTournee
             : $"{CodeTournee} — {LibelleTournee}";
 }
 
+/// <summary>
+/// Tournée complète chargée sur le mobile pour permettre la saisie terrain.
+/// Ce DTO correspond au contrat de lecture API avant stockage local SQLite.
+/// </summary>
 public sealed class TourneeJourDto
 {
     public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
@@ -76,6 +96,9 @@ public sealed class TourneeJourDto
     public List<TourneeLigneDto> Lignes { get; set; } = new();
 }
 
+/// <summary>
+/// Informations techniques de génération du chargement côté API.
+/// </summary>
 public sealed class ChargementDto
 {
     public DateTime? DateGenerationApi { get; set; }
@@ -83,6 +106,9 @@ public sealed class ChargementDto
     public int NombrePointsEnvoyes { get; set; }
 }
 
+/// <summary>
+/// Article pour lequel le livreur peut saisir des quantités livrées ou récupérées.
+/// </summary>
 public sealed class ArticleSaisissableDto
 {
     public string CodeArticle { get; set; } = string.Empty;
@@ -92,12 +118,20 @@ public sealed class ArticleSaisissableDto
     public int? OrdreAffichage { get; set; }
 }
 
+/// <summary>
+/// Ligne de tournée correspondant à un arrêt ou point de livraison.
+/// Les propriétés raccourcies conservent la compatibilité avec les anciens écrans
+/// tout en déléguant désormais les données aux sous-objets du contrat structuré.
+/// </summary>
 public sealed class TourneeLigneDto
 {
     public string IdLigneSource { get; set; } = string.Empty;
 
     public int OrdreArret { get; set; }
 
+    /// <summary>
+    /// Horaire accepté sous plusieurs formes JSON pour rester compatible avec les données API historiques.
+    /// </summary>
     [JsonConverter(typeof(FlexibleStringJsonConverter))]
     public string? Horaire { get; set; }
 
@@ -203,6 +237,9 @@ public sealed class TourneeLigneDto
     }
 }
 
+/// <summary>
+/// Informations client affichées au livreur et renvoyées lors de la synchronisation.
+/// </summary>
 public sealed class ClientDto
 {
     public string NumClient { get; set; } = string.Empty;
@@ -212,6 +249,10 @@ public sealed class ClientDto
     public string NomAffiche { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Informations du point de livraison.
+/// Le lien d'adresse est fourni par l'API ; le mobile ne recalcule pas l'itinéraire dans cette version.
+/// </summary>
 public sealed class PointLivraisonDto
 {
     public string CodePDL { get; set; } = string.Empty;
@@ -235,6 +276,9 @@ public sealed class PointLivraisonDto
     public string? LienAdresseLivraison { get; set; }
 }
 
+/// <summary>
+/// Informations de tournée associées à une ligne.
+/// </summary>
 public sealed class TourneeInfoDto
 {
     public string CodeTournee { get; set; } = string.Empty;
@@ -248,6 +292,9 @@ public sealed class TourneeInfoDto
     public string? SchemaLivraison { get; set; }
 }
 
+/// <summary>
+/// Informations éventuelles de retour associées à la ligne de livraison.
+/// </summary>
 public sealed class RetourInfoDto
 {
     public int? JourTourneeRetour { get; set; }
@@ -259,6 +306,10 @@ public sealed class RetourInfoDto
     public string? LibelleTourneeRetour { get; set; }
 }
 
+/// <summary>
+/// Informations destinées au livreur : consignes, zones, commentaires exceptionnels et fermeture client.
+/// Ces données viennent de l'API et ne correspondent pas au commentaire saisi par le livreur pendant la tournée.
+/// </summary>
 public sealed class InfosLivreurDto
 {
     public string? Instructions { get; set; }
@@ -295,6 +346,10 @@ public sealed class InfosLivreurDto
     public string? MotifFermeture { get; set; }
 }
 
+/// <summary>
+/// Données de saisie mobile associées à une ligne de tournée.
+/// Elles évoluent localement pendant la livraison avant d'être envoyées à l'API.
+/// </summary>
 public sealed class SaisieMobileDto
 {
     public string? PrecisionLivreur { get; set; }
@@ -310,6 +365,9 @@ public sealed class SaisieMobileDto
     public List<QuantiteSaisieMobileDto> Quantites { get; set; } = new();
 }
 
+/// <summary>
+/// Quantité saisie ou prévue pour un article sur une ligne de tournée.
+/// </summary>
 public sealed class QuantiteSaisieMobileDto
 {
     public string CodeArticle { get; set; } = string.Empty;
@@ -327,6 +385,10 @@ public sealed class QuantiteSaisieMobileDto
     public int QuantiteRecuperee { get; set; }
 }
 
+/// <summary>
+/// Ancien contrat de synchronisation mobile sans trajet camion.
+/// Conservé pour compatibilité avec les appels qui ne portent pas encore les informations camion.
+/// </summary>
 public sealed class SynchronisationTourneeRequest
 {
     public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
@@ -350,6 +412,9 @@ public sealed class SynchronisationTourneeRequest
     public List<SynchronisationLigneRequest> Lignes { get; set; } = new();
 }
 
+/// <summary>
+/// Partie livreur du payload envoyé à l'API lors de la synchronisation.
+/// </summary>
 public sealed class SynchronisationLivreurRequest
 {
     public string CodeLivreur { get; set; } = string.Empty;
@@ -357,6 +422,9 @@ public sealed class SynchronisationLivreurRequest
     public string NomLivreur { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Informations techniques du téléphone et de l'application au moment de l'envoi.
+/// </summary>
 public sealed class SynchronisationMobileRequest
 {
     public string NomAppareil { get; set; } = string.Empty;
@@ -368,6 +436,10 @@ public sealed class SynchronisationMobileRequest
     public string DateEnvoiMobile { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Ligne envoyée dans le payload de synchronisation.
+/// Elle contient les informations de contexte API et la saisie effectuée par le livreur.
+/// </summary>
 public sealed class SynchronisationLigneRequest
 {
     public string IdLigneSource { get; set; } = string.Empty;
@@ -389,6 +461,9 @@ public sealed class SynchronisationLigneRequest
     public SynchronisationSaisieRequest Saisie { get; set; } = new();
 }
 
+/// <summary>
+/// Partie client du payload de synchronisation.
+/// </summary>
 public sealed class SynchronisationClientRequest
 {
     public string NumClient { get; set; } = string.Empty;
@@ -398,6 +473,9 @@ public sealed class SynchronisationClientRequest
     public string NomAffiche { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Partie point de livraison du payload de synchronisation.
+/// </summary>
 public sealed class SynchronisationPointLivraisonRequest
 {
     public string CodePDL { get; set; } = string.Empty;
@@ -415,6 +493,9 @@ public sealed class SynchronisationPointLivraisonRequest
     public string? CodePostal { get; set; }
 }
 
+/// <summary>
+/// Partie tournée du payload de synchronisation.
+/// </summary>
 public sealed class SynchronisationTourneeInfoRequest
 {
     public string CodeTournee { get; set; } = string.Empty;
@@ -428,6 +509,9 @@ public sealed class SynchronisationTourneeInfoRequest
     public string? SchemaLivraison { get; set; }
 }
 
+/// <summary>
+/// Partie retour du payload de synchronisation.
+/// </summary>
 public sealed class SynchronisationRetourInfoRequest
 {
     public int? JourTourneeRetour { get; set; }
@@ -439,6 +523,10 @@ public sealed class SynchronisationRetourInfoRequest
     public string? LibelleTourneeRetour { get; set; }
 }
 
+/// <summary>
+/// Partie informations livreur du payload de synchronisation.
+/// Elle garde les commentaires exceptionnels et la fermeture client reçus de l'API.
+/// </summary>
 public sealed class SynchronisationInfosLivreurRequest
 {
     public string? Instructions { get; set; }
@@ -466,6 +554,10 @@ public sealed class SynchronisationInfosLivreurRequest
     public string? MotifFermeture { get; set; }
 }
 
+/// <summary>
+/// Partie saisie du payload de synchronisation.
+/// Elle contient le statut de passage, le commentaire du livreur et les quantités finales.
+/// </summary>
 public sealed class SynchronisationSaisieRequest
 {
     public string? PrecisionLivreur { get; set; }
@@ -481,6 +573,9 @@ public sealed class SynchronisationSaisieRequest
     public List<SynchronisationQuantiteRequest> Quantites { get; set; } = new();
 }
 
+/// <summary>
+/// Quantité finale envoyée à l'API pour un article donné.
+/// </summary>
 public sealed class SynchronisationQuantiteRequest
 {
     public string CodeArticle { get; set; } = string.Empty;
@@ -494,6 +589,9 @@ public sealed class SynchronisationQuantiteRequest
     public int QuantiteRecuperee { get; set; }
 }
 
+/// <summary>
+/// Format d'erreur API simple pouvant être renvoyé lors d'un refus ou d'une erreur serveur.
+/// </summary>
 public sealed class ApiErrorResponse
 {
     public string? Error { get; set; }
@@ -541,6 +639,10 @@ public sealed class FlexibleStringJsonConverter : JsonConverter<string?>
         writer.WriteStringValue(value);
     }
 
+    /// <summary>
+    /// Transforme un token JSON complexe en texte pour ne pas bloquer le chargement mobile
+    /// lorsqu'un champ supposé simple arrive sous une forme inattendue.
+    /// </summary>
     private static string ReadComplexTokenAsText(ref Utf8JsonReader reader)
     {
         using var document = JsonDocument.ParseValue(ref reader);
