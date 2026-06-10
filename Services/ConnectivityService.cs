@@ -2,21 +2,19 @@ using Microsoft.Maui.Networking;
 namespace MobileSLI.Services;
 
 /// <summary>
-/// Provides simple utilities to check network connectivity status on the device.
-/// This service wraps <see cref="Connectivity.Current"/> and exposes a boolean flag and a
-/// user-friendly status text describing the current connectivity state.
+/// Service de lecture de l'état réseau du téléphone.
+/// Il encapsule Connectivity.Current pour fournir un booléen simple et un message affichable côté interface.
 /// </summary>
 public sealed class ConnectivityService
 {
     /// <summary>
-    /// Indicates whether the device has any form of internet or local network access.
+    /// Indique si le téléphone dispose d'un accès réseau quelconque, Internet ou réseau local.
     /// </summary>
     public bool HasInternetOrLocalNetwork => Connectivity.Current.NetworkAccess != NetworkAccess.None;
 
     /// <summary>
-    /// Returns a localized description of the current network access state.
+    /// Retourne un libellé utilisateur correspondant à l'état réseau courant.
     /// </summary>
-    /// <returns>A string describing the network status in French.</returns>
     public string GetNetworkStatusText()
     {
         return Connectivity.Current.NetworkAccess switch
