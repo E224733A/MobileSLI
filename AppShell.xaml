@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    Defines the shell layout for the MobileSLI application.
+    The shell hides the navigation bar and flyout and sets the background color.
+    It specifies the initial ShellContent using a DataTemplate that loads the AccueilPage.
+-->
 <Shell
     x:Class="MobileSLI.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
