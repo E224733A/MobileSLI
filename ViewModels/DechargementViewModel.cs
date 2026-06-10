@@ -7,6 +7,10 @@ using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de l'écran de déchargement.
+/// Il affiche une synthèse des articles récupérés pendant la tournée.
+/// </summary>
 public sealed class DechargementViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -35,6 +39,10 @@ public sealed class DechargementViewModel : BaseViewModel
 
     public ICommand BackCommand { get; }
 
+    /// <summary>
+    /// Charge les lignes de la tournée courante et ne garde que les points
+    /// qui possèdent au moins une quantité récupérée supérieure à zéro.
+    /// </summary>
     public async Task LoadAsync()
     {
         Items.Clear();
