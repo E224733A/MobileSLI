@@ -3,19 +3,17 @@ using MobileSLI.Pages;
 namespace MobileSLI;
 
 /// <summary>
-/// Represents the shell of the MobileSLI application. It registers navigation routes for all pages
-/// and customizes shell behavior such as disabling the hardware back button on Android.
+/// Shell principal de l'application MobileSLI.
+/// Il centralise les routes de navigation et le blocage du bouton retour Android,
+/// deux points sensibles pour éviter les sorties involontaires pendant une tournée chargée.
 /// </summary>
 public partial class AppShell : Shell
 {
-    /// <summary>
-    /// Initializes the shell and registers navigation routes for each page.
-    /// </summary>
     public AppShell()
     {
         InitializeComponent();
 
-        // Register routes to pages so they can be navigated to by name.
+        // Routes déclarées une seule fois afin que les ViewModels puissent naviguer par nom de page.
         Routing.RegisterRoute(nameof(IdentificationLivreurPage), typeof(IdentificationLivreurPage));
         Routing.RegisterRoute(nameof(ChoixCamionPage), typeof(ChoixCamionPage));
         Routing.RegisterRoute(nameof(ChoixTourneePage), typeof(ChoixTourneePage));
@@ -29,10 +27,10 @@ public partial class AppShell : Shell
     }
 
     /// <summary>
-    /// Disables the Android hardware back button to avoid accidental navigation or exiting from a loaded route.
-    /// Returns true to indicate the event was handled and should not propagate.
+    /// Bloque le bouton retour physique Android.
+    /// Cette règle est volontairement globale, car un retour arrière au mauvais moment peut quitter une tournée chargée
+    /// ou contourner les boutons de navigation prévus dans le flux métier.
     /// </summary>
-    /// <returns>Always returns true to consume the back button event.</returns>
     protected override bool OnBackButtonPressed()
     {
         /*
