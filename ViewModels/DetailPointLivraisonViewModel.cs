@@ -9,6 +9,10 @@ using MobileSLI.Services.Navigation;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de l'écran détail d'un point de livraison.
+/// Il charge la ligne locale, affiche les informations du point et persiste la saisie du livreur.
+/// </summary>
 public sealed class DetailPointLivraisonViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -115,6 +119,9 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
     public ICommand BackCommand { get; }
     public ICommand OuvrirAdresseLivraisonCommand { get; }
 
+    /// <summary>
+    /// Charge la ligne sélectionnée, restaure son statut, son commentaire et ses quantités.
+    /// </summary>
     public async Task LoadAsync()
     {
         ErrorMessage = string.Empty;
@@ -129,6 +136,7 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
             return;
         }
 
+        // Si le point n'est pas encore traité, FAIT est proposé par défaut pour accélérer le cas normal.
         SelectedStatut = _ligne.StatutPassage == StatutPassageConstants.AFaire
             ? StatutPassageConstants.Fait
             : _ligne.StatutPassage;
@@ -190,6 +198,10 @@ public sealed class DetailPointLivraisonViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Valide la saisie du point et enregistre les valeurs en SQLite.
+    /// NON_FAIT et ANOMALIE imposent un commentaire livreur.
+    /// </summary>
     private async Task ValidateAsync()
     {
         if (_ligne is null)
