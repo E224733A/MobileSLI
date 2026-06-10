@@ -4,9 +4,9 @@ using SQLite;
 namespace MobileSLI.Models;
 
 /// <summary>
-/// Represents a tour stored locally on the device. Contains tour metadata such as dates, codes,
-/// driver info, synchronization identifiers, and persisted truck trip information. Instances of this class
-/// are stored in SQLite via the SQLite ORM attributes.
+/// En-tête de tournée stocké localement dans SQLite sur le téléphone.
+/// Il conserve l'identité de la tournée, le livreur, l'état local de synchronisation
+/// et les informations de trajet camion nécessaires au contrat mobile/API 1.3.
 /// </summary>
 public sealed class LocalTournee
 {
@@ -14,7 +14,7 @@ public sealed class LocalTournee
     public int Id { get; set; }
 
     /// <summary>
-    /// Version of the API schema associated with this local tour.
+    /// Version du contrat API associée à la tournée locale.
     /// </summary>
     public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
 
@@ -27,16 +27,27 @@ public sealed class LocalTournee
     public string LibelleTournee { get; set; } = string.Empty;
     public string CodeLivreur { get; set; } = string.Empty;
     public string NomLivreur { get; set; } = string.Empty;
+
+    /// <summary>
+    /// État local de la tournée : chargée, en cours, synchronisée, expirée ou abandonnée.
+    /// </summary>
     public string StatutLocal { get; set; } = TourneeLocalStatus.Chargee;
+
     public DateTime DateChargement { get; set; }
     public DateTime? DateEnvoi { get; set; }
     public string IdSynchronisation { get; set; } = Guid.NewGuid().ToString();
+
+    /// <summary>
+    /// Empêche toute modification locale après synchronisation, expiration ou abandon local.
+    /// </summary>
     public bool EstVerrouillee { get; set; }
+
     public string? CommentaireGlobal { get; set; }
 
     /*
-     * LOT 7 — trajet camion persisté localement.
-     * Ces champs restent null pour les anciennes tournées déjà présentes dans SQLite.
+     * Trajet camion persisté localement.
+     * Ces champs peuvent rester null pour les anciennes tournées déjà présentes dans SQLite
+     * avant l'ajout du contrat mobile/API 1.3.
      */
     public string? IdCamion { get; set; }
     public string? CodeCamion { get; set; }
@@ -49,9 +60,9 @@ public sealed class LocalTournee
 }
 
 /// <summary>
-/// Represents a single line (stop) of a local tour stored on the device. Includes client details,
-/// delivery point information, scheduling fields, and delivery statuses. Additional computed properties
-/// provide formatted display values such as the unloading zone and closure text.
+/// Ligne de tournée stockée localement dans SQLite.
+/// Elle contient les données de contexte reçues de l'API, les informations client/PDL,
+/// les consignes livreur, l'état de fermeture client et la saisie effectuée sur le téléphone.
 /// </summary>
 public sealed class LocalTourneeLigne
 {
@@ -115,13 +126,13 @@ public sealed class LocalTourneeLigne
     public string? Instructions { get; set; }
 
     /*
-     * Ancien champ conservé pour compatibilité.
+     * Ancien champ conservé pour compatibilité avec des réponses API plus anciennes.
      */
     public string? CommentaireFiche { get; set; }
 
     /*
      * Commentaire ponctuel venant de l'administration ou de l'expédition.
-     * Ce n'est pas le commentaire saisi par le livreur.
+     * Ce n'est pas le commentaire saisi par le livreur pendant la tournée.
      */
     public string? CommentaireExceptionnel { get; set; }
 
@@ -188,8 +199,9 @@ public sealed class LocalTourneeLigne
 }
 
 /// <summary>
-/// Represents quantity information for a specific line of a local tour. Stores planned, delivered
-/// and recovered quantities for a given article.
+/// Quantité locale associée à une ligne de tournée.
+/// Elle conserve la quantité prévue par l'expédition et les quantités réellement saisies
+/// par le livreur pour un article donné.
 /// </summary>
 public sealed class LocalTourneeLigneQuantite
 {
