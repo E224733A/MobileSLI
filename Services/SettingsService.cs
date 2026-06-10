@@ -6,14 +6,9 @@ using MobileSLI.Configuration;
 namespace MobileSLI.Services;
 
 /// <summary>
-/// Centralized application settings service. This class encapsulates all
-/// persisted configuration values for the mobile application, such as the
-/// API base URL and the last entered livreur (driver) code. It stores
-/// these values using the cross‑platform <see cref="Preferences"/> API so
-/// that settings survive app restarts. The service also exposes various
-/// read‑only properties describing the current device (name, model,
-/// manufacturer, platform, idiom, OS version, etc.) and provides helper
-/// methods to normalize and reset persisted values.
+/// Service centralisé des paramètres persistés et des informations appareil.
+/// Il gère notamment l'URL API utilisée par le mobile, le dernier code livreur saisi
+/// et les métadonnées envoyées dans le payload de synchronisation.
 /// </summary>
 public sealed class SettingsService
 {
@@ -43,19 +38,14 @@ public sealed class SettingsService
      * Platforms/Android/Resources/raw/mobilesli_root_ca.crt
      */
     /// <summary>
-    /// Gets the default API base URL defined in <see cref="AppConfig"/>.
-    /// This value is normalized to remove trailing slashes.
+    /// URL API par défaut normalisée depuis AppConfig.
     /// </summary>
     public string DefaultApiBaseUrl => NormalizeBaseUrl(AppConfig.ApiBaseUrl);
 
     /// <summary>
-    /// Gets or sets the current API base URL used for network calls. When
-    /// reading, the value is retrieved from preferences and normalized to
-    /// ensure it includes a scheme and no trailing slash. When setting, the
-    /// provided URL is normalized before being persisted. If a legacy HTTP
-    /// URL is detected and the application is now configured to use HTTPS,
-    /// the property automatically migrates the stored URL to the default
-    /// HTTPS value.
+    /// URL API réellement utilisée par les appels réseau.
+    /// La valeur est persistée dans Preferences, normalisée à la lecture et migrée automatiquement
+    /// vers HTTPS si une ancienne URL HTTP connue est encore stockée sur le téléphone.
     /// </summary>
     public string ApiBaseUrl
     {
@@ -79,9 +69,7 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Gets or sets the last livreur (driver) code entered by the user. When
-    /// setting a new code the value is trimmed; when retrieving the value
-    /// an empty string is returned if no code has been stored.
+    /// Dernier code livreur saisi, conservé pour faciliter la reprise lors des ouvertures suivantes.
     /// </summary>
     public string LastLivreurCode
     {
@@ -90,46 +78,29 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Gets the semantic version string for the current application build.
+    /// Version applicative envoyée dans les informations techniques de synchronisation.
     /// </summary>
     public string ApplicationVersion => AppInfo.Current.VersionString;
 
     /// <summary>
-    /// Gets a user‑friendly name for the device. Falls back to the model
-    /// identifier if <see cref="DeviceInfo.Current.Name"/> is blank.
+    /// Nom de l'appareil envoyé dans le payload mobile, avec repli sur le modèle si le nom est vide.
     /// </summary>
     public string DeviceName => string.IsNullOrWhiteSpace(DeviceInfo.Current.Name)
         ? DeviceInfo.Current.Model
         : DeviceInfo.Current.Name;
 
-    /// <summary>
-    /// Gets the device model identifier, e.g., "Pixel 5".
-    /// </summary>
     public string DeviceModel => DeviceInfo.Current.Model;
 
-    /// <summary>
-    /// Gets the device manufacturer, e.g., "Google" or "Apple".
-    /// </summary>
     public string DeviceManufacturer => DeviceInfo.Current.Manufacturer;
 
-    /// <summary>
-    /// Gets the operating system platform the app is running on (Android, iOS, etc.).
-    /// </summary>
     public string Platform => DeviceInfo.Current.Platform.ToString();
 
-    /// <summary>
-    /// Gets the device form factor classification (Phone, Tablet, Desktop, etc.).
-    /// </summary>
     public string Idiom => DeviceInfo.Current.Idiom.ToString();
 
-    /// <summary>
-    /// Gets the OS version string for the current device.
-    /// </summary>
     public string VersionString => DeviceInfo.Current.VersionString;
 
     /// <summary>
-    /// Removes the stored API base URL from preferences so the next
-    /// access reverts to the default value.
+    /// Supprime l'URL API stockée pour revenir à l'URL par défaut au prochain accès.
     /// </summary>
     public void ResetApiBaseUrl()
     {
@@ -137,7 +108,7 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Removes the stored last livreur (driver) code from preferences.
+    /// Supprime le dernier code livreur mémorisé localement.
     /// </summary>
     public void ResetLastLivreurCode()
     {
@@ -145,8 +116,7 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Clears all persisted settings managed by this service. Equivalent to
-    /// calling <see cref="ResetApiBaseUrl"/> and <see cref="ResetLastLivreurCode"/>.
+    /// Réinitialise les paramètres persistés gérés par ce service.
     /// </summary>
     public void ResetAll()
     {
@@ -155,10 +125,7 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Determines whether a stored base URL is the legacy HTTP endpoint that
-    /// should be migrated to the new default HTTPS endpoint. Returns
-    /// <c>true</c> when the normalized URL exactly matches the legacy URL and
-    /// the default API base URL uses HTTPS; otherwise <c>false</c>.
+    /// Détecte si l'URL stockée correspond à l'ancien endpoint HTTP devant être remplacé par l'URL HTTPS par défaut.
     /// </summary>
     private static bool ShouldMigrateLegacyHttpUrl(string normalizedUrl)
     {
@@ -167,10 +134,8 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Normalizes a base URL by trimming whitespace, removing any trailing slash
-    /// and ensuring a scheme (HTTP/HTTPS) prefix. If the input is null or
-    /// whitespace, the default API base URL is returned. Otherwise the value
-    /// is prepended with the default scheme when it lacks one.
+    /// Normalise une URL API : suppression des espaces, suppression du slash final
+    /// et ajout du schéma HTTP/HTTPS par défaut si l'utilisateur ne l'a pas saisi.
     /// </summary>
     private static string NormalizeBaseUrl(string value)
     {
@@ -191,10 +156,8 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Returns the default URL scheme ("https://" or "http://") based on the
-    /// current API base URL in <see cref="AppConfig"/>. If the default API
-    /// base URL starts with "https://", that scheme is returned; otherwise
-    /// "http://" is returned.
+    /// Retourne le schéma réseau cohérent avec l'URL API par défaut.
+    /// Cette règle évite de transformer accidentellement une URL HTTPS en HTTP.
     /// </summary>
     private static string GetDefaultScheme()
     {
@@ -204,8 +167,7 @@ public sealed class SettingsService
     }
 
     /// <summary>
-    /// Normalizes the livreur (driver) code by trimming whitespace and
-    /// returning an empty string when null or whitespace.
+    /// Normalise le code livreur avant stockage local.
     /// </summary>
     private static string NormalizeLivreurCode(string? value)
     {
