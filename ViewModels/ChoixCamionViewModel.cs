@@ -11,6 +11,11 @@ using System.Windows.Input;
 
 namespace MobileSLI.ViewModels;
 
+/// <summary>
+/// ViewModel de l'écran de choix camion.
+/// Il charge les camions actifs depuis l'API, valide le kilométrage de départ
+/// et alimente AppStateService avant le passage au choix de tournée.
+/// </summary>
 public sealed class ChoixCamionViewModel : BaseViewModel
 {
     private readonly AppStateService _appStateService;
@@ -33,6 +38,7 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         LoadingMessage = "Chargement des camions...";
         Camions = new ObservableCollection<CamionItemViewModel>();
 
+        // Reprise possible : si un kilométrage départ existe déjà dans l'état courant, on le réaffiche.
         _kilometrageDepartText = _appStateService.KilometrageDepart?.ToString(CultureInfo.InvariantCulture)
             ?? string.Empty;
 
@@ -119,6 +125,10 @@ public sealed class ChoixCamionViewModel : BaseViewModel
 
     public ICommand ContinueCommand { get; }
 
+    /// <summary>
+    /// Charge les camions disponibles depuis l'API.
+    /// Le chargement est évité si la liste a déjà été chargée, sauf demande explicite de rechargement.
+    /// </summary>
     public async Task LoadCamionsAsync(bool forceReload = false)
     {
         if (IsBusy)
@@ -179,6 +189,9 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Sélectionne un camion dans la liste et met à jour les états visuels associés.
+    /// </summary>
     private void SelectCamion(CamionItemViewModel? item)
     {
         if (item is null)
@@ -190,6 +203,11 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         ErrorMessage = string.Empty;
     }
 
+    /// <summary>
+    /// Valide le choix camion et le kilométrage départ avant de continuer.
+    /// Le camion, le kilométrage et l'heure de départ sont stockés en mémoire dans AppStateService ;
+    /// ils seront ensuite persistés côté SQLite par le flux de chargement de tournée.
+    /// </summary>
     private async Task ContinueAsync()
     {
         ErrorMessage = string.Empty;
@@ -219,6 +237,9 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         await _navigationService.GoToAsync(nameof(ChoixTourneePage));
     }
 
+    /// <summary>
+    /// Affiche une erreur bloquante à l'utilisateur sans changer d'écran.
+    /// </summary>
     private async Task RejectAsync(string message)
     {
         ErrorMessage = message;
@@ -232,6 +253,10 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Valide le kilométrage départ saisi.
+    /// Règle métier : valeur obligatoire, entière et positive ou égale à zéro.
+    /// </summary>
     private bool TryValidateKilometrageDepart(out int kilometrageDepart, out string errorMessage)
     {
         kilometrageDepart = 0;
@@ -264,6 +289,10 @@ public sealed class ChoixCamionViewModel : BaseViewModel
         return true;
     }
 
+    /// <summary>
+    /// Restaure la sélection visuelle si un camion est déjà présent dans l'état courant.
+    /// Cela évite de perdre la sélection lors d'un retour sur l'écran.
+    /// </summary>
     private void RestoreCurrentCamionSelection()
     {
         var currentCamion = _appStateService.CurrentCamion;
@@ -297,6 +326,10 @@ public sealed class ChoixCamionViewModel : BaseViewModel
     }
 }
 
+/// <summary>
+/// Élément affichable pour un camion dans la liste de choix.
+/// Il encapsule le DTO camion et porte l'état visuel de sélection de la carte.
+/// </summary>
 public sealed class CamionItemViewModel : ObservableObject
 {
     private bool _isSelected;
