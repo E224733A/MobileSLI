@@ -3,11 +3,19 @@ using SQLite;
 
 namespace MobileSLI.Models;
 
+/// <summary>
+/// Represents a tour stored locally on the device. Contains tour metadata such as dates, codes,
+/// driver info, synchronization identifiers, and persisted truck trip information. Instances of this class
+/// are stored in SQLite via the SQLite ORM attributes.
+/// </summary>
 public sealed class LocalTournee
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
 
+    /// <summary>
+    /// Version of the API schema associated with this local tour.
+    /// </summary>
     public string SchemaVersion { get; set; } = AppConfig.SchemaVersion;
 
     [Indexed]
@@ -40,6 +48,11 @@ public sealed class LocalTournee
     public DateTime? DateArriveeMobile { get; set; }
 }
 
+/// <summary>
+/// Represents a single line (stop) of a local tour stored on the device. Includes client details,
+/// delivery point information, scheduling fields, and delivery statuses. Additional computed properties
+/// provide formatted display values such as the unloading zone and closure text.
+/// </summary>
 public sealed class LocalTourneeLigne
 {
     [PrimaryKey, AutoIncrement]
@@ -174,6 +187,10 @@ public sealed class LocalTourneeLigne
     }
 }
 
+/// <summary>
+/// Represents quantity information for a specific line of a local tour. Stores planned, delivered
+/// and recovered quantities for a given article.
+/// </summary>
 public sealed class LocalTourneeLigneQuantite
 {
     [PrimaryKey, AutoIncrement]
