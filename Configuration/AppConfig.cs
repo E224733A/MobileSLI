@@ -1,8 +1,8 @@
 namespace MobileSLI.Configuration;
 
 /// <summary>
-/// Contains application-wide configuration constants such as API endpoints and schema versions.
-/// Modify these values to point the application to different environments or versions.
+/// Configuration applicative commune : URL API cible et version du contrat JSON mobile/API.
+/// Ces valeurs sont sensibles car elles conditionnent la communication réseau et la compatibilité des payloads.
 /// </summary>
 public static class AppConfig
 {
