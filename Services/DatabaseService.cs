@@ -13,8 +13,18 @@ using SQLite;
 
 namespace MobileSLI.Services;
 
+/// <summary>
+/// Service central d'accès à la base SQLite locale du téléphone.
+/// Ce fichier est sensible : il gère les migrations locales, le stockage des tournées,
+/// la reprise après interruption, les règles client fermé, le trajet camion et la construction
+/// du payload de synchronisation envoyé à l'API.
+/// </summary>
 public sealed class DatabaseService
 {
+    /// <summary>
+    /// Nom fixe de la base SQLite locale dans l'espace applicatif MAUI.
+    /// Ne pas modifier sans prévoir une migration ou une récupération des données existantes.
+    /// </summary>
     private const string DatabaseFileName = "mobile_sli.db3";
 
     private SQLiteAsyncConnection? _database;
@@ -32,8 +42,15 @@ public sealed class DatabaseService
     {
     }
 
+    /// <summary>
+    /// Emplacement physique de la base SQLite dans le dossier de données de l'application.
+    /// </summary>
     private static string DatabasePath => Path.Combine(FileSystem.AppDataDirectory, DatabaseFileName);
 
+    /// <summary>
+    /// Ouvre ou réutilise la connexion SQLite locale, crée les tables si besoin,
+    /// puis applique les migrations incrémentales utilisées par les versions 1.2 et 1.3 du contrat mobile.
+    /// </summary>
     private async Task<SQLiteAsyncConnection> GetDatabaseAsync()
     {
         if (_database is not null)
@@ -55,6 +72,11 @@ public sealed class DatabaseService
         return _database;
     }
 
+    /// <summary>
+    /// Migration locale historique du contrat 1.2.
+    /// Les colonnes sont ajoutées de manière tolérante pour ne pas casser les téléphones
+    /// qui possèdent déjà une base créée par une version précédente de l'application.
+    /// </summary>
     private static async Task EnsureSchemaV12Async(SQLiteAsyncConnection db)
     {
         await TryAddColumnAsync(db, "LocalTournee", "SchemaVersion TEXT DEFAULT '1.2'");
@@ -81,6 +103,11 @@ public sealed class DatabaseService
         await TryAddColumnAsync(db, "LocalTourneeLigneQuantite", "QuantiteLivreePrevue INTEGER");
     }
 
+    /// <summary>
+    /// Migration locale du contrat 1.3 ajoutant le trajet camion.
+    /// Ces champs sont nécessaires pour envoyer camion, kilométrage départ/arrivée
+    /// et dates mobiles dans le payload final de synchronisation.
+    /// </summary>
     private static async Task EnsureSchemaV13TrajetAsync(SQLiteAsyncConnection db)
     {
         await TryAddColumnAsync(db, "LocalTournee", "IdCamion TEXT");
@@ -93,6 +120,10 @@ public sealed class DatabaseService
         await TryAddColumnAsync(db, "LocalTournee", "DateArriveeMobile DATETIME");
     }
 
+    /// <summary>
+    /// Ajoute une colonne SQLite si elle n'existe pas encore.
+    /// Les erreurs de colonne déjà présente sont ignorées pour rendre les migrations idempotentes.
+    /// </summary>
     private static async Task TryAddColumnAsync(
         SQLiteAsyncConnection db,
         string tableName,
@@ -116,6 +147,10 @@ public sealed class DatabaseService
         }
     }
 
+    /// <summary>
+    /// Exporte la base SQLite locale dans le dossier de téléchargement accessible pour diagnostic.
+    /// Le checkpoint WAL est tenté avant export pour intégrer les écritures récentes dans le fichier principal.
+    /// </summary>
     public async Task<string> ExportDatabaseToDownloadsAsync()
     {
         var db = await GetDatabaseAsync();
@@ -137,6 +172,11 @@ public sealed class DatabaseService
         return await _databaseExportService.ExportDatabaseToDownloadsAsync(DatabasePath);
     }
 
+    /// <summary>
+    /// Enregistre une tournée complète reçue de l'API dans SQLite.
+    /// Cette méthode refuse d'écraser une tournée active non synchronisée et applique les règles locales
+    /// nécessaires à la reprise, à la fermeture client et à la future synchronisation.
+    /// </summary>
     public async Task<int> SaveTourneeAsync(TourneeJourDto dto)
     {
         if (dto is null)
@@ -154,6 +194,7 @@ public sealed class DatabaseService
             throw new InvalidOperationException("Le livreur est absent de la réponse API.");
         }
 
+        // Avant de charger une nouvelle tournée, les anciennes tournées actives hors date autorisée sont expirées.
         await ExpireOldActiveTourneesAsync(dto.DateTournee);
 
         var activeTournee = await GetActiveTourneeAsync(dto.DateTournee);
@@ -227,6 +268,11 @@ public sealed class DatabaseService
                 ? null
                 : infosLivreur.CommentaireExceptionnel.Trim();
 
+            /*
+             * Chaque ligne API est copiée dans une ligne locale SQLite.
+             * Les données de contexte sont conservées pour pouvoir reconstruire le payload complet
+             * même si le téléphone est redémarré avant la synchronisation.
+             */
             var ligne = new LocalTourneeLigne
             {
                 TourneeId = tournee.Id,
@@ -290,11 +336,17 @@ public sealed class DatabaseService
             }
         }
 
+        // Normalisation finale défensive après insertion de toutes les lignes et quantités.
         await NormalizeClosedLinesAsync(tournee.Id);
 
         return tournee.Id;
     }
 
+    /// <summary>
+    /// Prépare les quantités locales d'une ligne.
+    /// Si l'API ne fournit pas de quantités déjà initialisées, on crée une quantité par article saisissable.
+    /// La ligne ROLLS_VIDES est ajoutée si elle manque, car elle doit rester disponible côté mobile.
+    /// </summary>
     private static List<QuantiteSaisieMobileDto> BuildQuantitesForLocalStorage(
         TourneeLigneDto ligneDto,
         IEnumerable<ArticleSaisissableDto> articlesSaisissables)
@@ -330,6 +382,9 @@ public sealed class DatabaseService
         return quantites;
     }
 
+    /// <summary>
+    /// Insère une quantité locale en empêchant l'enregistrement de valeurs négatives.
+    /// </summary>
     private static async Task InsertQuantiteAsync(
         SQLiteAsyncConnection db,
         int ligneId,
@@ -346,17 +401,27 @@ public sealed class DatabaseService
         });
     }
 
+    /// <summary>
+    /// Identifie le code article ROLLS_VIDES sans dépendre de la casse.
+    /// </summary>
     private static bool IsRollsVides(string? codeArticle)
     {
         return string.Equals(codeArticle, ArticleCodes.RollsVides, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Charge une tournée locale par son identifiant SQLite.
+    /// </summary>
     public async Task<LocalTournee?> GetTourneeAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
         return await db.Table<LocalTournee>().Where(t => t.Id == tourneeId).FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Retourne la dernière tournée locale non abandonnée.
+    /// Sert notamment aux écrans de reprise après fermeture de l'application.
+    /// </summary>
     public async Task<LocalTournee?> GetLatestTourneeAsync()
     {
         var db = await GetDatabaseAsync();
@@ -368,6 +433,10 @@ public sealed class DatabaseService
             !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Recherche la tournée active de la date métier autorisée.
+    /// Une tournée active est non verrouillée, non synchronisée, non expirée et non abandonnée.
+    /// </summary>
     public async Task<LocalTournee?> GetActiveTourneeAsync(DateTime? dateTourneeAutorisee = null)
     {
         var db = await GetDatabaseAsync();
@@ -386,6 +455,10 @@ public sealed class DatabaseService
             && !string.Equals(tournee.StatutLocal, TourneeLocalStatus.AbandonneeLocale, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Recherche une tournée active précise par code et date.
+    /// Les tournées déjà envoyées, expirées, abandonnées ou verrouillées sont exclues.
+    /// </summary>
     public async Task<LocalTournee?> GetActiveTourneeByCodeAndDateAsync(string codeTournee, DateTime dateTournee)
     {
         var db = await GetDatabaseAsync();
@@ -405,6 +478,10 @@ public sealed class DatabaseService
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// Expire les tournées locales actives plus anciennes que la date métier autorisée.
+    /// Cela évite qu'un livreur envoie une tournée d'une ancienne date après changement de journée côté API.
+    /// </summary>
     public async Task<int> ExpireOldActiveTourneesAsync(DateTime? dateTourneeAutorisee = null)
     {
         var db = await GetDatabaseAsync();
@@ -430,6 +507,10 @@ public sealed class DatabaseService
         return tournees.Count;
     }
 
+    /// <summary>
+    /// Supprime les tournées synchronisées anciennes après une durée de rétention courte.
+    /// La purge porte uniquement sur les tournées verrouillées et confirmées comme reçues ou déjà reçues par l'API.
+    /// </summary>
     public async Task<int> PurgeOldSynchronizedTourneesAsync(int retentionDays = 7)
     {
         var db = await GetDatabaseAsync();
@@ -457,6 +538,10 @@ public sealed class DatabaseService
         return candidates.Count;
     }
 
+    /// <summary>
+    /// Supprime les tournées abandonnées localement après la durée de rétention prévue.
+    /// Les tournées abandonnées sont conservées temporairement pour garder une trace pendant les tests et diagnostics.
+    /// </summary>
     public async Task<int> PurgeOldAbandonedTourneesAsync(int retentionDays = 30)
     {
         var db = await GetDatabaseAsync();
@@ -485,6 +570,9 @@ public sealed class DatabaseService
         return candidates.Count;
     }
 
+    /// <summary>
+    /// Vérifie si une tournée synchronisée peut être purgée selon le cutoff fourni.
+    /// </summary>
     private static bool IsPurgeableSynchronizedTournee(LocalTournee tournee, DateTime cutoff)
     {
         if (!tournee.EstVerrouillee)
@@ -506,6 +594,9 @@ public sealed class DatabaseService
         return referenceDate < cutoff;
     }
 
+    /// <summary>
+    /// Vérifie si une tournée abandonnée localement peut être purgée selon le cutoff fourni.
+    /// </summary>
     private static bool IsPurgeableAbandonedTournee(LocalTournee tournee, DateTime cutoff)
     {
         if (!tournee.EstVerrouillee)
@@ -521,6 +612,11 @@ public sealed class DatabaseService
         return tournee.DateChargement < cutoff;
     }
 
+    /// <summary>
+    /// Renormalise toutes les lignes client fermé d'une tournée non verrouillée.
+    /// Règle métier : un client fermé doit rester NON_FAIT, validé, avec commentaire standard
+    /// et quantités livrées/récupérées à zéro.
+    /// </summary>
     public async Task<int> NormalizeClosedLinesAsync(int tourneeId)
     {
         if (tourneeId <= 0)
@@ -568,6 +664,10 @@ public sealed class DatabaseService
         return lignesCorrigees;
     }
 
+    /// <summary>
+    /// Applique la règle métier client fermé sur une ligne locale.
+    /// La logique métier est déléguée à ClientFermeRules pour garder une source unique de vérité.
+    /// </summary>
     private static bool ApplyClosedLineDefaults(LocalTourneeLigne ligne)
     {
         var normalized = ClientFermeRules.NormalizeLine(
@@ -595,6 +695,9 @@ public sealed class DatabaseService
         return hasChanged;
     }
 
+    /// <summary>
+    /// Applique la règle client fermé sur une quantité avant insertion locale.
+    /// </summary>
     private static bool ApplyClosedQuantiteDefaults(bool estFerme, QuantiteSaisieMobileDto quantite)
     {
         var normalized = ClientFermeRules.NormalizeQuantite(
@@ -617,6 +720,9 @@ public sealed class DatabaseService
         return true;
     }
 
+    /// <summary>
+    /// Applique la règle client fermé sur une quantité déjà stockée en SQLite.
+    /// </summary>
     private static bool ApplyClosedQuantiteDefaults(bool estFerme, LocalTourneeLigneQuantite quantite)
     {
         var normalized = ClientFermeRules.NormalizeQuantite(
@@ -639,6 +745,9 @@ public sealed class DatabaseService
         return true;
     }
 
+    /// <summary>
+    /// Charge les lignes d'une tournée dans l'ordre de passage.
+    /// </summary>
     public async Task<List<LocalTourneeLigne>> GetLignesAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -648,12 +757,18 @@ public sealed class DatabaseService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Charge une ligne locale par son identifiant SQLite.
+    /// </summary>
     public async Task<LocalTourneeLigne?> GetLigneAsync(int ligneId)
     {
         var db = await GetDatabaseAsync();
         return await db.Table<LocalTourneeLigne>().Where(l => l.Id == ligneId).FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Charge les quantités d'une ligne dans l'ordre des codes articles.
+    /// </summary>
     public async Task<List<LocalTourneeLigneQuantite>> GetQuantitesAsync(int ligneId)
     {
         var db = await GetDatabaseAsync();
@@ -663,6 +778,11 @@ public sealed class DatabaseService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Enregistre la saisie d'une ligne et de ses quantités.
+    /// La méthode refuse les modifications si la tournée est verrouillée et remet automatiquement
+    /// les valeurs client fermé dans leur état métier attendu.
+    /// </summary>
     public async Task SaveLigneAsync(
         LocalTourneeLigne ligne,
         IEnumerable<LocalTourneeLigneQuantite> quantites)
@@ -698,6 +818,10 @@ public sealed class DatabaseService
         }
     }
 
+    /// <summary>
+    /// Persiste le camion et le kilométrage de départ sur la tournée locale.
+    /// Cette persistance est indispensable pour pouvoir restaurer le trajet après navigation ou reprise de l'application.
+    /// </summary>
     public async Task PersistTrajetDepartAsync(
         int tourneeId,
         CamionDto camion,
@@ -743,6 +867,10 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Persiste le kilométrage d'arrivée sur la tournée locale.
+    /// Le kilométrage arrivée ne peut pas être inférieur au kilométrage départ déjà stocké.
+    /// </summary>
     public async Task PersistTrajetArriveeAsync(
         int tourneeId,
         int kilometrageArrivee,
@@ -778,6 +906,10 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Restaure dans AppState les informations de trajet persistées en SQLite.
+    /// Cette méthode permet de reprendre une tournée sans perdre camion, kilométrages et dates mobiles.
+    /// </summary>
     public async Task RestaurerTrajetDansAppStateAsync(
         int tourneeId,
         AppStateService appStateService)
@@ -794,6 +926,10 @@ public sealed class DatabaseService
         appStateService.ApplyTrajetFromTournee(tournee);
     }
 
+    /// <summary>
+    /// Retourne un message bloquant si le trajet camion de la tournée locale est incomplet ou incohérent.
+    /// Cette validation est utilisée avant synchronisation pour éviter un payload 1.3 incomplet.
+    /// </summary>
     public async Task<string?> GetTrajetBlockingValidationMessageAsync(int tourneeId)
     {
         var tournee = await GetTourneeAsync(tourneeId);
@@ -845,8 +981,14 @@ public sealed class DatabaseService
         return null;
     }
 
+    /// <summary>
+    /// Reconstruit le contrat de synchronisation à partir des données SQLite locales.
+    /// Cette méthode est critique : elle garantit que les informations chargées depuis l'API et les saisies livreur
+    /// sont renvoyées ensemble dans le format attendu par l'API.
+    /// </summary>
     public async Task<SynchronisationTourneeRequest> BuildSynchronisationRequestAsync(int tourneeId)
     {
+        // Sécurité avant mapping : les lignes client fermé sont remises dans leur état métier attendu.
         await NormalizeClosedLinesAsync(tourneeId);
 
         var tournee = await GetTourneeAsync(tourneeId)
@@ -971,6 +1113,9 @@ public sealed class DatabaseService
         return request;
     }
 
+    /// <summary>
+    /// Met à jour le commentaire global d'une tournée tant qu'elle n'est pas verrouillée.
+    /// </summary>
     public async Task UpdateCommentaireGlobalAsync(int tourneeId, string? commentaireGlobal)
     {
         var db = await GetDatabaseAsync();
@@ -988,6 +1133,10 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Marque une tournée comme synchronisée après confirmation de succès par l'API.
+    /// La tournée devient verrouillée pour empêcher toute modification ou renvoi involontaire.
+    /// </summary>
     public async Task MarkSynchroniseeAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -1005,6 +1154,10 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Marque une tournée comme étant en erreur de synchronisation.
+    /// Elle reste modifiable/rejouable sauf si elle est déjà verrouillée.
+    /// </summary>
     public async Task MarkErreurSynchronisationAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -1020,6 +1173,11 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Abandonne une tournée uniquement sur le téléphone.
+    /// Elle est verrouillée localement pour ne plus bloquer le chargement d'une nouvelle tournée,
+    /// mais elle n'est pas envoyée à l'API comme synchronisée.
+    /// </summary>
     public async Task<bool> AbandonnerTourneeLocaleAsync(int tourneeId, string? raison = null)
     {
         var db = await GetDatabaseAsync();
@@ -1050,6 +1208,10 @@ public sealed class DatabaseService
         return true;
     }
 
+    /// <summary>
+    /// Marque localement une tournée comme déjà synchronisée lorsque l'API indique qu'elle existe déjà.
+    /// Ce statut évite les renvois répétés tout en conservant une trace claire du cas idempotent.
+    /// </summary>
     public async Task MarkDejaSynchroniseeAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -1067,6 +1229,10 @@ public sealed class DatabaseService
         await db.UpdateAsync(tournee);
     }
 
+    /// <summary>
+    /// Supprime toutes les données locales liées à une tournée : quantités, lignes, puis en-tête de tournée.
+    /// L'ordre est important pour éviter de laisser des données orphelines.
+    /// </summary>
     private async Task DeleteTourneeDataAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
@@ -1099,6 +1265,9 @@ public sealed class DatabaseService
         }
     }
 
+    /// <summary>
+    /// Normalise un texte optionnel en supprimant les espaces inutiles et en convertissant les valeurs vides en null.
+    /// </summary>
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value)
@@ -1106,6 +1275,10 @@ public sealed class DatabaseService
             : value.Trim();
     }
 
+    /// <summary>
+    /// Formate une date locale avec offset pour le contrat JSON de synchronisation.
+    /// Les dates sans Kind sont considérées comme locales pour éviter un décalage UTC involontaire.
+    /// </summary>
     private static string FormatDateTime(DateTime value)
     {
         var local = value.Kind == DateTimeKind.Unspecified
