@@ -10,14 +10,18 @@ using MobileSLI.Services;
 namespace MobileSLI.Services.Api;
 
 /// <summary>
-/// Client HTTP centralisé pour accéder à l'API. Cette version applique un
-/// timeout global raisonnable (180 secondes) sur HttpClient afin de ne pas
-/// bloquer indéfiniment en cas de problème réseau. Les délais spécifiques
-/// par appel restent pilotés par ApiTimeouts et fournis aux méthodes
-/// SendRawAsync.
+/// Client HTTP centralisé pour accéder à l'API MobileSLI.
+/// Cette classe concentre la normalisation de l'URL API, la sérialisation JSON,
+/// les timeouts applicatifs, les tentatives éventuelles et la traduction des erreurs réseau/API
+/// en exceptions lisibles côté application mobile.
 /// </summary>
 public sealed class ApiClient
 {
+    /// <summary>
+    /// Options JSON communes à tous les échanges avec l'API.
+    /// Le mode Web respecte les conventions JSON usuelles et la lecture insensible à la casse
+    /// protège le mobile contre de petites différences de casse entre contrats.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true,
@@ -31,17 +35,22 @@ public sealed class ApiClient
     {
         _settingsService = settingsService;
 
-        // Utilisation d'un timeout global de 180 secondes. Les appels
-        // individuels spécifient leurs propres délais via ApiTimeouts, mais ce
-        // timeout protège contre des blocages réseau sans fin.
+        // Timeout global de sécurité : les timeouts métier par appel restent fournis via ApiTimeouts.
+        // Cette limite globale évite un blocage indéfini si le réseau ou le serveur ne répond plus.
         _httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(180)
         };
     }
 
+    /// <summary>
+    /// URL de base réellement utilisée pour les appels API après normalisation.
+    /// </summary>
     public string BaseUrl => NormalizeBaseUrl(_settingsService.ApiBaseUrl);
 
+    /// <summary>
+    /// Exécute un GET JSON avec le timeout GET par défaut et sans tentative automatique.
+    /// </summary>
     public Task<T?> GetAsync<T>(
         string route,
         CancellationToken cancellationToken = default)
@@ -54,6 +63,11 @@ public sealed class ApiClient
             cancellationToken);
     }
 
+    /// <summary>
+    /// Exécute un GET JSON avec timeout et politique de tentative explicites.
+    /// Lève une <see cref="ApiClientException"/> si l'API répond avec un code HTTP d'erreur
+    /// ou si le JSON reçu ne respecte pas le contrat attendu par le type demandé.
+    /// </summary>
     public async Task<T?> GetAsync<T>(
         string route,
         TimeSpan timeout,
@@ -93,6 +107,10 @@ public sealed class ApiClient
         }
     }
 
+    /// <summary>
+    /// Exécute un GET brut avec le timeout GET par défaut.
+    /// À utiliser quand l'appelant doit gérer lui-même le corps de réponse.
+    /// </summary>
     public Task<ApiRawResponse> GetRawAsync(
         string route,
         CancellationToken cancellationToken = default)
@@ -105,6 +123,9 @@ public sealed class ApiClient
             cancellationToken);
     }
 
+    /// <summary>
+    /// Exécute un GET brut avec timeout et politique de tentative explicites.
+    /// </summary>
     public Task<ApiRawResponse> GetRawAsync(
         string route,
         TimeSpan timeout,
@@ -122,6 +143,9 @@ public sealed class ApiClient
             cancellationToken);
     }
 
+    /// <summary>
+    /// Envoie une requête POST JSON avec le timeout POST par défaut.
+    /// </summary>
     public Task<ApiRawResponse> PostAsJsonAsync<TRequest>(
         string route,
         TRequest request,
@@ -134,6 +158,10 @@ public sealed class ApiClient
             cancellationToken);
     }
 
+    /// <summary>
+    /// Envoie une requête POST JSON avec un timeout explicite.
+    /// La sérialisation utilise les mêmes options que les autres contrats API du mobile.
+    /// </summary>
     public Task<ApiRawResponse> PostAsJsonAsync<TRequest>(
         string route,
         TRequest request,
@@ -150,6 +178,10 @@ public sealed class ApiClient
             cancellationToken);
     }
 
+    /// <summary>
+    /// Tente de désérialiser un JSON sans lever d'exception à l'appelant.
+    /// Utilisé pour exploiter un corps de réponse technique tout en conservant un flux d'erreur propre.
+    /// </summary>
     public T? Deserialize<T>(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -167,6 +199,10 @@ public sealed class ApiClient
         }
     }
 
+    /// <summary>
+    /// Construit une route avec query string en ignorant les paramètres vides.
+    /// Les clés et valeurs sont encodées pour éviter les erreurs liées aux espaces ou caractères spéciaux.
+    /// </summary>
     public string BuildRoute(
         string path,
         IReadOnlyDictionary<string, string?> queryParameters)
@@ -183,11 +219,19 @@ public sealed class ApiClient
             : $"{path}?{query}";
     }
 
+    /// <summary>
+    /// Formate une date selon le contrat API attendu : yyyy-MM-dd en culture invariante.
+    /// </summary>
     public string FormatDate(DateTime date)
     {
         return date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Point d'exécution commun de tous les appels HTTP.
+    /// Il applique le timeout demandé, construit la requête, lit le corps de réponse,
+    /// transforme les erreurs réseau en exceptions métier et applique la politique de tentative.
+    /// </summary>
     private async Task<ApiRawResponse> SendRawAsync(
         string route,
         HttpMethod method,
@@ -255,6 +299,9 @@ public sealed class ApiClient
             lastException);
     }
 
+    /// <summary>
+    /// Combine l'URL de base normalisée et la route demandée pour produire une URI absolue.
+    /// </summary>
     private Uri BuildUri(string route)
     {
         var normalizedRoute = route.StartsWith("/", StringComparison.Ordinal)
@@ -264,6 +311,10 @@ public sealed class ApiClient
         return new Uri(BaseUrl + normalizedRoute, UriKind.Absolute);
     }
 
+    /// <summary>
+    /// Normalise l'URL API : valeur de secours locale si vide, suppression du slash final,
+    /// et ajout du schéma HTTP si aucun schéma n'est fourni.
+    /// </summary>
     private static string NormalizeBaseUrl(string baseUrl)
     {
         if (string.IsNullOrWhiteSpace(baseUrl))
@@ -282,6 +333,10 @@ public sealed class ApiClient
         return normalized;
     }
 
+    /// <summary>
+    /// Traduit un code HTTP d'erreur en exception applicative lisible.
+    /// Le corps brut est conservé pour le diagnostic technique.
+    /// </summary>
     private static ApiClientException CreateException(
         int statusCode,
         string route,
@@ -308,6 +363,9 @@ public sealed class ApiClient
         return new ApiClientException(message, statusCode, route, body);
     }
 
+    /// <summary>
+    /// Crée une exception explicite lorsqu'un appel API dépasse le délai autorisé.
+    /// </summary>
     private static ApiClientException CreateTimeoutException(
         string route,
         TimeSpan timeout,
@@ -321,6 +379,9 @@ public sealed class ApiClient
             exception);
     }
 
+    /// <summary>
+    /// Crée une exception explicite lorsqu'un appel API échoue à cause du réseau.
+    /// </summary>
     private static ApiClientException CreateNetworkException(
         string route,
         Exception exception)
@@ -334,12 +395,19 @@ public sealed class ApiClient
     }
 }
 
+/// <summary>
+/// Réponse HTTP brute retournée par l'API, avant transformation éventuelle en DTO métier.
+/// </summary>
 public sealed record ApiRawResponse(
     bool IsSuccess,
     int StatusCode,
     string Route,
     string Body);
 
+/// <summary>
+/// Exception applicative levée par <see cref="ApiClient"/> lorsqu'un appel API échoue.
+/// Elle conserve le code HTTP, la route appelée et le corps de réponse pour faciliter le diagnostic.
+/// </summary>
 public sealed class ApiClientException : Exception
 {
     public ApiClientException(
