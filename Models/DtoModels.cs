@@ -146,7 +146,11 @@ public sealed class TourneeLigneDto
     public InfosLivreurDto InfosLivreur { get; set; } = new();
 
     public SaisieMobileDto Saisie { get; set; } = new();
-
+/*
+    * Propriétés passerelles conservées pour les anciens écrans et services.
+    * Elles lisent/écrivent dans les sous-objets du contrat structuré.
+    * Ne pas les supprimer sans refactor complet des ViewModels concernés.
+*/
     public string NumClient
     {
         get => Client.NumClient;
@@ -386,8 +390,9 @@ public sealed class QuantiteSaisieMobileDto
 }
 
 /// <summary>
-/// Ancien contrat de synchronisation mobile sans trajet camion.
-/// Conservé pour compatibilité avec les appels qui ne portent pas encore les informations camion.
+/// Socle commun du payload de synchronisation mobile.
+/// Le trajet camion est ajouté ensuite par SynchronisationTourneeAvecTrajetRequest
+/// pour le contrat final mobile/API 1.3.
 /// </summary>
 public sealed class SynchronisationTourneeRequest
 {

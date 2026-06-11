@@ -1,3 +1,26 @@
+
+
+/// <summary>
+/// Ce fichier mélange :
+/// migrations SQLite ;
+/// repositories locaux ;
+/// mapping API vers SQLite ;
+/// mapping SQLite vers JSON API ;
+/// règles client fermé ;
+/// trajet camion ;
+/// purge ;
+/// export diagnostic.
+/// Les commentaires aident à survivre, mais ils ne remplacent pas un découpage futur.
+/// Le bon découpage long terme serait :
+/// DatabaseService.cs
+/// LocalSchemaMigrationService.cs
+/// LocalTourneeRepository.cs
+/// LocalTourneeMapper.cs
+/// LocalSynchronisationPayloadBuilder.cs
+/// LocalPurgeService.cs
+/// LocalTrajetService.cs
+/// </summary>
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -131,6 +154,10 @@ public sealed class DatabaseService
     {
         try
         {
+        /*
+            * Les noms de table et définitions de colonne doivent rester des constantes internes de migration.
+            * Ne jamais appeler cette méthode avec une valeur utilisateur ou une valeur venant de l'API.
+        */
             await db.ExecuteAsync($"ALTER TABLE {tableName} ADD COLUMN {columnDefinition}");
         }
         catch (SQLiteException exception) when (
@@ -165,6 +192,11 @@ public sealed class DatabaseService
         }
         finally
         {
+    /*
+        * L'export ferme volontairement la connexion après le checkpoint WAL.
+        * Cela force SQLite à libérer le fichier principal avant la copie de diagnostic.
+        * Ne pas utiliser cet export comme opération métier pendant une synchronisation.
+    */
             await db.CloseAsync();
             _database = null;
         }
@@ -196,7 +228,13 @@ public sealed class DatabaseService
 
         // Avant de charger une nouvelle tournée, les anciennes tournées actives hors date autorisée sont expirées.
         await ExpireOldActiveTourneesAsync(dto.DateTournee);
-
+    /*
+         * Stratégie anti-écrasement :
+         * - une tournée active non synchronisée bloque le chargement d'une nouvelle tournée ;
+         * - une tournée expirée doit être rechargée depuis l'API ;
+         * - une tournée déjà verrouillée peut être réutilisée sans recréer de doublon local.
+         * Cette règle protège les saisies terrain non envoyées.
+    */
         var activeTournee = await GetActiveTourneeAsync(dto.DateTournee);
         if (activeTournee is not null)
         {
@@ -439,6 +477,11 @@ public sealed class DatabaseService
     /// </summary>
     public async Task<LocalTournee?> GetActiveTourneeAsync(DateTime? dateTourneeAutorisee = null)
     {
+    /*
+        * La date API doit être passée dès qu'elle est connue.
+        * DateTime.Today est seulement un repli local pour les appels où la date métier serveur
+        * n'a pas encore été récupérée.
+    */
         var db = await GetDatabaseAsync();
         var referenceDate = (dateTourneeAutorisee ?? DateTime.Today).Date;
 
@@ -995,7 +1038,11 @@ public sealed class DatabaseService
             ?? throw new InvalidOperationException("Aucune tournée locale trouvée.");
 
         var lignes = await GetLignesAsync(tourneeId);
-
+    /*
+        * Mapping critique SQLite -> contrat JSON API.
+        * Les champs de contexte reçus au chargement sont renvoyés avec la saisie livreur.
+        * Ne pas renommer, supprimer ou déplacer un champ sans vérifier le contrat API correspondant.
+    */
         var request = new SynchronisationTourneeRequest
         {
             SchemaVersion = AppConfig.SchemaVersion,
@@ -1233,6 +1280,10 @@ public sealed class DatabaseService
     /// Supprime toutes les données locales liées à une tournée : quantités, lignes, puis en-tête de tournée.
     /// L'ordre est important pour éviter de laisser des données orphelines.
     /// </summary>
+/*
+     * Suppression manuelle dans l'ordre enfant -> parent.
+     * Ne pas inverser l'ordre sauf si des contraintes SQLite avec cascade sont ajoutées explicitement.
+*/
     private async Task DeleteTourneeDataAsync(int tourneeId)
     {
         var db = await GetDatabaseAsync();
