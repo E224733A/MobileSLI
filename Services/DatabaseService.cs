@@ -1,26 +1,3 @@
-
-
-/// <summary>
-/// Ce fichier mélange :
-/// migrations SQLite ;
-/// repositories locaux ;
-/// mapping API vers SQLite ;
-/// mapping SQLite vers JSON API ;
-/// règles client fermé ;
-/// trajet camion ;
-/// purge ;
-/// export diagnostic.
-/// Les commentaires aident à survivre, mais ils ne remplacent pas un découpage futur.
-/// Le bon découpage long terme serait :
-/// DatabaseService.cs
-/// LocalSchemaMigrationService.cs
-/// LocalTourneeRepository.cs
-/// LocalTourneeMapper.cs
-/// LocalSynchronisationPayloadBuilder.cs
-/// LocalPurgeService.cs
-/// LocalTrajetService.cs
-/// </summary>
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -39,9 +16,11 @@ namespace MobileSLI.Services;
 /// <summary>
 /// Service central d'accès à la base SQLite locale du téléphone.
 /// Ce fichier est sensible : il gère les migrations locales, le stockage des tournées,
-/// la reprise après interruption, les règles client fermé, le trajet camion et la construction
-/// du payload de synchronisation envoyé à l'API.
+/// la reprise après interruption, les règles client fermé, le trajet camion, la purge,
+/// l'export diagnostic et la construction du payload de synchronisation envoyé à l'API.
+/// À terme, ce service devrait être découpé en services spécialisés pour réduire sa responsabilité.
 /// </summary>
+
 public sealed class DatabaseService
 {
     /// <summary>
